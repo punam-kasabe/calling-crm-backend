@@ -1,51 +1,57 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const db = require("../db");
-
+const User = require("../models/User");
 const router = express.Router();
 
-/* GET USERS */
-router.get("/all-users", (req, res) => {
-  db.query(
-    "SELECT id, name, email, mobile AS phone, role, created_at FROM users",
-    (err, result) => {
-      if (err) return res.status(500).json(err);
-      res.json(result);
-    }
-  );
-});
+/* BULK ADD USERS */
+router.post("/bulk-add-users", async (req, res) => {
+  const users = req.body;
 
-/* ADD USER */
-router.post("/add-user", async (req, res) => {
-  const { name, email, phone, password, role } = req.body;
-
-  if (!name || !email || !password) {
-    return res.status(400).json("Missing fields ❌");
+  if (!Array.isArray(users)) {
+    return res.status(400).json("Send array of users ❌");
   }
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const formattedUsers = await Promise.all(
+      users.map(async (u) => ({
+        name: u.name,
+        email: u.email.trim().toLowerCase(),
+        mobile: u.phone,
+        password: await bcrypt.hash(u.password, 10),
+        role: u.role,
+        can_import: u.can_import || 0,
+        can_export: u.can_export || 0,
+        can_delete_lead: u.can_delete_lead || 0,
+        can_access_project: u.can_access_project || 0,
+      }))
+    );
 
     db.query(
-      `INSERT INTO users (name, email, mobile, password, role)
-       VALUES (?, ?, ?, ?, ?)`,
-      [name, email.trim().toLowerCase(), phone, hashedPassword, role],
+      `INSERT INTO users 
+      (name, email, mobile, password, role, can_import, can_export, can_delete_lead, can_access_project) 
+      VALUES ?`,
+      [
+        formattedUsers.map((u) => [
+          u.name,
+          u.email,
+          u.mobile,
+          u.password,
+          u.role,
+          u.can_import,
+          u.can_export,
+          u.can_delete_lead,
+          u.can_access_project,
+        ]),
+      ],
       (err) => {
         if (err) return res.status(500).json(err);
-        res.json("User added ✅");
+        res.json("All users added successfully ✅");
       }
     );
-  } catch {
-    res.status(500).json("Server error ❌");
+  } catch (err) {
+    res.status(500).json("Bulk insert error ❌");
   }
-});
-
-/* DELETE USER */
-router.delete("/delete-user/:id", (req, res) => {
-  db.query("DELETE FROM users WHERE id=?", [req.params.id], (err) => {
-    if (err) return res.status(500).json(err);
-    res.json("User deleted ✅");
-  });
 });
 
 module.exports = router;

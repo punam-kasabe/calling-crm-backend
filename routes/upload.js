@@ -1,52 +1,106 @@
 const express = require("express");
 const router = express.Router();
+
 const multer = require("multer");
 const csv = require("csv-parser");
 const fs = require("fs");
-const db = require("../db");
 
-const upload = multer({ dest: "uploads/" });
+const Lead = require("../models/Lead");
 
-router.post("/", upload.single("file"), (req, res) => {
-  const assignedUser = req.body.assigned_to;
-  const createdBy = req.body.created_by;
-  const batch = Date.now();
+const upload = multer({
+  dest: "uploads/"
+});
 
-  if (!assignedUser) {
-    return res.status(400).json("User not selected");
-  }
+/* ================= UPLOAD CSV ================= */
 
-  const results = [];
+router.post("/", upload.single("file"), async (req, res) => {
 
-  fs.createReadStream(req.file.path)
-    .pipe(csv())
-    .on("data", (data) => {
-      results.push([
-        data.name,
-        data.phone,
-        data.email,
-        data.source,
-        assignedUser,
-        createdBy,
-        batch
-      ]);
-    })
-    .on("end", () => {
-      const sql = `
-        INSERT INTO leads 
-        (name, phone, email, source, assigned_to, created_by, upload_batch)
-        VALUES ?
-      `;
+  try {
 
-      db.query(sql, [results], (err, result) => {
-        if (err) {
+    const assignedUser =
+      req.body.assigned_to?.toLowerCase().trim();
+
+    const createdBy =
+      req.body.created_by || "";
+
+    if (!assignedUser) {
+      return res.status(400).json({
+        message: "User not selected ❌"
+      });
+    }
+
+    const rows = [];
+
+    fs.createReadStream(req.file.path)
+
+      .pipe(csv())
+
+      .on("data", (data) => {
+
+        rows.push(data);
+
+      })
+
+      .on("end", async () => {
+
+        try {
+
+          for (const data of rows) {
+
+            if (!data["Phone"]) continue;
+
+            await Lead.create({
+
+              name: data["Name"] || "",
+
+              phone: data["Phone"]
+                .toString()
+                .trim(),
+
+              email: data["Email"] || "",
+
+              source:
+                data["Lead Source"] || "",
+
+              status:
+                data["Lead Status"] || "New",
+
+              assigned_to: assignedUser,
+
+              created_by: createdBy
+
+            });
+
+          }
+
+          fs.unlinkSync(req.file.path);
+
+          res.json({
+            message: "CSV Uploaded ✅"
+          });
+
+        } catch (err) {
+
           console.log(err);
-          return res.status(500).json("DB Error");
+
+          res.status(500).json({
+            message: "DB Error ❌"
+          });
+
         }
 
-        res.json("CSV Uploaded & Leads Assigned ✅");
       });
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Upload Failed ❌"
     });
+
+  }
+
 });
 
 module.exports = router;

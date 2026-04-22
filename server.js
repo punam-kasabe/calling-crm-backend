@@ -1,5 +1,5 @@
 const express = require("express");
-const mysql = require("mysql2");
+const mongoose = require("mongoose");
 const cors = require("cors");
 const multer = require("multer");
 const csv = require("csv-parser");
@@ -11,246 +11,452 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* ================= DB ================= */
+/* ================= MONGODB ================= */
 
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "root123",
-  database: "crm",
-});
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB Connected ✅"))
+  .catch(err => console.log("DB Error ❌", err));
 
-db.connect((err) => {
-  if (err) console.log("DB Error:", err);
-  else console.log("DB Connected ✅");
-});
+/* ================= SCHEMAS ================= */
+
+const userSchema = new mongoose.Schema({
+  name: String,
+  email: { type: String, lowercase: true, trim: true },
+  phone: String,
+  password: String,
+  role: String,
+  can_import: Boolean,
+  can_export: Boolean,
+  can_delete_lead: Boolean,
+  can_access_project: Boolean,
+  status: { type: String, default: "active" }
+}, { timestamps: true });
+
+const leadSchema = new mongoose.Schema({
+  name: String,
+  phone: { type: String, unique: true },
+  email: String,
+  source: String,
+
+  status: {
+    type: String,
+    default: "New",
+    enum: ["New", "Interested", "Not Interested", "Booked"]
+  },
+
+  assigned_to: { type: String, lowercase: true, trim: true },
+  created_by: String,
+  next_call_date: Date,
+  upload_batch: Number,
+
+  followups: [
+    {
+      note: String,
+      status: String,
+      next_call_date: Date,
+      created_at: { type: Date, default: Date.now }
+    }
+  ]
+
+}, { timestamps: true });
+
+const Lead = mongoose.model("Lead", leadSchema);
+const User = mongoose.model("User", userSchema);
+
 
 /* ================= FILE ================= */
 
 const upload = multer({ dest: "uploads/" });
 
-/* ================= LOGIN ================= */
+/* ================= UPLOAD CSV ================= */
 
-app.post("/api/login", (req, res) => {
-  const { email, password } = req.body;
+app.post("/api/upload", upload.single("file"), async (req, res) => {
 
-  db.query(
-    "SELECT * FROM users WHERE email=?",
-    [email.trim().toLowerCase()],
-    async (err, result) => {
-      if (err) return res.status(500).json(err);
+  try {
 
-      if (result.length === 0) {
-        return res.status(401).json({ message: "User not found ❌" });
-      }
-
-      const user = result[0];
-      const isMatch = await bcrypt.compare(password, user.password);
-
-      if (!isMatch) {
-        return res.status(401).json({ message: "Wrong password ❌" });
-      }
-
-      res.json({
-        message: "Login successful ✅",
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
+    if (!req.file) {
+      return res.status(400).json({
+        message: "File missing ❌"
       });
     }
-  );
+
+    const assigned_to = req.body.assigned_to?.toLowerCase().trim();
+
+    const created_by = req.body.created_by || "";
+
+    const rows = [];
+
+    fs.createReadStream(req.file.path)
+      .pipe(csv())
+
+      .on("data", (data) => {
+        rows.push(data);
+      })
+
+      .on("end", async () => {
+
+        try {
+
+          let inserted = 0;
+
+          for (const data of rows) {
+
+          if (!data["Phone"]) continue;
+
+            const exists = await Lead.findOne({
+  phone: data["Phone"]?.trim()
+});
+            if (exists) continue;
+
+           await Lead.create({
+
+  name: data["Name"] || "",
+
+  phone: data["Phone"]?.trim() || "",
+
+  email: data["Email"] || "",
+
+  source: data["Lead Source"] || "",
+
+  status: data["Lead Status"] || "New",
+
+  assigned_to: data["assigned_to"]
+    ? data["assigned_to"].toLowerCase().trim()
+    : assigned_to,
+
+  created_by
+
+});
+
+            inserted++;
+
+          }
+
+          fs.unlinkSync(req.file.path);
+
+          res.json({
+            message: "Upload Success ✅",
+            inserted
+          });
+
+        } catch (err) {
+
+          console.log(err);
+
+          res.status(500).json({
+            message: "Database save failed ❌"
+          });
+
+        }
+
+      });
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Upload failed ❌"
+    });
+
+  }
+
+});
+/* ================= LOGIN ================= */
+
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({
+      email: email.toLowerCase().trim()
+    });
+
+    if (!user) return res.status(401).json({ message: "User not found ❌" });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ message: "Wrong password ❌" });
+
+    const role = user.role.toLowerCase();
+    const isAdmin = role === "admin";
+
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role,
+        can_import: isAdmin || user.can_import,
+        can_export: isAdmin || user.can_export,
+        can_delete_lead: isAdmin || user.can_delete_lead,
+      }
+    });
+
+  } catch {
+    res.status(500).json("Login error ❌");
+  }
 });
 
 /* ================= USERS ================= */
 
-app.get("/api/all-users", (req, res) => {
-  db.query(
-    "SELECT id, name, email, mobile AS phone, role, created_at FROM users",
-    (err, result) => {
-      if (err) return res.status(500).json(err);
-      res.json(result);
-    }
-  );
+app.get("/api/all-users", async (req, res) => {
+  try {
+    const users = await User.find().select("-password");
+    res.json(users);
+  } catch {
+    res.status(500).json("Fetch users error ❌");
+  }
 });
 
 app.post("/api/add-user", async (req, res) => {
-  const { name, email, phone, password, role } = req.body;
-
-  if (!name || !email || !password) {
-    return res.status(400).json("Missing fields ❌");
-  }
-
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const { name, email, phone, password, role } = req.body;
 
-    db.query(
-      `INSERT INTO users (name, email, mobile, password, role)
-       VALUES (?, ?, ?, ?, ?)`,
-      [name, email.trim().toLowerCase(), phone, hashedPassword, role],
-      (err) => {
-        if (err) return res.status(500).json(err);
-        res.json("User added successfully ✅");
-      }
-    );
-  } catch {
-    res.status(500).json("Server error ❌");
-  }
-});
-
-app.delete("/api/delete-user/:id", (req, res) => {
-  db.query("DELETE FROM users WHERE id=?", [req.params.id], (err) => {
-    if (err) return res.status(500).json(err);
-    res.json("User deleted ✅");
-  });
-});
-
-/* ================= LEADS FILTER ================= */
-
-app.post("/api/filter-leads", (req, res) => {
-  const email = req.body.email?.trim().toLowerCase();
-  const role = req.body.role?.trim().toLowerCase();
-
-  const page = parseInt(req.body.page) || 1;
-  const limit = 10;
-  const offset = (page - 1) * limit;
-
-  let where = "";
-  let params = [];
-
-  if (role === "executive") {
-    where = "WHERE LOWER(TRIM(assigned_to))=?";
-    params.push(email);
-  }
-
-  const dataQuery = `
-    SELECT * FROM leads
-    ${where}
-    ORDER BY id DESC
-    LIMIT ? OFFSET ?
-  `;
-
-  const countQuery = `
-    SELECT COUNT(*) as total FROM leads
-    ${where}
-  `;
-
-  db.query(countQuery, params, (err, countResult) => {
-    if (err) return res.status(500).json(err);
-
-    db.query(dataQuery, [...params, limit, offset], (err, result) => {
-      if (err) return res.status(500).json(err);
-
-      res.json({
-        data: result,
-        totalPages: Math.ceil(countResult[0].total / limit)
-      });
+    const exists = await User.findOne({
+      email: email.toLowerCase().trim()
     });
-  });
+
+    if (exists) return res.status(400).json("User already exists ❌");
+
+    const hash = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      name,
+      email: email.toLowerCase().trim(),
+      phone,
+      password: hash,
+      role
+    });
+
+    res.json({ message: "User added ✅", user });
+
+  } catch {
+    res.status(500).json("Add user error ❌");
+  }
 });
 
-/* ================= DELETE LEAD ================= */
+/* ================= FILTER LEADS ================= */
 
-app.delete("/api/delete-lead/:id", (req, res) => {
-  db.query("DELETE FROM leads WHERE id=?", [req.params.id], (err) => {
-    if (err) return res.status(500).json(err);
-    res.json("Lead deleted ✅");
-  });
+app.post("/api/filter-leads", async (req, res) => {
+  try {
+    const { email, role, page = 1, filters = {} } = req.body;
+
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    let query = {};
+
+   const userRole = role?.toLowerCase();
+
+if (userRole === "executive" && email) {
+
+  query.assigned_to = email.toLowerCase().trim();
+
+}
+
+if (userRole === "manager") {
+
+  
+     }
+    if (filters.status) query.status = filters.status;
+    if (filters.assigned) query.assigned_to = filters.assigned;
+    if (filters.project) query.source = new RegExp(filters.project, "i");
+
+    const total = await Lead.countDocuments(query);
+
+    const leads = await Lead.find(query)
+      .sort({ _id: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({
+      data: leads,
+      totalPages: Math.ceil(total / limit),
+    });
+
+  } catch {
+    res.status(500).json("Filter error ❌");
+  }
 });
 
-/* ================= UPDATE LEAD ================= */
+app.post("/api/bulk-update", upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json("File missing ❌");
 
-app.put("/api/update-lead/:id", (req, res) => {
-  const { name, phone, status, next_call_date } = req.body;
-
-  db.query(
-    `UPDATE leads 
-     SET name=?, phone=?, status=?, next_call_date=? 
-     WHERE id=?`,
-    [name, phone, status, next_call_date, req.params.id],
-    (err) => {
-      if (err) return res.status(500).json(err);
-      res.json("Lead updated ✅");
-    }
-  );
-});
-
-/* ================= CSV UPLOAD ================= */
-
-app.post("/api/upload", upload.single("file"), (req, res) => {
-  const assignedUser = req.body.assigned_to?.trim().toLowerCase();
-  const createdBy = req.body.created_by?.trim().toLowerCase();
-  const batch = Date.now();
-
-  if (!assignedUser) return res.status(400).json("User not selected ❌");
-  if (!req.file) return res.status(400).json("File not found ❌");
-
-  const results = [];
+  const bulkOps = [];
+  const rows = [];
 
   fs.createReadStream(req.file.path)
     .pipe(csv())
-    .on("data", (data) => {
-      results.push([
-        data.name || "",
-        data.phone || "",
-        data.email || "",
-        data.source || "",
-        "New",
-        assignedUser,
-        createdBy,
-        batch,
-      ]);
-    })
-    .on("end", () => {
-      const sql = `
-        INSERT INTO leads 
-        (name, phone, email, source, status, assigned_to, created_by, upload_batch)
-        VALUES ?
-      `;
+    .on("data", (data) => rows.push(data))
+    .on("end", async () => {
+      try {
 
-      db.query(sql, [results], (err) => {
+        for (let data of rows) {
+if (!data["Phone"]) continue;
+          let assignedEmail = "";
+
+const csvAssigned = data.assigned_to || req.body.assigned_to;
+
+if (csvAssigned) { const email = csvAssigned.toLowerCase().trim();
+
+  const user = await User.findOne({ email });
+
+  if (user) {
+    assignedEmail = user.email;
+  } else {
+    console.log("User not found:", email);
+  }
+}
+
+          bulkOps.push({
+            updateOne: {
+          filter: { phone: data["Phone"]?.trim() },
+        update: {
+       $set: {
+  name: data["Name"] || "",
+
+  phone: data["Phone"]?.trim() || "",
+
+  email: data["Email"] || "",
+
+  status: data["Lead Status"] || "New",
+
+  assigned_to: assignedEmail || "",
+
+  source: data["Lead Source"] || ""
+}
+  },
+  upsert: true   // 🔥 ADD THIS LINE
+}
+ });
+        
+        }
+        const result = await Lead.bulkWrite(bulkOps);
         fs.unlinkSync(req.file.path);
-        if (err) return res.status(500).json("DB Error ❌");
-        res.json("CSV Uploaded ✅");
-      });
+
+        res.json({
+          message: "Bulk Update Done ✅",
+          updated: result.modifiedCount
+        });
+
+      } catch (err) {
+        console.log(err);
+        res.status(500).json("Bulk update error ❌");
+      }
     });
 });
+/* ================= 🔥 ADD FOLLOW-UP ================= */
 
+app.post("/api/add-followup/:id", async (req, res) => {
+  try {
+    const { note, status, next_call_date } = req.body;
+
+    const followup = {
+      note,
+      status,
+      next_call_date: next_call_date ? new Date(next_call_date) : null
+    };
+
+    const updated = await Lead.findByIdAndUpdate(
+      req.params.id,
+      {
+        $push: { followups: followup },
+        $set: {
+          status,
+          next_call_date: followup.next_call_date
+        }
+      },
+      { new: true }
+    );
+
+    res.json({ message: "Follow-up saved ✅", lead: updated });
+
+  } catch {
+    res.status(500).json("Follow-up error ❌");
+  }
+});
+
+/* ================= FOLLOW-UP HISTORY ================= */
+
+app.get("/api/followups/:id", async (req, res) => {
+  try {
+    const lead = await Lead.findById(req.params.id);
+    res.json(lead.followups || []);
+  } catch {
+    res.status(500).json("Fetch followups error ❌");
+  }
+});
+/* ================= DELETE LEAD ================= */
+app.delete("/api/delete-lead/:id", async (req, res) => {
+  try {
+    await Lead.findByIdAndDelete(req.params.id);
+    res.json({ message: "Lead deleted ✅" });
+  } catch {
+    res.status(500).json("Delete error ❌");
+  }
+});
+
+/* ================= UPDATE LEAD ================= */
+app.put("/api/update-lead/:id", async (req, res) => {
+  try {
+    const updated = await Lead.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    res.json({ message: "Lead updated ✅", lead: updated });
+  } catch {
+    res.status(500).json("Update error ❌");
+  }
+});
 /* ================= DASHBOARD ================= */
 
-app.get("/api/dashboard", (req, res) => {
-  const email = req.query.email?.trim().toLowerCase();
-  const role = req.query.role?.trim().toLowerCase();
+app.get("/api/dashboard", async (req, res) => {
+  try {
+    const email = req.query.email?.toLowerCase();
+    const role = req.query.role;
 
-  let where = "";
-  let params = [];
+    let match = {};
 
-  if (role === "executive") {
-    where = "WHERE LOWER(TRIM(assigned_to))=?";
-    params.push(email);
+if (role?.toLowerCase() === "executive") {
+        match.assigned_to = email;
+    }
+
+   // 🔥 STATUS WISE COUNT
+const statusStats = await Lead.aggregate([
+  { $match: match },
+  {
+    $group: {
+      _id: "$status",
+      count: { $sum: 1 }
+    }
   }
+]);
 
-  const query = `
-    SELECT 
-      COUNT(*) AS total,
-      SUM(CASE WHEN status='New' THEN 1 ELSE 0 END) AS new,
-      SUM(CASE WHEN status='Booked' THEN 1 ELSE 0 END) AS booked,
-      SUM(CASE WHEN status='Interested' THEN 1 ELSE 0 END) AS hot,
-      SUM(CASE WHEN status='Not Interested' THEN 1 ELSE 0 END) AS inactive
-    FROM leads
-    ${where}
-  `;
+// 🔥 SUMMARY
+const summary = await Lead.aggregate([
+  { $match: match },
+  {
+    $group: {
+      _id: null,
+      total: { $sum: 1 },
+      new: { $sum: { $cond: [{ $eq: ["$status", "New"] }, 1, 0] } },
+      booked: { $sum: { $cond: [{ $eq: ["$status", "Booked"] }, 1, 0] } },
+      interested: { $sum: { $cond: [{ $eq: ["$status", "Interested"] }, 1, 0] } },
+      not_interested: { $sum: { $cond: [{ $eq: ["$status", "Not Interested"] }, 1, 0] } }
+    }
+  }
+]);
 
-  db.query(query, params, (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json(result[0]);
-  });
+res.json({
+  ...(summary[0] || {}),
+  status: statusStats
 });
 
+} catch {
+  res.status(500).json("Dashboard error ❌");
+}
+});
 /* ================= START ================= */
 
-app.listen(5000, () => {
-  console.log("Server running on port 5000 🚀");
-});
+app.listen(5000, () => console.log("Server running 🚀"));
