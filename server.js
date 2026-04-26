@@ -941,7 +941,127 @@ app.get(
   }
 
 );
+/* =========================================
+   BULK UPDATE
+========================================= */
 
+app.post(
+  "/api/bulk-update",
+  upload.single("file"),
+
+  async (req, res) => {
+
+    try {
+
+      if (!req.file) {
+
+        return res.status(400).json({
+          message: "File missing ❌"
+        });
+
+      }
+
+      const rows = [];
+
+      fs.createReadStream(req.file.path)
+
+        .pipe(csv())
+
+        .on("data", (data) => {
+          rows.push(data);
+        })
+
+        .on("end", async () => {
+
+          try {
+
+            let updated = 0;
+
+            for (const data of rows) {
+
+              const phone =
+                data.phone?.trim();
+
+              if (!phone) continue;
+
+              const lead =
+                await Lead.findOne({
+                  phone
+                });
+
+              if (!lead) continue;
+
+              if (data.status) {
+                lead.status =
+                  data.status;
+              }
+
+              if (data.assigned_to) {
+                lead.assigned_to =
+                  data.assigned_to
+                    .toLowerCase()
+                    .trim();
+              }
+
+              if (data.source) {
+                lead.source =
+                  data.source;
+              }
+
+              await lead.save();
+
+              updated++;
+
+            }
+
+            fs.unlinkSync(
+              req.file.path
+            );
+
+            res.json({
+
+              message:
+                `Bulk Update Success ✅ (${updated} updated)`,
+
+              updated
+
+            });
+
+          }
+
+          catch (err) {
+
+            console.log(err);
+
+            res.status(500).json({
+
+              message:
+                "Bulk update failed ❌"
+
+            });
+
+          }
+
+        });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+
+        message:
+          "Server Error ❌"
+
+      });
+
+    }
+
+  }
+
+);
 /* =========================================
    ASSIGN MANAGER
 ========================================= */
