@@ -1,3 +1,5 @@
+// FILE: backend/server.js
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -5,458 +7,1452 @@ const multer = require("multer");
 const csv = require("csv-parser");
 const fs = require("fs");
 const bcrypt = require("bcrypt");
+
 require("dotenv").config();
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-/* ================= MONGODB ================= */
+/* =========================================
+   MONGODB
+========================================= */
 
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected ✅"))
-  .catch(err => console.log("DB Error ❌", err));
 
-/* ================= SCHEMAS ================= */
+  .then(() => {
+    console.log("MongoDB Connected ✅");
+  })
+
+  .catch((err) => {
+    console.log("DB Error ❌", err);
+  });
+
+/* =========================================
+   USER SCHEMA
+========================================= */
 
 const userSchema = new mongoose.Schema({
-  name: String,
-  email: { type: String, lowercase: true, trim: true },
-  phone: String,
-  password: String,
-  role: String,
-  can_import: Boolean,
-  can_export: Boolean,
-  can_delete_lead: Boolean,
-  can_access_project: Boolean,
-  status: { type: String, default: "active" }
-}, { timestamps: true });
 
-const leadSchema = new mongoose.Schema({
   name: String,
-  phone: { type: String, unique: true },
-  email: String,
-  source: String,
+
+  email: {
+    type: String,
+    lowercase: true,
+    trim: true
+  },
+
+  phone: String,
+
+  password: String,
+
+  role: String,
+
+  can_import: Boolean,
+
+  can_export: Boolean,
+
+  can_delete_lead: Boolean,
+
+  can_access_project: Boolean,
 
   status: {
     type: String,
-    default: "New",
-    enum: ["New", "Interested", "Not Interested", "Booked"]
+    default: "active"
+  }
+
+}, {
+  timestamps: true
+});
+
+/* =========================================
+   LEAD SCHEMA
+========================================= */
+
+const leadSchema = new mongoose.Schema({
+
+  name: String,
+
+  phone: {
+    type: String,
+    unique: true
   },
 
-  assigned_to: { type: String, lowercase: true, trim: true },
+  email: String,
+
+  source: String,
+
+  project: String,
+
+  status: {
+
+    type: String,
+
+    default: "New",
+
+    enum: [
+
+      "New",
+      "Interested",
+      "Not Interested",
+      "Followup",
+      "Booked"
+
+    ]
+
+  },
+
+  assigned_to: {
+    type: String,
+    lowercase: true,
+    trim: true
+  },
+
+  assigned_manager: {
+    type: String,
+    lowercase: true,
+    trim: true,
+    default: ""
+  },
+
+  visit_created: {
+    type: Boolean,
+    default: false
+  },
+
+  visit_status: {
+
+    type: String,
+
+    default: "",
+
+    enum: [
+
+      "",
+      "IN_OFFICE",
+      "VISIT_DONE",
+      "BOOKED",
+      "NOT_BOOKED",
+      "FOLLOWUP"
+
+    ]
+
+  },
+
   created_by: String,
+
   next_call_date: Date,
+
   upload_batch: Number,
 
   followups: [
+
     {
+
       note: String,
+
       status: String,
+
       next_call_date: Date,
-      created_at: { type: Date, default: Date.now }
+
+      created_at: {
+        type: Date,
+        default: Date.now
+      }
+
     }
+
   ]
 
-}, { timestamps: true });
+}, {
+  timestamps: true
+});
 
-const Lead = mongoose.model("Lead", leadSchema);
-const User = mongoose.model("User", userSchema);
+/* =========================================
+   VISIT SCHEMA
+========================================= */
 
+const visitSchema = new mongoose.Schema(
 
-/* ================= FILE ================= */
+  {
 
-const upload = multer({ dest: "uploads/" });
+    leadId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Lead",
+    },
 
-/* ================= UPLOAD CSV ================= */
+    clientName: String,
 
-app.post("/api/upload", upload.single("file"), async (req, res) => {
+    mobile: String,
+
+    project: String,
+
+    attendedManager: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    receptionUser: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    visitStatus: {
+      type: String,
+      enum: [
+        "IN_OFFICE",
+        "VISIT_DONE",
+        "BOOKED",
+        "NOT_BOOKED",
+        "FOLLOWUP"
+      ],
+      default: "IN_OFFICE",
+    },
+
+    bookingStatus: {
+      type: String,
+      enum: [
+        "PENDING",
+        "BOOKED",
+        "NOT_BOOKED"
+      ],
+      default: "PENDING",
+    },
+
+    visitDate: {
+      type: Date,
+      default: Date.now,
+    },
+
+  },
+
+  {
+    timestamps: true,
+  }
+
+);
+
+/* =========================================
+   MODELS
+========================================= */
+
+const User = mongoose.model(
+  "User",
+  userSchema
+);
+
+const Lead = mongoose.model(
+  "Lead",
+  leadSchema
+);
+
+const Visit = mongoose.model(
+  "Visit",
+  visitSchema
+);
+
+/* =========================================
+   FILE UPLOAD
+========================================= */
+
+const upload = multer({
+  dest: "uploads/"
+});
+
+/* =========================================
+   LOGIN
+========================================= */
+
+app.post("/api/login", async (req, res) => {
 
   try {
 
-    if (!req.file) {
-      return res.status(400).json({
-        message: "File missing ❌"
+    const {
+      email,
+      password
+    } = req.body;
+
+    const user = await User.findOne({
+
+      email: email
+        .toLowerCase()
+        .trim()
+
+    });
+
+    if (!user) {
+
+      return res.status(401).json({
+        message: "User not found ❌"
       });
+
     }
 
-    const assigned_to = req.body.assigned_to?.toLowerCase().trim();
+    const isMatch = await bcrypt.compare(
+      password,
+      user.password
+    );
 
-    const created_by = req.body.created_by || "";
+    if (!isMatch) {
 
-    const rows = [];
-
-    fs.createReadStream(req.file.path)
-      .pipe(csv())
-
-      .on("data", (data) => {
-        rows.push(data);
-      })
-
-      .on("end", async () => {
-
-        try {
-
-          let inserted = 0;
-
-          for (const data of rows) {
-
-          if (!data["Phone"]) continue;
-
-            const exists = await Lead.findOne({
-  phone: data["Phone"]?.trim()
-});
-            if (exists) continue;
-
-           await Lead.create({
-
-  name: data["Name"] || "",
-
-  phone: data["Phone"]?.trim() || "",
-
-  email: data["Email"] || "",
-
-  source: data["Lead Source"] || "",
-
-  status: data["Lead Status"] || "New",
-
-  assigned_to: data["assigned_to"]
-    ? data["assigned_to"].toLowerCase().trim()
-    : assigned_to,
-
-  created_by
-
-});
-
-            inserted++;
-
-          }
-
-          fs.unlinkSync(req.file.path);
-
-          res.json({
-            message: "Upload Success ✅",
-            inserted
-          });
-
-        } catch (err) {
-
-          console.log(err);
-
-          res.status(500).json({
-            message: "Database save failed ❌"
-          });
-
-        }
-
+      return res.status(401).json({
+        message: "Wrong password ❌"
       });
 
-  } catch (err) {
+    }
+
+    const role = user.role?.toLowerCase();
+
+    const isAdmin = role === "admin";
+
+    res.json({
+
+      user: {
+
+        id: user._id,
+
+        name: user.name,
+
+        email: user.email,
+
+        role,
+
+        can_import:
+          isAdmin || user.can_import,
+
+        can_export:
+          isAdmin || user.can_export,
+
+        can_delete_lead:
+          isAdmin || user.can_delete_lead,
+
+      }
+
+    });
+
+  }
+
+  catch (err) {
 
     console.log(err);
 
     res.status(500).json({
-      message: "Upload failed ❌"
+      message: "Login error ❌"
     });
 
   }
 
 });
-/* ================= LOGIN ================= */
 
-app.post("/api/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const user = await User.findOne({
-      email: email.toLowerCase().trim()
-    });
-
-    if (!user) return res.status(401).json({ message: "User not found ❌" });
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: "Wrong password ❌" });
-
-    const role = user.role.toLowerCase();
-    const isAdmin = role === "admin";
-
-    res.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role,
-        can_import: isAdmin || user.can_import,
-        can_export: isAdmin || user.can_export,
-        can_delete_lead: isAdmin || user.can_delete_lead,
-      }
-    });
-
-  } catch {
-    res.status(500).json("Login error ❌");
-  }
-});
-
-/* ================= USERS ================= */
-
-app.get("/api/all-users", async (req, res) => {
-  try {
-    const users = await User.find().select("-password");
-    res.json(users);
-  } catch {
-    res.status(500).json("Fetch users error ❌");
-  }
-});
+/* =========================================
+   ADD USER
+========================================= */
 
 app.post("/api/add-user", async (req, res) => {
+
   try {
-    const { name, email, phone, password, role } = req.body;
+
+    const {
+      name,
+      email,
+      phone,
+      password,
+      role
+    } = req.body;
 
     const exists = await User.findOne({
-      email: email.toLowerCase().trim()
+
+      email: email
+        .toLowerCase()
+        .trim()
+
     });
 
-    if (exists) return res.status(400).json("User already exists ❌");
+    if (exists) {
 
-    const hash = await bcrypt.hash(password, 10);
+      return res.status(400).json({
+        message: "User already exists ❌"
+      });
+
+    }
+
+    const hash = await bcrypt.hash(
+      password,
+      10
+    );
 
     const user = await User.create({
+
       name,
-      email: email.toLowerCase().trim(),
+
+      email: email
+        .toLowerCase()
+        .trim(),
+
       phone,
+
       password: hash,
+
       role
+
     });
-
-    res.json({ message: "User added ✅", user });
-
-  } catch {
-    res.status(500).json("Add user error ❌");
-  }
-});
-
-/* ================= FILTER LEADS ================= */
-
-app.post("/api/filter-leads", async (req, res) => {
-  try {
-    const { email, role, page = 1, filters = {} } = req.body;
-
-    const limit = 10;
-    const skip = (page - 1) * limit;
-
-    let query = {};
-
-   const userRole = role?.toLowerCase();
-
-if (userRole === "executive" && email) {
-
-  query.assigned_to = email.toLowerCase().trim();
-
-}
-
-if (userRole === "manager") {
-
-  
-     }
-    if (filters.status) query.status = filters.status;
-    if (filters.assigned) query.assigned_to = filters.assigned;
-    if (filters.project) query.source = new RegExp(filters.project, "i");
-
-    const total = await Lead.countDocuments(query);
-
-    const leads = await Lead.find(query)
-      .sort({ _id: -1 })
-      .skip(skip)
-      .limit(limit);
 
     res.json({
-      data: leads,
-      totalPages: Math.ceil(total / limit),
+
+      message: "User added ✅",
+
+      user
+
     });
 
-  } catch {
-    res.status(500).json("Filter error ❌");
   }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Add user error ❌"
+    });
+
+  }
+
 });
 
-app.post("/api/bulk-update", upload.single("file"), async (req, res) => {
-  if (!req.file) return res.status(400).json("File missing ❌");
+/* =========================================
+   GET USERS
+========================================= */
 
-  const bulkOps = [];
-  const rows = [];
+app.get("/api/all-users", async (req, res) => {
 
-  fs.createReadStream(req.file.path)
-    .pipe(csv())
-    .on("data", (data) => rows.push(data))
-    .on("end", async () => {
-      try {
+  try {
 
-        for (let data of rows) {
-if (!data["Phone"]) continue;
-          let assignedEmail = "";
+    const users = await User.find()
+      .select("-password");
 
-const csvAssigned = data.assigned_to || req.body.assigned_to;
+    res.json(users);
 
-if (csvAssigned) { const email = csvAssigned.toLowerCase().trim();
-
-  const user = await User.findOne({ email });
-
-  if (user) {
-    assignedEmail = user.email;
-  } else {
-    console.log("User not found:", email);
   }
-}
 
-          bulkOps.push({
-            updateOne: {
-          filter: { phone: data["Phone"]?.trim() },
-        update: {
-       $set: {
-  name: data["Name"] || "",
+  catch {
 
-  phone: data["Phone"]?.trim() || "",
+    res.status(500).json({
+      message: "Fetch users error ❌"
+    });
 
-  email: data["Email"] || "",
+  }
 
-  status: data["Lead Status"] || "New",
+});
 
-  assigned_to: assignedEmail || "",
+/* =========================================
+   GET MANAGERS
+========================================= */
 
-  source: data["Lead Source"] || ""
-}
-  },
-  upsert: true   // 🔥 ADD THIS LINE
-}
- });
-        
-        }
-        const result = await Lead.bulkWrite(bulkOps);
-        fs.unlinkSync(req.file.path);
+app.get("/api/managers", async (req, res) => {
 
-        res.json({
-          message: "Bulk Update Done ✅",
-          updated: result.modifiedCount
+  try {
+
+    const managers = await User.find({
+      role: /manager/i
+    }).select("name email");
+
+    res.json(managers);
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Managers fetch error ❌"
+    });
+
+  }
+
+});
+
+/* =========================================
+   CSV UPLOAD
+========================================= */
+
+app.post(
+  "/api/upload",
+  upload.single("file"),
+
+  async (req, res) => {
+
+    try {
+
+      if (!req.file) {
+
+        return res.status(400).json({
+          message: "File missing ❌"
         });
 
-      } catch (err) {
-        console.log(err);
-        res.status(500).json("Bulk update error ❌");
       }
-    });
-});
-/* ================= 🔥 ADD FOLLOW-UP ================= */
 
-app.post("/api/add-followup/:id", async (req, res) => {
-  try {
-    const { note, status, next_call_date } = req.body;
+      const assigned_to = req.body
+        .assigned_to
+        ?.toLowerCase()
+        .trim();
 
-    const followup = {
-      note,
-      status,
-      next_call_date: next_call_date ? new Date(next_call_date) : null
-    };
+      const created_by =
+        req.body.created_by || "";
 
-    const updated = await Lead.findByIdAndUpdate(
-      req.params.id,
-      {
-        $push: { followups: followup },
-        $set: {
-          status,
-          next_call_date: followup.next_call_date
+      const rows = [];
+
+      fs.createReadStream(req.file.path)
+
+        .pipe(csv())
+
+        .on("data", (data) => {
+          rows.push(data);
+        })
+
+        .on("end", async () => {
+
+          try {
+
+            let inserted = 0;
+
+            for (const data of rows) {
+
+              if (!data["Phone"])
+                continue;
+
+              const exists =
+                await Lead.findOne({
+
+                  phone:
+                    data["Phone"]?.trim()
+
+                });
+
+              if (exists)
+                continue;
+
+              await Lead.create({
+
+                name:
+                  data["Name"] || "",
+
+                phone:
+                  data["Phone"]?.trim() || "",
+
+                email:
+                  data["Email"] || "",
+
+                source:
+                  data["Lead Source"] || "",
+
+                project:
+                  data["Project"] || "",
+
+                status:
+                  data["Lead Status"] || "New",
+
+                assigned_to:
+
+                  data["assigned_to"]
+
+                    ? data["assigned_to"]
+                        .toLowerCase()
+                        .trim()
+
+                    : assigned_to,
+
+                created_by
+
+              });
+
+              inserted++;
+
+            }
+
+            fs.unlinkSync(
+              req.file.path
+            );
+
+            res.json({
+
+              message:
+                "Upload Success ✅",
+
+              inserted
+
+            });
+
+          }
+
+          catch (err) {
+
+            console.log(err);
+
+            res.status(500).json({
+
+              message:
+                "Database save failed ❌"
+
+            });
+
+          }
+
+        });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+        message: "Upload failed ❌"
+      });
+
+    }
+
+  }
+
+);
+
+
+
+/* =========================================
+   SEARCH CLIENT
+========================================= */
+
+app.get(
+  "/api/search-client/:phone",
+
+  async (req, res) => {
+
+    try {
+
+      const lead =
+        await Lead.findOne({
+          phone: req.params.phone
+        });
+
+      if (!lead) {
+
+        return res.status(404).json({
+          message: "Client not found ❌"
+        });
+
+      }
+
+      res.json(lead);
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+        message: "Search error ❌"
+      });
+
+    }
+
+  }
+
+);
+
+/* =========================================
+   CREATE VISIT
+========================================= */
+
+app.post(
+  "/api/create-visit",
+
+  async (req, res) => {
+
+    try {
+
+      const {
+
+        leadId,
+        clientName,
+        mobile,
+        project,
+        attendedManager,
+        receptionUser,
+        visitStatus,
+        bookingStatus
+
+      } = req.body;
+
+      const visit = await Visit.create({
+
+        leadId,
+
+        clientName,
+
+        mobile,
+
+        project,
+
+        attendedManager,
+
+        receptionUser,
+
+        visitStatus,
+
+        bookingStatus
+
+      });
+
+      /* ===============================
+         GET MANAGER EMAIL
+      =============================== */
+
+      const manager =
+        await User.findById(
+          attendedManager
+        );
+
+      /* ===============================
+         FIND LEAD USING MOBILE
+      =============================== */
+
+      const existingLead =
+        await Lead.findOne({
+
+          phone: mobile
+
+        });
+
+      /* ===============================
+         UPDATE EXISTING LEAD
+      =============================== */
+
+      if (existingLead) {
+
+        existingLead.assigned_manager =
+          manager?.email || "";
+
+        existingLead.visit_created =
+          true;
+
+        existingLead.visit_status =
+          visitStatus;
+
+        await existingLead.save();
+
+      }
+
+      /* ===============================
+         CREATE NEW LEAD
+      =============================== */
+
+      else {
+
+        await Lead.create({
+
+          name: clientName,
+
+          phone: mobile,
+
+          project,
+
+          status: "Followup",
+
+          assigned_manager:
+            manager?.email || "",
+
+          visit_created: true,
+
+          visit_status: visitStatus
+
+        });
+
+      }
+
+      res.json({
+
+        message: "Visit created ✅",
+
+        visit
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+
+        message:
+          "Visit create failed ❌"
+
+      });
+
+    }
+
+  }
+
+);
+/* =========================================
+   GET ALL VISITS
+========================================= */
+
+app.get(
+  "/api/visits",
+
+  async (req, res) => {
+
+    try {
+
+      const visits = await Visit.find()
+
+        .populate(
+          "attendedManager",
+          "name email"
+        )
+
+        .populate(
+          "receptionUser",
+          "name email"
+        )
+
+        .sort({
+          createdAt: -1
+        });
+
+      res.json(visits);
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+        message: "Visits fetch failed ❌"
+      });
+
+    }
+
+  }
+
+);
+
+/* =========================================
+   UPDATE VISIT STATUS
+========================================= */
+
+app.put(
+  "/api/update-visit/:id",
+
+  async (req, res) => {
+
+    try {
+
+      const {
+
+        visitStatus,
+        bookingStatus,
+        attendedManager
+
+      } = req.body;
+
+      const updated =
+        await Visit.findByIdAndUpdate(
+
+          req.params.id,
+
+          {
+
+            visitStatus,
+            bookingStatus,
+            attendedManager
+
+          },
+
+          {
+            new: true
+          }
+
+        );
+
+      res.json({
+
+        message: "Visit updated ✅",
+
+        visit: updated
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+        message: "Visit update failed ❌"
+      });
+
+    }
+
+  }
+
+);
+/* =========================================
+   GET VISIT ENTRIES
+========================================= */
+
+app.get(
+  "/api/visit-entries",
+
+  async (req, res) => {
+
+    try {
+
+      const visits =
+        await Visit.find()
+
+          .sort({
+            createdAt: -1
+          });
+
+      res.json(visits);
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+
+        message:
+          "Visit fetch error ❌"
+
+      });
+
+    }
+
+  }
+
+);
+
+/* =========================================
+   ASSIGN MANAGER
+========================================= */
+
+app.put(
+  "/api/assign-manager/:id",
+  async (req, res) => {
+
+    try {
+
+      const { managerId } = req.body;
+
+      const visit = await Visit.findByIdAndUpdate(
+
+        req.params.id,
+
+        {
+          attendedManager: managerId
+        },
+
+        {
+          new: true
         }
-      },
-      { new: true }
-    );
 
-    res.json({ message: "Follow-up saved ✅", lead: updated });
+      ).populate(
+        "attendedManager",
+        "name email"
+      );
 
-  } catch {
-    res.status(500).json("Follow-up error ❌");
-  }
-});
+      res.json({
 
-/* ================= FOLLOW-UP HISTORY ================= */
+        message: "Manager Assigned ✅",
 
-app.get("/api/followups/:id", async (req, res) => {
-  try {
-    const lead = await Lead.findById(req.params.id);
-    res.json(lead.followups || []);
-  } catch {
-    res.status(500).json("Fetch followups error ❌");
-  }
-});
-/* ================= DELETE LEAD ================= */
-app.delete("/api/delete-lead/:id", async (req, res) => {
-  try {
-    await Lead.findByIdAndDelete(req.params.id);
-    res.json({ message: "Lead deleted ✅" });
-  } catch {
-    res.status(500).json("Delete error ❌");
-  }
-});
+        visit
 
-/* ================= UPDATE LEAD ================= */
-app.put("/api/update-lead/:id", async (req, res) => {
-  try {
-    const updated = await Lead.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
-    res.json({ message: "Lead updated ✅", lead: updated });
-  } catch {
-    res.status(500).json("Update error ❌");
-  }
-});
-/* ================= DASHBOARD ================= */
+      });
 
-app.get("/api/dashboard", async (req, res) => {
-  try {
-    const email = req.query.email?.toLowerCase();
-    const role = req.query.role;
-
-    let match = {};
-
-if (role?.toLowerCase() === "executive") {
-        match.assigned_to = email;
     }
 
-   // 🔥 STATUS WISE COUNT
-const statusStats = await Lead.aggregate([
-  { $match: match },
-  {
-    $group: {
-      _id: "$status",
-      count: { $sum: 1 }
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+
+        message: "Assign manager error ❌"
+
+      });
+
     }
-  }
-]);
 
-// 🔥 SUMMARY
-const summary = await Lead.aggregate([
-  { $match: match },
-  {
-    $group: {
-      _id: null,
-      total: { $sum: 1 },
-      new: { $sum: { $cond: [{ $eq: ["$status", "New"] }, 1, 0] } },
-      booked: { $sum: { $cond: [{ $eq: ["$status", "Booked"] }, 1, 0] } },
-      interested: { $sum: { $cond: [{ $eq: ["$status", "Interested"] }, 1, 0] } },
-      not_interested: { $sum: { $cond: [{ $eq: ["$status", "Not Interested"] }, 1, 0] } }
+  }
+
+);
+/* =========================================
+   EXECUTIVE LEADS
+========================================= */
+
+app.get(
+  "/api/my-leads",
+
+  async (req, res) => {
+
+    try {
+
+      const email = req.query.email
+        ?.toLowerCase()
+        .trim();
+
+      const leads =
+        await Lead.find({
+
+          assigned_to: email
+
+        }).sort({
+
+          createdAt: -1
+
+        });
+
+      res.json(leads);
+
     }
+
+    catch {
+
+      res.status(500).json({
+        message: "Fetch error ❌"
+      });
+
+    }
+
   }
-]);
 
-res.json({
-  ...(summary[0] || {}),
-  status: statusStats
+);
+
+/* =========================================
+   MANAGER CLIENTS
+========================================= */
+
+app.get(
+  "/api/manager-clients",
+
+  async (req, res) => {
+
+    try {
+
+      const email = req.query.email
+        ?.toLowerCase()
+        .trim();
+
+      const leads =
+        await Lead.find({
+
+          assigned_manager:
+            email
+
+        }).sort({
+
+          createdAt: -1
+
+        });
+
+      res.json(leads);
+
+    }
+
+    catch {
+
+      res.status(500).json({
+        message: "Manager fetch error ❌"
+      });
+
+    }
+
+  }
+
+);
+
+/* =========================================
+   UPDATE STATUS
+========================================= */
+
+app.put(
+  "/api/update-status/:id",
+
+  async (req, res) => {
+
+    try {
+
+      const {
+
+        status,
+        remark,
+        followup_date
+
+      } = req.body;
+
+      const updated =
+        await Lead.findByIdAndUpdate(
+
+          req.params.id,
+
+          {
+
+            status,
+
+            remark,
+
+            followup_date
+
+          },
+
+          {
+
+            new: true
+
+          }
+
+        );
+
+      res.json(updated);
+
+    }
+
+    catch {
+
+      res.status(500).json({
+        message: "Update failed ❌"
+      });
+
+    }
+
+  }
+
+);
+
+/* =========================================
+   FILTER LEADS
+========================================= */
+
+app.post(
+  "/api/filter-leads",
+
+  async (req, res) => {
+
+    try {
+
+      const {
+
+        email,
+        role,
+        page = 1,
+        filters = {}
+
+      } = req.body;
+
+      const limit = 10;
+
+      const skip =
+        (page - 1) * limit;
+
+      let query = {};
+
+      const userRole =
+        role?.toLowerCase();
+
+      if (
+        userRole ===
+        "executive"
+      ) {
+
+        query.assigned_to =
+          email
+            ?.toLowerCase()
+            .trim();
+
+      }
+
+      if (
+        userRole ===
+        "manager"
+      ) {
+
+        query.assigned_manager =
+          email
+            ?.toLowerCase()
+            .trim();
+
+      }
+
+      if (filters.status) {
+        query.status = filters.status;
+      }
+
+      if (filters.project) {
+
+        query.project =
+          new RegExp(
+            filters.project,
+            "i"
+          );
+
+      }
+
+      const total =
+        await Lead.countDocuments(
+          query
+        );
+
+      const leads =
+        await Lead.find(query)
+
+          .sort({
+            _id: -1
+          })
+
+          .skip(skip)
+
+          .limit(limit);
+
+      res.json({
+
+        data: leads,
+
+        totalPages:
+          Math.ceil(
+            total / limit
+          )
+
+      });
+
+    }
+
+    catch {
+
+      res.status(500).json({
+        message: "Filter error ❌"
+      });
+
+    }
+
+  }
+
+);
+
+/* =========================================
+   ADD FOLLOWUP
+========================================= */
+
+app.post(
+  "/api/add-followup/:id",
+
+  async (req, res) => {
+
+    try {
+
+      const {
+
+        note,
+        status,
+        next_call_date
+
+      } = req.body;
+
+      const followup = {
+
+        note,
+
+        status,
+
+        next_call_date:
+
+          next_call_date
+
+            ? new Date(
+                next_call_date
+              )
+
+            : null
+
+      };
+
+      const updated =
+        await Lead.findByIdAndUpdate(
+
+          req.params.id,
+
+          {
+
+            $push: {
+
+              followups:
+                followup
+
+            },
+
+            $set: {
+
+              status,
+
+              next_call_date:
+                followup.next_call_date
+
+            }
+
+          },
+
+          {
+
+            new: true
+
+          }
+
+        );
+
+      res.json({
+
+        message:
+          "Followup saved ✅",
+
+        lead: updated
+
+      });
+
+    }
+
+    catch {
+
+      res.status(500).json({
+        message: "Followup error ❌"
+      });
+
+    }
+
+  }
+
+);
+
+/* =========================================
+   DASHBOARD
+========================================= */
+
+app.get(
+  "/api/dashboard",
+
+  async (req, res) => {
+
+    try {
+
+      const email =
+        req.query.email
+          ?.toLowerCase();
+
+      const role =
+        req.query.role
+          ?.toLowerCase();
+
+      let match = {};
+
+      if (
+        role ===
+        "executive"
+      ) {
+
+        match.assigned_to =
+          email;
+
+      }
+
+      if (
+        role ===
+        "manager"
+      ) {
+
+        match.assigned_manager =
+          email;
+
+      }
+
+      const summary =
+        await Lead.aggregate([
+
+          {
+            $match: match
+          },
+
+          {
+            $group: {
+
+              _id: null,
+
+              total: {
+                $sum: 1
+              },
+
+              booked: {
+                $sum: {
+                  $cond: [
+                    {
+                      $eq: [
+                        "$status",
+                        "Booked"
+                      ]
+                    },
+                    1,
+                    0
+                  ]
+                }
+              }
+
+            }
+
+          }
+
+        ]);
+
+      res.json(
+
+        summary[0] || {
+
+          total: 0,
+
+          booked: 0
+
+        }
+
+      );
+
+    }
+
+    catch {
+
+      res.status(500).json({
+        message: "Dashboard error ❌"
+      });
+
+    }
+
+  }
+
+);
+
+/* =========================================
+   START SERVER
+========================================= */
+
+app.listen(5000, () => {
+
+  console.log(
+    "Server running 🚀"
+  );
+
 });
-
-} catch {
-  res.status(500).json("Dashboard error ❌");
-}
-});
-/* ================= START ================= */
-
-app.listen(5000, () => console.log("Server running 🚀"));
