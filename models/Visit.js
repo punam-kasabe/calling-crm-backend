@@ -2,11 +2,7 @@ const mongoose = require("mongoose");
 
 const visitSchema = new mongoose.Schema(
   {
-    leadId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Lead",
-    },
-
+    // 🔥 BASIC DETAILS
     clientName: {
       type: String,
       required: true,
@@ -22,83 +18,64 @@ const visitSchema = new mongoose.Schema(
       required: true,
     },
 
+    // 🔥 MANAGER
     attendedManager: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "User", // or "Manager" (as per your DB)
       default: null,
     },
 
-    receptionUser: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+    assigned_manager: {
+      type: String, // manager email
+      default: "",
     },
 
-    /* 🔥 VISIT STATUS */
-
+    // 🔥 VISIT STATUS
     visitStatus: {
       type: String,
-
       enum: [
-        "VISIT_SCHEDULED",
         "IN_OFFICE",
-        "SITE_VISIT_DONE",
-        "BOOKING_DONE",
+        "VISIT_DONE",
+        "BOOKED",
+        "FOLLOWUP",
+        "NOT_BOOKED",
       ],
-
-      default: "VISIT_SCHEDULED",
+      default: "IN_OFFICE",
     },
 
-    /* 🔥 BOOKING STATUS */
-
+    // 🔥 BOOKING STATUS
     bookingStatus: {
       type: String,
-
       enum: [
         "PENDING",
-        "INTERESTED",
-        "FOLLOWUP",
         "BOOKED",
-        "NOT_INTERESTED",
+        "NOT_BOOKED",
       ],
-
       default: "PENDING",
     },
 
-    /* 🔥 REMARKS */
+    // 🔥 CALLING BY (MULTIPLE EXECUTIVES)
+    calling_by: [
+      {
+        type: String, // storing names like "Vrushali"
+      },
+    ],
 
-    remarks: {
+    // 🔥 REMARK
+    remark: {
       type: String,
       default: "",
     },
 
-    /* 🔥 SITE VISIT DATE */
-
-    siteVisitDate: {
-      type: Date,
-      default: null,
-    },
-
-    /* 🔥 BOOKING DATE */
-
-    bookingDate: {
-      type: Date,
-      default: null,
-    },
-
-    /* 🔥 CREATED DATE */
-
+    // 🔥 DATES
     visitDate: {
       type: Date,
       default: Date.now,
     },
   },
-
   {
-    timestamps: true,
+    timestamps: true, // createdAt, updatedAt auto
   }
 );
 
-module.exports = mongoose.model(
-  "Visit",
-  visitSchema
-);
+module.exports = mongoose.model("Visit", visitSchema);
