@@ -97,12 +97,43 @@ const leadSchema = new mongoose.Schema({
       "Interested",
       "Not Interested",
       "Followup",
-      "Booked"
-
+      "Booked",
+       "Call Cut",
+    "Call Back",
+    "Ringing",
+    "Busy",
+    "Switch Off",
+    "Out of Service",
+    "Wrong Number"
     ]
 
   },
+description: {
+  type: String,
+  default: ""
+},
 
+subSource: {
+  type: String,
+  default: ""
+},
+
+
+
+closingExecutive: {
+  type: String,
+  default: ""
+},
+
+remark: {
+  type: String,
+  default: ""
+},
+
+followup_date: {
+  type: Date,
+  default: null
+},
   assigned_to: {
     type: String,
     lowercase: true,
@@ -248,6 +279,40 @@ remark: {
 
 );
 /* =========================================
+   FOLLOWUP SCHEMA
+========================================= */
+
+const followupSchema = new mongoose.Schema({
+
+  leadId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Lead"
+  },
+
+  clientName: String,
+
+  phone: String,
+
+  project: String,
+
+  executive: String,
+
+  note: {
+    type: String,
+    default: ""
+  },
+
+  followup_date: Date,
+
+  status: {
+    type: String,
+    default: "Followup"
+  }
+
+}, {
+  timestamps: true
+});
+/* =========================================
    PROJECT SCHEMA
 ========================================= */
 
@@ -295,6 +360,10 @@ const Visit = mongoose.model(
 const Project = mongoose.model(
   "Project",
   projectSchema
+);
+const Followup = mongoose.model(
+  "Followup",
+  followupSchema
 );
 /* =========================================
    FILE UPLOAD
@@ -704,7 +773,59 @@ app.get(
   }
 
 );
+/* =========================================
+   SEARCH CLIENT BY NAME
+========================================= */
 
+app.get(
+  "/api/search-client-name/:name",
+
+  async (req, res) => {
+
+    try {
+
+      const search =
+        decodeURIComponent(
+          req.params.name
+        );
+
+      console.log(
+        "Searching:",
+        search
+      );
+
+      const leads =
+        await Lead.find({
+
+          name: {
+            $regex: search,
+            $options: "i"
+          }
+
+        }).limit(10);
+
+      console.log(
+        "Results:",
+        leads.length
+      );
+
+      res.json(leads);
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+        message: "Search error ❌"
+      });
+
+    }
+
+  }
+
+);
 /* =========================================
    CREATE VISIT
 ========================================= */
@@ -1240,6 +1361,110 @@ app.put(
 
 );
 /* =========================================
+   ADD LEAD
+========================================= */
+
+app.post("/api/add-lead", async (req, res) => {
+
+  try {
+
+    const {
+
+      name,
+      phone,
+      email,
+      source,
+      subSource,
+      project,
+      status,
+      assignedTo,
+      closingExecutive,
+      description,
+      remark,
+      next_call_date
+
+    } = req.body;
+
+    /* CHECK DUPLICATE */
+
+    const exists = await Lead.findOne({
+      phone: phone?.trim()
+    });
+
+    if (exists) {
+
+      return res.status(400).json({
+        message: "Lead already exists ❌"
+      });
+
+    }
+
+    /* CREATE */
+
+    const lead = await Lead.create({
+
+      name,
+
+      phone: phone?.trim(),
+
+      email: email || "",
+
+      source: source || "Virtual Call",
+
+      subSource: subSource || "",
+
+      project: project || "",
+
+      status: status || "New",
+
+      assignedTo: assignedTo || "",
+
+      closingExecutive:
+        closingExecutive || "",
+
+      description: description || "",
+
+      remark: remark || "",
+
+      next_call_date:
+        next_call_date || null,
+
+      assigned_to:
+        assignedTo
+          ?.toLowerCase()
+          .trim() || "",
+
+      created_by:
+        closingExecutive || "Executive"
+
+    });
+
+    res.json({
+
+      success: true,
+
+      message: "Lead added ✅",
+
+      lead
+
+    });
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+
+      message: "Add lead failed ❌"
+
+    });
+
+  }
+
+});
+/* =========================================
    EXECUTIVE LEADS
 ========================================= */
 
@@ -1255,16 +1480,25 @@ app.get(
         .trim();
 
       const leads =
-        await Lead.find({
+  await Lead.find({
 
-          assigned_to: email
+    $or: [
 
-        }).sort({
+      {
+        assigned_to: email
+      },
 
-          createdAt: -1
+      {
+        assignedTo: email
+      }
 
-        });
+    ]
 
+  }).sort({
+
+    createdAt: -1
+
+  });
       res.json(leads);
 
     }
@@ -1439,7 +1673,17 @@ app.post(
       if (filters.status) {
         query.status = filters.status;
       }
+      
+      /* ASSIGNED FILTER */
 
+     if (filters.assigned) {
+
+        query.assigned_to =
+      filters.assigned
+      .toLowerCase()
+      .trim();
+
+      }
       if (filters.project) {
 
         query.project =
@@ -1584,6 +1828,116 @@ app.post(
 
 );
 /* =========================================
+   CREATE FOLLOWUP
+========================================= */
+
+app.post(
+  "/api/create-followup",
+
+  async (req, res) => {
+
+    try {
+
+      const {
+
+        leadId,
+        note,
+        followup_date,
+        executive
+
+      } = req.body;
+
+      /* FIND LEAD */
+
+      const lead = await Lead.findById(
+        leadId
+      );
+
+      if (!lead) {
+
+        return res.status(404).json({
+          message: "Lead not found ❌"
+        });
+
+      }
+
+      /* CREATE FOLLOWUP */
+
+      const followup =
+        await Followup.create({
+
+          leadId,
+
+          clientName: lead.name,
+
+          phone: lead.phone,
+
+          project: lead.project,
+
+          executive,
+
+          note,
+
+          followup_date,
+
+          status: "Followup"
+
+        });
+
+      /* UPDATE LEAD */
+
+      lead.status = "Followup";
+
+      lead.followup_date =
+        followup_date;
+
+      lead.next_call_date =
+        followup_date;
+
+      lead.followups.push({
+
+        note,
+
+        status: "Followup",
+
+        next_call_date:
+          followup_date
+
+      });
+
+      await lead.save();
+
+      res.json({
+
+        success: true,
+
+        message:
+          "Followup created ✅",
+
+        followup
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+
+        message:
+          "Create followup failed ❌"
+
+      });
+
+    }
+
+  }
+
+);
+
+/* =========================================
    UPDATE LEAD
 ========================================= */
 
@@ -1663,6 +2017,70 @@ app.delete("/api/delete-lead/:id", async (req, res) => {
 
 });
 /* =========================================
+   TODAY FOLLOWUPS
+========================================= */
+
+app.get(
+  "/api/today-followups/:email",
+
+  async (req, res) => {
+
+    try {
+
+      const today = new Date();
+
+      today.setHours(
+        0, 0, 0, 0
+      );
+
+      const tomorrow =
+        new Date(today);
+
+      tomorrow.setDate(
+        tomorrow.getDate() + 1
+      );
+
+      const followups =
+        await Followup.find({
+
+          executive:
+            req.params.email,
+
+          followup_date: {
+
+            $gte: today,
+
+            $lt: tomorrow
+
+          }
+
+        }).sort({
+
+          followup_date: 1
+
+        });
+
+      res.json(followups);
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+
+        message:
+          "Today followups error ❌"
+
+      });
+
+    }
+
+  }
+
+);
+/* =========================================
    EXECUTIVE DASHBOARD
 ========================================= */
 
@@ -1708,7 +2126,6 @@ app.get(
         await Lead.countDocuments({
 
           assigned_to: email,
-
           status: "Followup"
 
         });
@@ -1768,6 +2185,30 @@ app.get(
 
         });
 
+
+        /* TODAY FOLLOWUPS LIST */
+
+const todayFollowupsList =
+  await Followup.find({
+
+    executive: email,
+
+    followup_date: {
+
+      $gte: today,
+
+      $lt: tomorrow
+
+    }
+
+  })
+
+  .sort({
+    followup_date: 1
+  })
+
+  .limit(10);
+
       /* PENDING CALLS */
 
       const pendingCalls =
@@ -1817,7 +2258,8 @@ app.get(
 
         pendingCalls,
 
-        recentLeads
+        recentLeads,
+        todayFollowupsList
 
       });
 
@@ -1839,6 +2281,143 @@ app.get(
   }
 
 );
+
+/* =========================================
+   EXECUTIVE REPORT
+========================================= */
+
+app.get(
+  "/api/executive/report/:id",
+
+  async (req, res) => {
+
+    try {
+
+      /* FIND USER */
+
+      const user =
+        await User.findById(
+          req.params.id
+        );
+
+      if (!user) {
+
+        return res.status(404).json({
+          message: "User not found ❌"
+        });
+
+      }
+
+      const email =
+        user.email
+          ?.toLowerCase()
+          .trim();
+
+      /* TOTAL LEADS */
+
+      const total =
+        await Lead.countDocuments({
+
+          assigned_to: email
+
+        });
+
+      /* INTERESTED */
+
+      const interested =
+        await Lead.countDocuments({
+
+          assigned_to: email,
+
+          status: "Interested"
+
+        });
+
+      /* SITE VISITS */
+
+      const siteVisit =
+        await Lead.countDocuments({
+
+          assigned_to: email,
+
+          visit_created: true
+
+        });
+
+      /* NOT INTERESTED */
+
+      const notInterested =
+        await Lead.countDocuments({
+
+          assigned_to: email,
+
+          status: "Not Interested"
+
+        });
+
+      /* BOOKED */
+
+      const booked =
+        await Lead.countDocuments({
+
+          assigned_to: email,
+
+          status: "Booked"
+
+        });
+
+      /* RECENT LEADS */
+
+      const recentLeads =
+        await Lead.find({
+
+          assigned_to: email
+
+        })
+
+        .sort({
+          createdAt: -1
+        })
+
+        .limit(10);
+
+      /* RESPONSE */
+
+      res.json({
+
+        total,
+
+        interested,
+
+        siteVisit,
+
+        notInterested,
+
+        booked,
+
+        recentLeads
+
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+
+        message:
+          "Executive report error ❌"
+
+      });
+
+    }
+
+  }
+
+);
+
 /* =========================================
    DASHBOARD
 ========================================= */
@@ -2065,15 +2644,574 @@ app.delete("/api/projects/:id", async (req, res) => {
     });
   }
 });
+/* =========================================
+   FULL DASHBOARD API
+========================================= */
 
+app.get("/api/dashboard-full", async (req, res) => {
+
+  try {
+
+    const email =
+      req.query.email
+        ?.toLowerCase()
+        .trim();
+
+    const role =
+      req.query.role
+        ?.toLowerCase()
+        .trim();
+
+    let match = {};
+
+    /* ROLE FILTER */
+
+    if (role === "executive") {
+
+      match.assigned_to = email;
+
+    }
+
+    if (role === "manager") {
+
+      match.assigned_manager = email;
+
+    }
+
+    /* =====================================
+       SUMMARY COUNTS
+    ===================================== */
+
+    const total =
+      await Lead.countDocuments(match);
+
+    /* TODAY NEW LEADS */
+
+    const today = new Date();
+
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+
+    tomorrow.setDate(
+      tomorrow.getDate() + 1
+    );
+
+    const newLeads =
+      await Lead.countDocuments({
+
+        ...match,
+
+        createdAt: {
+          $gte: today,
+          $lt: tomorrow
+        }
+
+      });
+
+    const interested =
+      await Lead.countDocuments({
+
+        ...match,
+
+        status: "Interested"
+
+      });
+
+    const booked =
+      await Lead.countDocuments({
+
+        ...match,
+
+        status: "Booked"
+
+      });
+
+    const notInterested =
+      await Lead.countDocuments({
+
+        ...match,
+
+        status: "Not Interested"
+
+      });
+
+    const pending =
+      await Lead.countDocuments({
+
+        ...match,
+
+        status: {
+          $in: ["New", "Followup"]
+        }
+
+      });
+
+    /* =====================================
+       STATUS CHART
+    ===================================== */
+
+    const statusData =
+      await Lead.aggregate([
+
+        {
+          $match: match
+        },
+
+        {
+          $group: {
+
+            _id: "$status",
+
+            count: {
+              $sum: 1
+            }
+
+          }
+
+        }
+
+      ]);
+
+    /* =====================================
+       WEEKLY CHART
+    ===================================== */
+
+    const weekly =
+      await Lead.aggregate([
+
+        {
+          $match: match
+        },
+
+        {
+          $group: {
+
+            _id: {
+              $dayOfWeek: "$createdAt"
+            },
+
+            count: {
+              $sum: 1
+            }
+
+          }
+
+        },
+
+        {
+          $sort: {
+            _id: 1
+          }
+        }
+
+      ]);
+
+    const dayMap = {
+      1: "Sun",
+      2: "Mon",
+      3: "Tue",
+      4: "Wed",
+      5: "Thu",
+      6: "Fri",
+      7: "Sat"
+    };
+
+    const weeklyData =
+      weekly.map((w) => ({
+
+        day: dayMap[w._id],
+
+        count: w.count
+
+      }));
+
+    /* =====================================
+       EXECUTIVE PERFORMANCE
+    ===================================== */
+
+    const executives =
+      await Lead.aggregate([
+
+        {
+          $match: match
+        },
+
+        {
+          $group: {
+
+            _id: "$assigned_to",
+
+            total: {
+              $sum: 1
+            },
+
+            interested: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", "Interested"]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            booked: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", "Booked"]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            pending: {
+              $sum: {
+                $cond: [
+                  {
+                    $in: [
+                      "$status",
+                      ["New", "Followup"]
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            }
+
+          }
+
+        },
+
+        {
+          $project: {
+
+            name: "$_id",
+
+            total: 1,
+
+            interested: 1,
+
+            booked: 1,
+
+            pending: 1
+
+          }
+
+        }
+
+      ]);
+
+    /* =====================================
+       LEAD ASSIGNMENT
+    ===================================== */
+
+    const assignments =
+      await Lead.aggregate([
+
+        {
+          $match: match
+        },
+
+        {
+          $group: {
+
+            _id: "$assigned_to",
+
+            count: {
+              $sum: 1
+            }
+
+          }
+
+        }
+
+      ]);
+
+    const assignmentData =
+      assignments.map((a) => ({
+
+        name: a._id || "Unassigned",
+
+        count: a.count
+
+      }));
+
+    /* =====================================
+       TEAM LEADERBOARD
+    ===================================== */
+
+    const leaderboard =
+      [...assignmentData]
+
+        .sort((a, b) =>
+          b.count - a.count
+        )
+
+        .slice(0, 5);
+
+    /* =====================================
+       TODAY FOLLOWUPS
+    ===================================== */
+
+    const followups =
+      await Lead.find({
+
+        ...match,
+
+        next_call_date: {
+
+          $gte: today,
+
+          $lt: tomorrow
+
+        }
+
+      })
+
+      .select("name phone")
+
+      .limit(10);
+
+    /* =====================================
+       MISSED FOLLOWUPS
+    ===================================== */
+
+    const missedFollowups =
+      await Lead.find({
+
+        ...match,
+
+        next_call_date: {
+          $lt: today
+        },
+
+        status: {
+          $ne: "Booked"
+        }
+
+      })
+
+      .select("name phone")
+
+      .limit(10);
+
+    /* =====================================
+       PROJECT ANALYSIS
+    ===================================== */
+
+    const projects =
+      await Lead.aggregate([
+
+        {
+          $match: match
+        },
+
+        {
+          $group: {
+
+            _id: "$project",
+
+            count: {
+              $sum: 1
+            }
+
+          }
+
+        }
+
+      ]);
+
+    /* =====================================
+       SOURCE ANALYSIS
+    ===================================== */
+
+    const sources =
+      await Lead.aggregate([
+
+        {
+          $match: match
+        },
+
+        {
+          $group: {
+
+            _id: "$source",
+
+            count: {
+              $sum: 1
+            }
+
+          }
+
+        }
+
+      ]);
+
+    /* =====================================
+       REVENUE CHART
+    ===================================== */
+
+    const revenue =
+      await Lead.aggregate([
+
+        {
+          $match: {
+
+            ...match,
+
+            status: "Booked"
+
+          }
+        },
+
+        {
+          $group: {
+
+            _id: {
+              $month: "$createdAt"
+            },
+
+            amount: {
+              $sum: 50000
+            }
+
+          }
+
+        },
+
+        {
+          $sort: {
+            _id: 1
+          }
+        }
+
+      ]);
+
+    const monthMap = {
+      1: "Jan",
+      2: "Feb",
+      3: "Mar",
+      4: "Apr",
+      5: "May",
+      6: "Jun",
+      7: "Jul",
+      8: "Aug",
+      9: "Sep",
+      10: "Oct",
+      11: "Nov",
+      12: "Dec"
+    };
+
+    const revenueData =
+      revenue.map((r) => ({
+
+        month: monthMap[r._id],
+
+        amount: r.amount
+
+      }));
+
+    /* =====================================
+       RECENT ACTIVITIES
+    ===================================== */
+
+    const activities =
+      await Lead.find(match)
+
+        .sort({
+          updatedAt: -1
+        })
+
+        .limit(10);
+
+    const activityData =
+      activities.map((a) => ({
+
+        user:
+          a.assigned_to || "Admin",
+
+        message:
+          `${a.name} marked as ${a.status}`
+
+      }));
+
+    /* =====================================
+       FINAL RESPONSE
+    ===================================== */
+
+    res.json({
+
+      total,
+
+      new: newLeads,
+
+      interested,
+
+      booked,
+
+      not_interested: notInterested,
+
+      pending,
+
+      statusData,
+
+      executives,
+
+      assignments: assignmentData,
+
+      leaderboard,
+
+      followups,
+
+      missedFollowups,
+
+      projects,
+
+      sources,
+
+      revenue: revenueData,
+
+      activities: activityData,
+
+      weekly: weeklyData
+
+    });
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+
+      message:
+        "Dashboard API Error ❌"
+
+    });
+
+  }
+
+});
 /* =========================================
    START SERVER
 ========================================= */
 
-app.listen(5000, () => {
+const PORT = 5000;
 
-  console.log(
-    "Server running 🚀"
-  );
+app.listen(PORT, "0.0.0.0", () => {
+
+  console.log(`
+🚀 Server Running:
+➡️ http://localhost:${PORT}
+➡️ http://192.168.29.50:${PORT}
+`);
 
 });
