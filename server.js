@@ -1,5 +1,3 @@
-// FILE: backend/server.js
-
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -1417,8 +1415,10 @@ app.post("/api/add-lead", async (req, res) => {
 
       status: status || "New",
 
-      assignedTo: assignedTo || "",
-
+assigned_to:
+  assignedTo
+    ?.toLowerCase()
+    .trim() || "",
       closingExecutive:
         closingExecutive || "",
 
@@ -1429,10 +1429,6 @@ app.post("/api/add-lead", async (req, res) => {
       next_call_date:
         next_call_date || null,
 
-      assigned_to:
-        assignedTo
-          ?.toLowerCase()
-          .trim() || "",
 
       created_by:
         closingExecutive || "Executive"
