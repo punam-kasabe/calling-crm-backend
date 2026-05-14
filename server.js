@@ -23,7 +23,8 @@ app.use(cors({
 
   credentials: true
 
-}));app.use(express.json());
+}));
+app.use(express.json());
 
 /* =========================================
    MONGODB
@@ -569,6 +570,47 @@ app.post("/api/add-user", async (req, res) => {
   }
 
 });
+
+/* =========================================
+   AUTH MIDDLEWARE
+========================================= */
+
+const auth = (req, res, next) => {
+
+  try {
+
+    const token =
+      req.headers.authorization?.split(" ")[1];
+
+    if (!token) {
+
+      return res.status(401).json({
+        message: "No token ❌"
+      });
+
+    }
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    req.user = decoded;
+
+    next();
+
+  }
+
+  catch (err) {
+
+    res.status(401).json({
+      message: "Invalid token ❌"
+    });
+
+  }
+
+};
+
 
 /* =========================================
    GET USERS
@@ -3224,45 +3266,6 @@ app.get("/api/dashboard-full", async (req, res) => {
 
 });
 
-/* =========================================
-   AUTH MIDDLEWARE
-========================================= */
-
-const auth = (req, res, next) => {
-
-  try {
-
-    const token =
-      req.headers.authorization?.split(" ")[1];
-
-    if (!token) {
-
-      return res.status(401).json({
-        message: "No token ❌"
-      });
-
-    }
-
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
-
-    req.user = decoded;
-
-    next();
-
-  }
-
-  catch (err) {
-
-    res.status(401).json({
-      message: "Invalid token ❌"
-    });
-
-  }
-
-};
 
 /* =========================================
    START SERVER
