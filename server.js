@@ -5,13 +5,25 @@ const multer = require("multer");
 const csv = require("csv-parser");
 const fs = require("fs");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 require("dotenv").config();
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+
+  origin: [
+
+    "http://localhost:3000",
+
+    "https://calling-crmfrontend-95in.vercel.app"
+
+  ],
+
+  credentials: true
+
+}));app.use(express.json());
 
 /* =========================================
    MONGODB
@@ -412,37 +424,62 @@ app.post("/api/login", async (req, res) => {
       });
 
     }
+    if (user.status !== "active") {
+
+  return res.status(403).json({
+    message: "User inactive ❌"
+  });
+
+}
 
     const role = user.role?.toLowerCase();
 
     const isAdmin = role === "admin";
+    const token = jwt.sign(
 
-    res.json({
+  {
+    id: user._id,
+    email: user.email,
+    role
+  },
 
-      user: {
+  process.env.JWT_SECRET,
 
-        id: user._id,
+  {
+    expiresIn: "7d"
+  }
 
-        name: user.name,
+);
 
-        email: user.email,
+   res.json({
 
-        role,
+  token,
 
-        can_import:
-          isAdmin || user.can_import,
+  user: {
 
-        can_export:
-          isAdmin || user.can_export,
+    id: user._id,
 
-        can_delete_lead:
-          isAdmin || user.can_delete_lead,
+    name: user.name,
 
-      }
+    email: user.email,
 
-    });
+    role,
+
+    can_import:
+      isAdmin || user.can_import,
+
+    can_export:
+      isAdmin || user.can_export,
+
+    can_delete_lead:
+      isAdmin || user.can_delete_lead,
 
   }
+
+});
+
+  }
+  
 
   catch (err) {
 
@@ -455,6 +492,8 @@ app.post("/api/login", async (req, res) => {
   }
 
 });
+
+
 
 /* =========================================
    ADD USER
@@ -535,8 +574,7 @@ app.post("/api/add-user", async (req, res) => {
    GET USERS
 ========================================= */
 
-app.get("/api/all-users", async (req, res) => {
-
+app.get("/api/all-users", auth, async (req, res) => {
   try {
 
     const users = await User.find()
@@ -1475,26 +1513,15 @@ app.get(
         ?.toLowerCase()
         .trim();
 
-      const leads =
-  await Lead.find({
+      const leads = await Lead.find({
 
-    $or: [
+  assigned_to: email
 
-      {
-        assigned_to: email
-      },
+}).sort({
 
-      {
-        assignedTo: email
-      }
+  createdAt: -1
 
-    ]
-
-  }).sort({
-
-    createdAt: -1
-
-  });
+});
       res.json(leads);
 
     }
@@ -3196,18 +3223,55 @@ app.get("/api/dashboard-full", async (req, res) => {
   }
 
 });
+
+/* =========================================
+   AUTH MIDDLEWARE
+========================================= */
+
+const auth = (req, res, next) => {
+
+  try {
+
+    const token =
+      req.headers.authorization?.split(" ")[1];
+
+    if (!token) {
+
+      return res.status(401).json({
+        message: "No token ❌"
+      });
+
+    }
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    req.user = decoded;
+
+    next();
+
+  }
+
+  catch (err) {
+
+    res.status(401).json({
+      message: "Invalid token ❌"
+    });
+
+  }
+
+};
+
 /* =========================================
    START SERVER
 ========================================= */
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, () => {
 
-  console.log(`
-🚀 Server Running:
-➡️ http://localhost:${PORT}
-➡️ http://192.168.29.50:${PORT}
-`);
+  console.log(`🚀 Server Running On Port ${PORT}`);
 
 });
