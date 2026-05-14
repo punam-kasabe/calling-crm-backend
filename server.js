@@ -11,13 +11,26 @@ require("dotenv").config();
 
 const app = express();
 
+const allowedOrigins = [
+  "https://calling-crmfrontend.vercel.app",
+  "https://calling-crmfrontend-95in.vercel.app",
+  "http://localhost:3000"
+];
+
 app.use(
   cors({
-    origin: [
-      "https://calling-crmfrontend.vercel.app",
-      "http://localhost:3000"
-    ],
+    origin: function (origin, callback) {
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS blocked ❌"));
+      }
+
+    },
+
     methods: ["GET", "POST", "PUT", "DELETE"],
+
     credentials: true
   })
 );
