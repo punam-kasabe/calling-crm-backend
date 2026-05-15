@@ -1233,14 +1233,16 @@ app.post(
 
       }
 
-      const rows = [];
+      const results = [];
 
       fs.createReadStream(req.file.path)
 
         .pipe(csv())
 
         .on("data", (data) => {
-          rows.push(data);
+
+          results.push(data);
+
         })
 
         .on("end", async () => {
@@ -1248,115 +1250,118 @@ app.post(
           try {
 
             let updated = 0;
+            let skipped = 0;
 
-            for (const data of rows) {
+            for (const row of results) {
 
-  /* PHONE */
+              /* PHONE MATCH */
 
-  const phone =
-    (
-      data.phone ||
-      data.Phone ||
-      data.PHONE
-    )?.trim();
+              const phone =
+                String(
+                  row["Phone"] ||
+                  row["phone"] ||
+                  ""
+                ).trim();
 
-  if (!phone) continue;
+              if (!phone) {
 
-  /* FIND LEAD */
+                skipped++;
+                continue;
 
-  let lead =
-  await Lead.findOne({
-    phone
-  });
+              }
 
-/* CREATE NEW LEAD IF NOT EXISTS */
+              /* FIND LEAD */
 
-if (!lead) {
+              const existingLead =
+                await Lead.findOne({
+                  phone
+                });
 
-  lead = new Lead({
+              if (!existingLead) {
 
-    name:
-      data.Name || "",
+                skipped++;
+                continue;
 
-    phone,
+              }
 
-    email:
-      data.Email || "",
+              /* UPDATE OBJECT */
 
-    source:
-      data["Lead Source"] || "",
+              const updateData = {};
 
-    project:
-      data.Enquiry || "",
+              if (row["Enquiry"]) {
 
-    status:
-      data["Lead Status"] || "New",
+                updateData.project =
+                  row["Enquiry"].trim();
 
-    assigned_to:
-      (
-        data.assigned_to || ""
-      )
-        .toLowerCase()
-        .trim()
+              }
 
-  });
+              if (row["Lead Status"]) {
 
-}
-  /* STATUS */
+                updateData.status =
+                  row["Lead Status"].trim();
 
-  const status =
-  data["Lead Status"] ||
-  data.status ||
-  data.Status;
+              }
 
-  if (status) {
-    lead.status = status;
-  }
+              if (row["assigned_to"]) {
 
-  /* ASSIGNED TO */
+                updateData.assigned_to =
+                  row["assigned_to"]
+                    .toLowerCase()
+                    .trim();
 
-  const assignedTo =
-  data.assigned_to ||
-  data["assigned_to"] ||
-  data["Assigned To"] ||
-  data["assigned to"];
+              }
 
-  if (assignedTo) {
+              if (row["Lead Source"]) {
 
-    lead.assigned_to =
-      assignedTo
-        .toLowerCase()
-        .trim();
+                updateData.source =
+                  row["Lead Source"].trim();
 
-  }
+              }
 
-  /* SOURCE */
+              if (row["Description"]) {
 
-  const source =
-  data["Lead Source"] ||
-  data.source ||
-  data.Source;
+                updateData.description =
+                  row["Description"].trim();
 
-  if (source) {
-    lead.source = source;
-  }
+              }
 
-  await lead.save();
+              if (row["Sub Source"]) {
 
-  updated++;
+                updateData.subSource =
+                  row["Sub Source"].trim();
 
-}
+              }
 
-            fs.unlinkSync(
-              req.file.path
-            );
+              if (row["Closing Executive"]) {
+
+                updateData.closingExecutive =
+                  row["Closing Executive"].trim();
+
+              }
+
+              await Lead.updateOne(
+
+                { phone },
+
+                {
+                  $set: updateData
+                }
+
+              );
+
+              updated++;
+
+            }
+
+            fs.unlinkSync(req.file.path);
 
             res.json({
 
-              message:
-                `Bulk Update Success ✅ (${updated} updated)`,
+              success: true,
 
-              updated
+              updated,
+
+              skipped
 
             });
 
