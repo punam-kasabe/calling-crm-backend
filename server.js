@@ -14,6 +14,7 @@ const app = express();
 const allowedOrigins = [
   "https://calling-crmfrontend.vercel.app",
   "https://calling-crmfrontend-95in.vercel.app",
+  "https://calling-crmfrontend-kv6d.vercel.app",
   "http://localhost:3000"
 ];
 
