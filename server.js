@@ -15,6 +15,7 @@ const allowedOrigins = [
   "https://calling-crmfrontend.vercel.app",
   "https://calling-crmfrontend-95in.vercel.app",
   "https://calling-crmfrontend-kv6d.vercel.app",
+  "https://crm-frontend-4191q4glk-punam-kasabes-projects.vercel.app",
   "http://localhost:3000"
 ];
 
@@ -30,8 +31,12 @@ app.use(
 
     },
 
-    methods: ["GET", "POST", "PUT", "DELETE"],
+methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 
+   allowedHeaders: [
+  "Content-Type",
+  "Authorization"
+],
     credentials: true
   })
 );
@@ -40,7 +45,7 @@ app.use(express.json());
 /* =========================================
    MONGODB
 ========================================= */
-
+mongoose.set("strictQuery", false);
 mongoose.connect(process.env.MONGO_URI)
 
   .then(() => {
@@ -67,8 +72,10 @@ const userSchema = new mongoose.Schema({
 
   phone: String,
 
-  password: String,
-
+   password: {
+   type: String,
+   select: false
+   },
   role: String,
 
   can_import: Boolean,
@@ -97,9 +104,10 @@ const leadSchema = new mongoose.Schema({
   name: String,
 
   phone: {
-    type: String,
-    unique: true
-  },
+  type: String,
+  unique: true,
+  sparse: true,
+},
 
   email: String,
 
@@ -408,15 +416,19 @@ app.post("/api/login", async (req, res) => {
       password
     } = req.body;
 
-    const user = await User.findOne({
-
-      email: email
-        .toLowerCase()
-        .trim()
-
+    if (!email || !password) {
+     return res.status(400).json({
+    message: "Email & Password required ❌"
     });
+     }
 
-    if (!user) {
+
+       const user = await User.findOne({
+       email: email.toLowerCase().trim()
+       }).select("+password");
+
+      
+       if (!user) {
 
       return res.status(401).json({
         message: "User not found ❌"
@@ -943,24 +955,18 @@ app.post(
       } = req.body;
 
       const visit = await Visit.create({
-
-        leadId,
-
-        clientName,
-
-        mobile,
-
-        project,
-
-        attendedManager,
-
-        receptionUser,
-
-        visitStatus,
-
-        bookingStatus
-
-      });
+  leadId,
+  clientName,
+  mobile,
+  project,
+  attendedManager,
+  receptionUser,
+  visitStatus,
+  bookingStatus,
+  calling_by,
+  remark,
+  assigned_manager
+});
 
       /* ===============================
          GET MANAGER EMAIL
@@ -1463,7 +1469,6 @@ app.post("/api/add-lead", async (req, res) => {
   try {
 
     const {
-
       name,
       phone,
       email,
@@ -1476,13 +1481,24 @@ app.post("/api/add-lead", async (req, res) => {
       description,
       remark,
       next_call_date
-
     } = req.body;
+
+    /* VALIDATION */
+
+    if (!phone || !phone.trim()) {
+
+      return res.status(400).json({
+        message: "Phone is required ❌"
+      });
+
+    }
 
     /* CHECK DUPLICATE */
 
+    const cleanPhone = phone.trim();
+
     const exists = await Lead.findOne({
-      phone: phone?.trim()
+      phone: cleanPhone
     });
 
     if (exists) {
@@ -1497,9 +1513,9 @@ app.post("/api/add-lead", async (req, res) => {
 
     const lead = await Lead.create({
 
-      name,
+      name: name || "",
 
-      phone: phone?.trim(),
+      phone: cleanPhone,
 
       email: email || "",
 
@@ -1511,10 +1527,9 @@ app.post("/api/add-lead", async (req, res) => {
 
       status: status || "New",
 
-assigned_to:
-  assignedTo
-    ?.toLowerCase()
-    .trim() || "",
+      assigned_to:
+        assignedTo?.toLowerCase().trim() || "",
+
       closingExecutive:
         closingExecutive || "",
 
@@ -1524,7 +1539,6 @@ assigned_to:
 
       next_call_date:
         next_call_date || null,
-
 
       created_by:
         closingExecutive || "Executive"
@@ -1545,15 +1559,21 @@ assigned_to:
 
   catch (err) {
 
-    console.log(err);
+  console.log("ADD LEAD ERROR:", err);
 
-    res.status(500).json({
+  if (err.code === 11000) {
 
-      message: "Add lead failed ❌"
-
+    return res.status(400).json({
+      message: "Phone already exists ❌"
     });
 
   }
+
+  res.status(500).json({
+    message: err.message || "Add lead failed ❌"
+  });
+
+}
 
 });
 /* =========================================
@@ -2033,7 +2053,6 @@ app.put("/api/update-lead/:id", async (req, res) => {
     );
 
     if (!updated) {
-
       return res.status(404).json({
         message: "Lead not found ❌"
       });
@@ -3282,7 +3301,19 @@ app.get("/api/dashboard-full", async (req, res) => {
 
 });
 
+/* =========================================
+   GLOBAL ERROR HANDLER
+========================================= */
 
+app.use((err, req, res, next) => {
+
+  console.log("GLOBAL ERROR ❌", err);
+
+  res.status(500).json({
+    message: err.message || "Server Error ❌"
+  });
+
+});
 /* =========================================
    START SERVER
 ========================================= */
