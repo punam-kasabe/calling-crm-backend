@@ -124,11 +124,11 @@ const leadSchema = new mongoose.Schema({
     enum: [
 
       "New",
-      "Interested",
-      "Not Interested",
-      "Followup",
-      "Booked",
-       "Call Cut",
+    "Interested",
+    "Not Interested",
+    "Followup",
+    "Booked",
+    "Call Cut",
     "Call Back",
     "Ringing",
     "Busy",
@@ -1463,7 +1463,6 @@ app.put(
 /* =========================================
    ADD LEAD
 ========================================= */
-
 app.post("/api/add-lead", async (req, res) => {
 
   try {
@@ -1483,19 +1482,51 @@ app.post("/api/add-lead", async (req, res) => {
       next_call_date
     } = req.body;
 
-    /* VALIDATION */
+    /* SAFE VALUES */
 
-    if (!phone || !phone.trim()) {
+    const cleanPhone =
+      String(phone || "").trim();
+
+    const cleanAssignedTo =
+      assignedTo
+        ? String(assignedTo)
+            .toLowerCase()
+            .trim()
+        : "";
+
+    const cleanStatus =
+      status?.trim() || "New";
+
+    const allowedStatuses = [
+      "New",
+      "Interested",
+      "Not Interested",
+      "Followup",
+      "Booked",
+      "Call Cut",
+      "Call Back",
+      "Ringing",
+      "Busy",
+      "Switch Off",
+      "Out of Service",
+      "Wrong Number"
+    ];
+
+    if (!allowedStatuses.includes(cleanStatus)) {
+
+      return res.status(400).json({
+        message: "Invalid status ❌"
+      });
+
+    }
+
+    if (!cleanPhone) {
 
       return res.status(400).json({
         message: "Phone is required ❌"
       });
 
     }
-
-    /* CHECK DUPLICATE */
-
-    const cleanPhone = phone.trim();
 
     const exists = await Lead.findOne({
       phone: cleanPhone
@@ -1508,8 +1539,6 @@ app.post("/api/add-lead", async (req, res) => {
       });
 
     }
-
-    /* CREATE */
 
     const lead = await Lead.create({
 
@@ -1525,10 +1554,9 @@ app.post("/api/add-lead", async (req, res) => {
 
       project: project || "",
 
-      status: status || "New",
+      status: cleanStatus,
 
-      assigned_to:
-        assignedTo?.toLowerCase().trim() || "",
+      assigned_to: cleanAssignedTo,
 
       closingExecutive:
         closingExecutive || "",
@@ -1559,21 +1587,21 @@ app.post("/api/add-lead", async (req, res) => {
 
   catch (err) {
 
-  console.log("ADD LEAD ERROR:", err);
+    console.log("ADD LEAD ERROR:", err);
 
-  if (err.code === 11000) {
+    if (err.code === 11000) {
 
-    return res.status(400).json({
-      message: "Phone already exists ❌"
+      return res.status(400).json({
+        message: "Phone already exists ❌"
+      });
+
+    }
+
+    res.status(500).json({
+      message: err.message || "Add lead failed ❌"
     });
 
   }
-
-  res.status(500).json({
-    message: err.message || "Add lead failed ❌"
-  });
-
-}
 
 });
 /* =========================================
