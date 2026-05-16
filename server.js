@@ -1482,88 +1482,43 @@ app.post("/api/add-lead", async (req, res) => {
       next_call_date
     } = req.body;
 
-    /* SAFE VALUES */
+    /* REQUIRED ONLY */
 
-    const cleanPhone =
-      String(phone || "").trim();
-
-    const cleanAssignedTo =
-      assignedTo
-        ? String(assignedTo)
-            .toLowerCase()
-            .trim()
-        : "";
-
-    const cleanStatus =
-      status?.trim() || "New";
-
-    const allowedStatuses = [
-      "New",
-      "Interested",
-      "Not Interested",
-      "Followup",
-      "Booked",
-      "Call Cut",
-      "Call Back",
-      "Ringing",
-      "Busy",
-      "Switch Off",
-      "Out of Service",
-      "Wrong Number"
-    ];
-
-    if (!allowedStatuses.includes(cleanStatus)) {
+    if (!name || !phone) {
 
       return res.status(400).json({
-        message: "Invalid status ❌"
-      });
-
-    }
-
-    if (!cleanPhone) {
-
-      return res.status(400).json({
-        message: "Phone is required ❌"
-      });
-
-    }
-
-    const exists = await Lead.findOne({
-      phone: cleanPhone
-    });
-
-    if (exists) {
-
-      return res.status(400).json({
-        message: "Lead already exists ❌"
+        message: "Name & Phone required ❌"
       });
 
     }
 
     const lead = await Lead.create({
 
-      name: name || "",
+      name: name.trim(),
 
-      phone: cleanPhone,
+      phone: String(phone).trim(),
 
       email: email || "",
 
-      source: source || "Virtual Call",
+      source: source || "",
 
       subSource: subSource || "",
 
       project: project || "",
 
-      status: cleanStatus,
+      status: status || "New",
 
-      assigned_to: cleanAssignedTo,
+      assigned_to:
+        assignedTo?.toLowerCase()?.trim() || "",
 
       closingExecutive:
         closingExecutive || "",
 
-      description: description || "",
+      description:
+        description || "",
 
-      remark: remark || "",
+      remark:
+        remark || "",
 
       next_call_date:
         next_call_date || null,
@@ -1587,7 +1542,7 @@ app.post("/api/add-lead", async (req, res) => {
 
   catch (err) {
 
-    console.log("ADD LEAD ERROR:", err);
+    console.log(err);
 
     if (err.code === 11000) {
 
@@ -1598,7 +1553,7 @@ app.post("/api/add-lead", async (req, res) => {
     }
 
     res.status(500).json({
-      message: err.message || "Add lead failed ❌"
+      message: "Add lead failed ❌"
     });
 
   }
