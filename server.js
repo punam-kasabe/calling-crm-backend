@@ -177,6 +177,7 @@ remark: {
   default: ""
 },
 
+
 followup_date:
   followup_date
     ? new Date(followup_date)
@@ -184,66 +185,53 @@ followup_date:
 
 
   assigned_to: {
-    type: String,
-    lowercase: true,
-    trim: true
-  },
+  type: String,
+  lowercase: true,
+  trim: true
+},
 
-  assigned_manager: {
-    type: String,
-    lowercase: true,
-    trim: true,
-    default: ""
-  },
+assigned_manager: {
+  type: String,
+  lowercase: true,
+  trim: true,
+  default: ""
+},
 
-  visit_created: {
-    type: Boolean,
-    default: false
-  },
+visit_created: {
+  type: Boolean,
+  default: false
+},
 
-  visit_status: {
-
-    type: String,
-
-    default: "",
-
-    enum: [
-
-      "",
-      "IN_OFFICE",
-      "VISIT_DONE",
-      "BOOKED",
-      "NOT_BOOKED",
-      "FOLLOWUP"
-
-    ]
-
-  },
-
-  created_by: String,
-
-  next_call_date: Date,
-
-  upload_batch: Number,
-
-  followups: [
-
-    {
-
-      note: String,
-
-      status: String,
-
-      next_call_date: Date,
-
-      created_at: {
-        type: Date,
-        default: Date.now
-      }
-
-    }
-
+visit_status: {
+  type: String,
+  default: "",
+  enum: [
+    "",
+    "IN_OFFICE",
+    "VISIT_DONE",
+    "BOOKED",
+    "NOT_BOOKED",
+    "FOLLOWUP"
   ]
+},
+
+created_by: String,
+
+next_call_date: Date,
+
+upload_batch: Number,
+
+followups: [
+  {
+    note: String,
+    status: String,
+    next_call_date: Date,
+    created_at: {
+      type: Date,
+      default: Date.now
+    }
+  }
+]
 
 }, {
   timestamps: true
@@ -867,6 +855,7 @@ app.get("/api/managers", async (req, res) => {
 
 app.post(
   "/api/upload",
+  auth,
   upload.single("file"),
 
   async (req, res) => {
