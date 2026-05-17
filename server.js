@@ -47,7 +47,6 @@ methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
 
-app.options("*", cors());
 
 app.use(express.json());
 
@@ -1150,9 +1149,11 @@ app.post(
          GET MANAGER EMAIL
       =============================== */
 
-      const manager = attendedManager
-  ? await User.findById(attendedManager)
-  : null;
+      const manager =
+        await User.findById(
+          attendedManager
+        );
+
       /* ===============================
          FIND LEAD USING MOBILE
       =============================== */
