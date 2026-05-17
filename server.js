@@ -125,118 +125,127 @@ const leadSchema = new mongoose.Schema({
 
   name: String,
 
- phone: {
-  type: String,
-  trim: true,
-  unique: true,
-  sparse: true,
-},
+  phone: {
+    type: String,
+    trim: true,
+    unique: true,
+    sparse: true,
+  },
 
   email: String,
+
   source: String,
+
   project: String,
+
   status: {
     type: String,
     default: "New",
     enum: [
-
-    "New",
-    "Interested",
-    "Not Interested",
-    "Followup",
-    "Booked",
-    "Call Cut",
-    "Call Back",
-    "Ringing",
-    "Busy",
-    "Switch Off",
-    "Out of Service",
-    "Wrong Number"
+      "New",
+      "Interested",
+      "Not Interested",
+      "Followup",
+      "Booked",
+      "Call Cut",
+      "Call Back",
+      "Ringing",
+      "Busy",
+      "Switch Off",
+      "Out of Service",
+      "Wrong Number"
     ]
-
   },
-description: {
-  type: String,
-  default: ""
-},
 
-subSource: {
-  type: String,
-  default: ""
-},
+  description: {
+    type: String,
+    default: ""
+  },
 
+  subSource: {
+    type: String,
+    default: ""
+  },
 
+  closingExecutive: {
+    type: String,
+    default: ""
+  },
 
-closingExecutive: {
-  type: String,
-  default: ""
-},
+  remark: {
+    type: String,
+    default: ""
+  },
 
-remark: {
-  type: String,
-  default: ""
-},
-
-
-followup_date:
-  followup_date
-    ? new Date(followup_date)
-    : null,
-
+  followup_date: {
+    type: Date,
+    default: null
+  },
 
   assigned_to: {
-  type: String,
-  lowercase: true,
-  trim: true
-},
+    type: String,
+    lowercase: true,
+    trim: true
+  },
 
-assigned_manager: {
-  type: String,
-  lowercase: true,
-  trim: true,
-  default: ""
-},
+  assigned_manager: {
+    type: String,
+    lowercase: true,
+    trim: true,
+    default: ""
+  },
 
-visit_created: {
-  type: Boolean,
-  default: false
-},
+  visit_created: {
+    type: Boolean,
+    default: false
+  },
 
-visit_status: {
-  type: String,
-  default: "",
-  enum: [
-    "",
-    "IN_OFFICE",
-    "VISIT_DONE",
-    "BOOKED",
-    "NOT_BOOKED",
-    "FOLLOWUP"
-  ]
-},
+  visit_status: {
+    type: String,
+    default: "",
+    enum: [
+      "",
+      "IN_OFFICE",
+      "VISIT_DONE",
+      "BOOKED",
+      "NOT_BOOKED",
+      "FOLLOWUP"
+    ]
+  },
 
-created_by: String,
+  created_by: {
+    type: String,
+    default: ""
+  },
 
-next_call_date: Date,
+  next_call_date: {
+    type: Date,
+    default: null
+  },
 
-upload_batch: Number,
+  upload_batch: {
+    type: Number,
+    default: 0
+  },
 
-followups: [
-  {
-    note: String,
-    status: String,
-    next_call_date: Date,
-    created_at: {
-      type: Date,
-      default: Date.now
+  followups: [
+    {
+      note: String,
+
+      status: String,
+
+      next_call_date: Date,
+
+      created_at: {
+        type: Date,
+        default: Date.now
+      }
     }
-  }
-]
+  ]
 
 }, {
   timestamps: true
 });
-
 /* =========================================
    VISIT SCHEMA
 ========================================= */
