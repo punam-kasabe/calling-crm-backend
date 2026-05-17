@@ -6,10 +6,16 @@ const csv = require("csv-parser");
 const fs = require("fs");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-
+const helmet = require("helmet");
 require("dotenv").config();
+const rateLimit = require("express-rate-limit");
+const compression = require("compression");
+
 
 const app = express();
+app.use(helmet());
+app.use(compression());
+
 
 const allowedOrigins = [
   "https://calling-crmfrontend.vercel.app",
@@ -19,6 +25,7 @@ const allowedOrigins = [
   "http://localhost:3000"
 ];
 
+
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -26,8 +33,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error("CORS blocked ❌"));
-      }
+callback(new Error("CORS blocked ❌"));      }
 
     },
 
@@ -42,10 +48,26 @@ methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 );
 app.use(express.json());
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "Too many login attempts ❌"
+});
+
+
 /* =========================================
    MONGODB
 ========================================= */
 mongoose.set("strictQuery", false);
+
+if (!process.env.MONGO_URI) {
+  throw new Error("MONGO_URI missing ❌");
+}
+
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET missing ❌");
+}
+
 mongoose.connect(process.env.MONGO_URI)
 
   .then(() => {
@@ -103,26 +125,22 @@ const leadSchema = new mongoose.Schema({
 
   name: String,
 
-  phone: {
+ phone: {
   type: String,
+  trim: true,
+  unique: true,
   sparse: true,
 },
 
   email: String,
-
   source: String,
-
   project: String,
-
   status: {
-
     type: String,
-
     default: "New",
-
     enum: [
 
-      "New",
+    "New",
     "Interested",
     "Not Interested",
     "Followup",
@@ -159,10 +177,12 @@ remark: {
   default: ""
 },
 
-followup_date: {
-  type: Date,
-  default: null
-},
+followup_date:
+  followup_date
+    ? new Date(followup_date)
+    : null,
+
+
   assigned_to: {
     type: String,
     lowercase: true,
@@ -399,14 +419,29 @@ const Followup = mongoose.model(
 ========================================= */
 
 const upload = multer({
-  dest: "uploads/"
+
+  dest: "uploads/",
+
+  fileFilter: (req, file, cb) => {
+
+    if (
+      file.mimetype === "text/csv" ||
+      file.originalname.endsWith(".csv")
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only CSV files allowed ❌"));
+    }
+
+  }
+
 });
 
 /* =========================================
    LOGIN
 ========================================= */
 
-app.post("/api/login", async (req, res) => {
+app.post("/api/login", loginLimiter, async (req, res) => {
 
   try {
 
@@ -522,7 +557,7 @@ app.post("/api/login", async (req, res) => {
    ADD USER
 ========================================= */
 
-app.post("/api/add-user", async (req, res) => {
+app.post("/api/add-user", auth, adminOnly, async (req, res) => {
 
   try {
 
@@ -594,6 +629,123 @@ app.post("/api/add-user", async (req, res) => {
 });
 
 /* =========================================
+   BULK ADD USERS
+========================================= */
+
+app.post("/api/bulk-add-users", auth, adminOnly, async (req, res) => {
+
+  try {
+
+    const users = req.body;
+
+    if (!Array.isArray(users)) {
+
+      return res.status(400).json({
+        message: "Array required ❌"
+      });
+
+    }
+
+    let added = 0;
+    let skipped = 0;
+
+    for (const userData of users) {
+
+      const {
+        name,
+        email,
+        phone,
+        password,
+        role,
+        can_import,
+        can_export,
+        can_delete_lead,
+        can_access_project
+      } = userData;
+
+      if (
+  !name ||
+  !email ||
+  !password ||
+  password.length < 6
+) {
+  skipped++;
+  continue;
+}
+      const exists = await User.findOne({
+        email: email.toLowerCase().trim()
+      });
+
+      if (exists) {
+
+        skipped++;
+        continue;
+
+      }
+
+      const hash = await bcrypt.hash(
+        password,
+        10
+      );
+
+      await User.create({
+
+        name,
+
+        email: email.toLowerCase().trim(),
+
+        phone: phone || "",
+
+        password: hash,
+
+        role: role || "Executive",
+
+        can_import:
+          Boolean(can_import),
+
+        can_export:
+          Boolean(can_export),
+
+        can_delete_lead:
+          Boolean(can_delete_lead),
+
+        can_access_project:
+          Boolean(can_access_project)
+
+      });
+
+      added++;
+
+    }
+
+    res.json({
+
+      success: true,
+
+      message: "Bulk users added ✅",
+
+      added,
+
+      skipped
+
+    });
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({    
+
+        
+      message: "Bulk add failed ❌"
+    });
+
+  }
+
+});
+/* =========================================
    AUTH MIDDLEWARE
 ========================================= */
 
@@ -601,8 +753,18 @@ const auth = (req, res, next) => {
 
   try {
 
-    const token =
-      req.headers.authorization?.split(" ")[1];
+    const authHeader = req.headers.authorization;
+
+if (
+  !authHeader ||
+  !authHeader.startsWith("Bearer ")
+) {
+  return res.status(401).json({
+    message: "No token ❌"
+  });
+}
+
+const token = authHeader.split(" ")[1];
 
     if (!token) {
 
@@ -633,6 +795,19 @@ const auth = (req, res, next) => {
 
 };
 
+const adminOnly = (req, res, next) => {
+
+  if (req.user.role !== "admin") {
+
+    return res.status(403).json({
+      message: "Admin access only ❌"
+    });
+
+  }
+
+  next();
+
+};
 
 /* =========================================
    GET USERS
@@ -1536,7 +1711,6 @@ app.post("/api/add-lead", async (req, res) => {
       lead
 
     });
-
   }
 
   catch (err) {
@@ -2064,7 +2238,7 @@ app.put("/api/update-lead/:id", async (req, res) => {
    DELETE LEAD
 ========================================= */
 
-app.delete("/api/delete-lead/:id", async (req, res) => {
+app.delete("/api/delete-lead/:id", auth, adminOnly, async (req, res) => {
 
   try {
 
@@ -2587,7 +2761,7 @@ app.get("/api/dashboard", async (req, res) => {
    CREATE PROJECT
 ========================================= */
 
-app.post("/api/projects", async (req, res) => {
+app.post("/api/projects", auth, adminOnly, async (req, res) => {
   try {
     const {
       name,
@@ -2669,7 +2843,7 @@ app.get("/api/projects", async (req, res) => {
    UPDATE PROJECT
 ========================================= */
 
-app.put("/api/projects/:id", async (req, res) => {
+app.put("/api/projects/:id", auth, adminOnly, async (req, res) => {
   try {
 
     const updated = await Project.findByIdAndUpdate(
@@ -2702,7 +2876,7 @@ app.put("/api/projects/:id", async (req, res) => {
    DELETE PROJECT
 ========================================= */
 
-app.delete("/api/projects/:id", async (req, res) => {
+app.delete("/api/projects/:id", auth, adminOnly, async (req, res) => {
   try {
 
     const deleted = await Project.findByIdAndDelete(
@@ -3301,7 +3475,9 @@ app.use((err, req, res, next) => {
 ========================================= */
 
 const PORT = process.env.PORT || 5000;
-
+app.get("/", (req, res) => {
+  res.send("CRM Backend Running ✅");
+});
 app.listen(PORT, () => {
 
   console.log(`🚀 Server Running On Port ${PORT}`);
