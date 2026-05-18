@@ -258,6 +258,9 @@ const visitSchema = new mongoose.Schema(
 
     clientName: String,
 
+
+
+
     mobile: String,
 
     project: String,
@@ -1429,14 +1432,16 @@ app.post(
 
             for (const row of results) {
 
-              /* PHONE MATCH */
+              /* ================= PHONE ================= */
 
-              const phone =
-                String(
-                  row["Phone"] ||
-                  row["phone"] ||
-                  ""
-                ).trim();
+              let phone = String(
+                row.phone ||
+                row.Phone ||
+                ""
+              )
+
+              .replace(/\D/g, "")
+              .slice(-10);
 
               if (!phone) {
 
@@ -1445,78 +1450,82 @@ app.post(
 
               }
 
-              /* FIND LEAD */
+              /* ================= FIND LEAD ================= */
 
               const existingLead =
                 await Lead.findOne({
-                  phone
+
+                  phone: {
+                    $regex: phone + "$"
+                  }
+
                 });
 
-              if (!existingLead) {
+             if (!existingLead) {
 
-                skipped++;
-                continue;
+  skipped++;
+  continue;
 
-              }
+}
 
-              /* UPDATE OBJECT */
+/* ================= DUPLICATE CHECK ================= */
+
+const csvProject =
+  row.project?.trim()?.toLowerCase() || "";
+
+const existingProject =
+  existingLead.project
+    ?.trim()
+    ?.toLowerCase() || "";
+
+if (csvProject === existingProject) {
+
+  duplicates++;
+
+} else {
+
+  samePhoneDifferentProject++;
+
+}
+              /* ================= UPDATE OBJECT ================= */
 
               const updateData = {};
 
-              if (row["Enquiry"]) {
+              if (row.project) {
 
                 updateData.project =
-                  row["Enquiry"].trim();
+                  row.project.trim();
 
               }
 
-              if (row["Lead Status"]) {
+              if (row.status) {
 
                 updateData.status =
-                  row["Lead Status"].trim();
+                  row.status.trim();
 
               }
 
-              if (row["assigned_to"]) {
+              if (row.assigned_to) {
 
                 updateData.assigned_to =
-                  row["assigned_to"]
+                  row.assigned_to
                     .toLowerCase()
                     .trim();
 
               }
 
-              if (row["Lead Source"]) {
+              if (row.source) {
 
                 updateData.source =
-                  row["Lead Source"].trim();
+                  row.source.trim();
 
               }
 
-              if (row["Description"]) {
-
-                updateData.description =
-                  row["Description"].trim();
-
-              }
-
-              if (row["Sub Source"]) {
-
-                updateData.subSource =
-                  row["Sub Source"].trim();
-
-              }
-
-              if (row["Closing Executive"]) {
-
-                updateData.closingExecutive =
-                  row["Closing Executive"].trim();
-
-              }
+              /* ================= UPDATE ================= */
 
               await Lead.updateOne(
 
-                { phone },
+                { _id: existingLead._id },
 
                 {
                   $set: updateData
@@ -1528,18 +1537,25 @@ app.post(
 
             }
 
+            /* ================= DELETE FILE ================= */
+
             fs.unlinkSync(req.file.path);
 
-            res.json({
+           res.json({
 
-              success: true,
+  success: true,
 
-              updated,
+  message: "Bulk update success ✅",
 
-              skipped
+  updated,
 
-            });
+  skipped,
 
+  duplicates,
+
+  samePhoneDifferentProject
+
+});
           }
 
           catch (err) {
@@ -1548,8 +1564,7 @@ app.post(
 
             res.status(500).json({
 
-              message:
-                "Bulk update failed ❌"
+              message: "Processing failed ❌"
 
             });
 
@@ -1565,8 +1580,7 @@ app.post(
 
       res.status(500).json({
 
-        message:
-          "Server Error ❌"
+        message: "Server error ❌"
 
       });
 
