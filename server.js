@@ -1434,14 +1434,17 @@ app.post(
 
             for (const row of results) {
 
-             const phone = String(
-          row["phone"] ||
-           row["Phone"] ||
-          row["PHONE"] ||
-           ""
-              )
-.replace(/\D/g, "")
-.slice(-10);
+           const rawPhone =
+  row["phone"] ||
+  row["Phone"] ||
+  row["PHONE"] ||
+  "";
+
+const phone = String(rawPhone)
+  .trim()
+  .replace(/\.0$/, "")
+  .replace(/\D/g, "")
+  .slice(-10);
 
               if (!phone) {
                 skipped++;
