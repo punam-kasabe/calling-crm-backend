@@ -16,15 +16,30 @@ exports.bulkUpdate = (req, res) => {
       .pipe(csv())
       .on("data", (row) => {
         try {
-          const phone = row["phone"] || row["Phone"];
-
+const phone =
+  String(
+    row["phone"] ||
+    row["Phone"] ||
+    ""
+  ).trim();
           if (!phone) return;
 
           const leadData = {
-            source: row["source"] || row["Lead Source"] || "",
-            assignedTo: row["assigned_to"]?.toLowerCase().trim(),
-            status: row["status"] || row["Lead Status"] || "",
-          };
+  source:
+    row["source"] ||
+    row["Lead Source"] ||
+    "",
+
+  assigned_to:
+    row["assigned_to"]
+      ?.toLowerCase()
+      .trim() || "",
+
+  status:
+    row["status"] ||
+    row["Lead Status"] ||
+    "",
+};
 
           updates.push({ phone, data: leadData });
 

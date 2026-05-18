@@ -11,11 +11,9 @@ require("dotenv").config();
 const rateLimit = require("express-rate-limit");
 const compression = require("compression");
 
-
 const app = express();
 app.use(helmet());
 app.use(compression());
-
 
 const allowedOrigins = [
   "https://calling-crmfrontend.vercel.app",
@@ -24,7 +22,6 @@ const allowedOrigins = [
   "https://crm-frontend-4191q4glk-punam-kasabes-projects.vercel.app",
   "http://localhost:3000"
 ];
-
 
 app.use(
   cors({
@@ -47,18 +44,13 @@ methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
 
-
 app.use(express.json());
-
-
-
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: "Too many login attempts ❌"
 });
-
 
 /* =========================================
    MONGODB
