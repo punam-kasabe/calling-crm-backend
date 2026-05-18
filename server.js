@@ -1426,11 +1426,13 @@ app.post(
 
             for (const row of results) {
 
-              const phone = String(
-                row["Phone"] ||
-                row["phone"] ||
-                ""
-              ).trim();
+             const phone = String(
+             row["Phone"] ||
+             row["phone"] ||
+          ""
+            )
+            .replace(/\D/g, "")
+               .slice(-10);
 
               if (!phone) {
                 skipped++;
@@ -1438,8 +1440,13 @@ app.post(
               }
 
               const existingLead =
-                await Lead.findOne({ phone });
+               await Lead.findOne({
+               phone: {
+                $regex: phone + "$"
+                   }
+                 });
 
+                 
               if (!existingLead) {
                 skipped++;
                 continue;
