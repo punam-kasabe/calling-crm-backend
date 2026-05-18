@@ -121,12 +121,16 @@ const userSchema = new mongoose.Schema({
 const leadSchema = new mongoose.Schema({
 
   name: String,
-
-  phone: {
-  type: String,
-  trim: true,
-},
-
+     phone: {
+     type: String,
+     trim: true,
+     unique: true,
+     index: true,
+     set: (v) =>
+     String(v || "")
+      .replace(/\D/g, "")
+      .slice(-10)
+     },
   email: String,
 
   source: String,
@@ -922,8 +926,11 @@ app.post(
                 name:
                   data["Name"] || "",
 
-                phone:
-                  data["Phone"]?.trim() || "",
+               phone: String(
+             data["Phone"] || ""
+               )
+           .replace(/\D/g, "")
+            .slice(-10),
 
                 email:
                   data["Email"] || "",
@@ -1195,8 +1202,9 @@ app.post(
 
     name: clientName,
 
-    phone: mobile,
-
+phone: String(mobile)
+  .replace(/\D/g, "")
+  .slice(-10),
     project: project,
 
     source: "Visit",
@@ -1427,24 +1435,22 @@ app.post(
             for (const row of results) {
 
              const phone = String(
-             row["Phone"] ||
-             row["phone"] ||
-          ""
-            )
-            .replace(/\D/g, "")
-               .slice(-10);
+          row["phone"] ||
+           row["Phone"] ||
+          row["PHONE"] ||
+           ""
+              )
+.replace(/\D/g, "")
+.slice(-10);
 
               if (!phone) {
                 skipped++;
                 continue;
               }
 
-              const existingLead =
-               await Lead.findOne({
-               phone: {
-                $regex: phone + "$"
-                   }
-                 });
+            const existingLead = await Lead.findOne({
+        phone
+            });
 
 
               if (!existingLead) {
@@ -1627,8 +1633,9 @@ app.post("/api/add-lead", async (req, res) => {
 
       name: name.trim(),
 
-      phone: String(phone).trim(),
-
+phone: String(phone)
+  .replace(/\D/g, "")
+  .slice(-10),
       email: email || "",
 
       source: source || "",

@@ -85,9 +85,13 @@ exports.bulkUpdate = (req, res) => {
 
             /* FIND EXISTING LEAD */
 
-            const existing = await Lead.findOne({
-              phone: item.phone
-            });
+           const cleanPhone = String(phone || "")
+             .replace(/\D/g, "")
+          .slice(-10);
+ 
+           const existingLead = await Lead.findOne({
+          phone: cleanPhone
+         });
 
             /* UPDATE */
 
