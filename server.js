@@ -1446,7 +1446,7 @@ app.post(
                    }
                  });
 
-                 
+
               if (!existingLead) {
                 skipped++;
                 continue;
@@ -1491,11 +1491,11 @@ app.post(
                   row["Closing Executive"].trim();
               }
 
-              await Lead.findOneAndUpdate(
-                { phone },
-                { $set: updateData },
-                { new: true }
-              );
+              await Lead.findByIdAndUpdate(
+               existingLead._id,
+               { $set: updateData },
+               { new: true }
+                 );
 
               updated++;
             }
