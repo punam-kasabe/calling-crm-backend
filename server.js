@@ -123,11 +123,9 @@ const leadSchema = new mongoose.Schema({
   name: String,
 
   phone: {
-    type: String,
-    trim: true,
-    unique: true,
-    sparse: true,
-  },
+  type: String,
+  trim: true,
+},
 
   email: String,
 
@@ -1404,11 +1402,9 @@ app.post(
     try {
 
       if (!req.file) {
-
         return res.status(400).json({
           message: "File missing ❌"
         });
-
       }
 
       const results = [];
@@ -1418,9 +1414,7 @@ app.post(
         .pipe(csv())
 
         .on("data", (data) => {
-
           results.push(data);
-
         })
 
         .on("end", async () => {
@@ -1432,140 +1426,89 @@ app.post(
 
             for (const row of results) {
 
-              /* ================= PHONE ================= */
-
-              let phone = String(
-                row.phone ||
-                row.Phone ||
+              const phone = String(
+                row["Phone"] ||
+                row["phone"] ||
                 ""
-              )
-
-              .replace(/\D/g, "")
-              .slice(-10);
+              ).trim();
 
               if (!phone) {
-
                 skipped++;
                 continue;
-
               }
 
-              /* ================= FIND LEAD ================= */
-
               const existingLead =
-                await Lead.findOne({
+                await Lead.findOne({ phone });
 
-                  phone: {
-                    $regex: phone + "$"
-                  }
-
-                });
-
-             if (!existingLead) {
-
-  skipped++;
-  continue;
-
-}
-
-/* ================= DUPLICATE CHECK ================= */
-
-const csvProject =
-  row.project?.trim()?.toLowerCase() || "";
-
-const existingProject =
-  existingLead.project
-    ?.trim()
-    ?.toLowerCase() || "";
-
-if (csvProject === existingProject) {
-
-  duplicates++;
-
-} else {
-
-  samePhoneDifferentProject++;
-
-}
-              /* ================= UPDATE OBJECT ================= */
+              if (!existingLead) {
+                skipped++;
+                continue;
+              }
 
               const updateData = {};
 
-              if (row.project) {
-
+              if (row["Enquiry"]) {
                 updateData.project =
-                  row.project.trim();
-
+                  row["Enquiry"].trim();
               }
 
-              if (row.status) {
-
+              if (row["Lead Status"]) {
                 updateData.status =
-                  row.status.trim();
-
+                  row["Lead Status"].trim();
               }
 
-              if (row.assigned_to) {
-
+              if (row["assigned_to"]) {
                 updateData.assigned_to =
-                  row.assigned_to
+                  row["assigned_to"]
                     .toLowerCase()
                     .trim();
-
               }
 
-              if (row.source) {
-
+              if (row["Lead Source"]) {
                 updateData.source =
-                  row.source.trim();
-
+                  row["Lead Source"].trim();
               }
 
-              /* ================= UPDATE ================= */
+              if (row["Description"]) {
+                updateData.description =
+                  row["Description"].trim();
+              }
 
-              await Lead.updateOne(
+              if (row["Sub Source"]) {
+                updateData.subSource =
+                  row["Sub Source"].trim();
+              }
 
-                { _id: existingLead._id },
+              if (row["Closing Executive"]) {
+                updateData.closingExecutive =
+                  row["Closing Executive"].trim();
+              }
 
-                {
-                  $set: updateData
-                }
-
+              await Lead.findOneAndUpdate(
+                { phone },
+                { $set: updateData },
+                { new: true }
               );
 
               updated++;
-
             }
-
-            /* ================= DELETE FILE ================= */
 
             fs.unlinkSync(req.file.path);
 
-           res.json({
+            res.json({
+              success: true,
+              updated,
+              skipped
+            });
 
-  success: true,
-
-  message: "Bulk update success ✅",
-
-  updated,
-
-  skipped,
-
-  duplicates,
-
-  samePhoneDifferentProject
-
-});
           }
 
           catch (err) {
 
-            console.log(err);
+            console.log("BULK UPDATE INNER ERROR ❌", err);
 
             res.status(500).json({
-
-              message: "Processing failed ❌"
-
+              message: err.message
             });
 
           }
@@ -1576,12 +1519,10 @@ if (csvProject === existingProject) {
 
     catch (err) {
 
-      console.log(err);
+      console.log("BULK UPDATE ERROR ❌", err);
 
       res.status(500).json({
-
-        message: "Server error ❌"
-
+        message: err.message
       });
 
     }
