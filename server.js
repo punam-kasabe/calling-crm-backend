@@ -1498,42 +1498,27 @@ app.post(
                 continue;
               }
 
-           const project =
-  row["Enquiry"]?.trim() || "";
-
-const existingLead =
-  await Lead.findOne({
-
-    phone,
-
-    project
-
-  });
-
-if (!existingLead) {
-
+           const existingLead =
+  await Lead.findOne({ phone });
+  if (!existingLead) {
   skipped++;
-
   continue;
-
 }
-
-/* SAME PROJECT DUPLICATE */
+/* DUPLICATE INFO */
 
 duplicates.push({
 
-  name:
-    existingLead.name,
+  name: existingLead.name,
 
   phone,
 
-  project,
+  project:
+    existingLead.project || "N/A",
 
   assigned_to:
     existingLead.assigned_to || "N/A"
 
 });
-
               const updateData = {};
 
               if (row["Enquiry"]) {
