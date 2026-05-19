@@ -1498,13 +1498,21 @@ app.post(
                 continue;
               }
 
-           const existingLead =
-  await Lead.findOne({ phone });
-  if (!existingLead) {
+        const project =
+  row["Enquiry"] ||
+  row["Project"] ||
+  "";
+
+const existingLead =
+  await Lead.findOne({
+    phone,
+    project: project.trim()
+  });
+
+if (!existingLead) {
   skipped++;
   continue;
 }
-/* DUPLICATE INFO */
 
 duplicates.push({
 
@@ -1519,52 +1527,69 @@ duplicates.push({
     existingLead.assigned_to || "N/A"
 
 });
-              const updateData = {};
 
-              if (row["Enquiry"]) {
-                updateData.project =
-                  row["Enquiry"].trim();
-              }
+const updateData = {};
 
-              if (row["Lead Status"]) {
-                updateData.status =
-                  row["Lead Status"].trim();
-              }
+if (row["Enquiry"] || row["Project"]) {
 
-              if (row["assigned_to"]) {
-                updateData.assigned_to =
-                  row["assigned_to"]
-                    .toLowerCase()
-                    .trim();
-              }
+  updateData.project =
+    (
+      row["Enquiry"] ||
+      row["Project"]
+    ).trim();
 
-              if (row["Lead Source"]) {
-                updateData.source =
-                  row["Lead Source"].trim();
-              }
+}
 
-              if (row["Description"]) {
-                updateData.description =
-                  row["Description"].trim();
-              }
+if (row["Lead Status"]) {
 
-              if (row["Sub Source"]) {
-                updateData.subSource =
-                  row["Sub Source"].trim();
-              }
+  updateData.status =
+    row["Lead Status"].trim();
 
-              if (row["Closing Executive"]) {
-                updateData.closingExecutive =
-                  row["Closing Executive"].trim();
-              }
+}
 
-              await Lead.findByIdAndUpdate(
-               existingLead._id,
-               { $set: updateData },
-               { new: true }
-                 );
+if (row["assigned_to"]) {
 
-              updated++;
+  updateData.assigned_to =
+    row["assigned_to"]
+      .toLowerCase()
+      .trim();
+
+}
+
+if (row["Lead Source"]) {
+
+  updateData.source =
+    row["Lead Source"].trim();
+
+}
+
+if (row["Description"]) {
+
+  updateData.description =
+    row["Description"].trim();
+
+}
+
+if (row["Sub Source"]) {
+
+  updateData.subSource =
+    row["Sub Source"].trim();
+
+}
+
+if (row["Closing Executive"]) {
+
+  updateData.closingExecutive =
+    row["Closing Executive"].trim();
+
+}
+
+await Lead.findByIdAndUpdate(
+  existingLead._id,
+  { $set: updateData },
+  { new: true }
+);
+    updated++;
             }
 
             fs.unlinkSync(req.file.path);
