@@ -122,10 +122,9 @@ const leadSchema = new mongoose.Schema({
 
   name: String,
      phone: {
-     type: String,
-     trim: true,
-     unique: true,
-     index: true,
+  type: String,
+  trim: true,
+  index: true,
      set: (v) =>
      String(v || "")
       .replace(/\D/g, "")
@@ -245,6 +244,22 @@ const leadSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+/* =========================================
+   UNIQUE PHONE + PROJECT
+========================================= */
+
+leadSchema.index(
+  {
+    phone: 1,
+    project: 1
+  },
+  {
+    unique: true
+  }
+);
+
+
 /* =========================================
    VISIT SCHEMA
 ========================================= */
@@ -904,22 +919,48 @@ app.post(
           try {
 
             let inserted = 0;
+            let duplicateLeads = [];
 
             for (const data of rows) {
 
               if (!data["Phone"])
                 continue;
 
-              const exists =
-                await Lead.findOne({
+              const phone = String(
+  data["Phone"] || ""
+)
+  .replace(/\D/g, "")
+  .slice(-10);
 
-                  phone:
-                    data["Phone"]?.trim()
+const project = String(
+  data["Project"] || ""
+).trim();
 
-                });
+const exists = await Lead.findOne({
+  phone,
+  project
+});
 
-              if (exists)
-                continue;
+/* DUPLICATE FOUND */
+
+if (exists) {
+
+  duplicateLeads.push({
+
+    name:
+      data["Name"] || "",
+
+    phone,
+
+    project,
+
+    assigned_to:
+      exists.assigned_to || ""
+
+  });
+
+  continue;
+}
 
               await Lead.create({
 
@@ -966,14 +1007,19 @@ app.post(
               req.file.path
             );
 
-            res.json({
+           res.json({
 
-              message:
-                "Upload Success ✅",
+  success: true,
 
-              inserted
+  message:
+    "Upload Success ✅",
 
-            });
+  inserted,
+
+  duplicates:
+    duplicateLeads
+
+});
 
           }
 
@@ -1431,35 +1477,62 @@ app.post(
 
             let updated = 0;
             let skipped = 0;
+            let duplicates = [];
 
             for (const row of results) {
 
            const rawPhone =
-  row["phone"] ||
-  row["Phone"] ||
-  row["PHONE"] ||
-  "";
+           row["phone"] ||
+               row["Phone"] ||
+           row["PHONE"] ||
+           "";
 
-const phone = String(rawPhone)
-  .trim()
-  .replace(/\.0$/, "")
-  .replace(/\D/g, "")
-  .slice(-10);
+          const phone = String(rawPhone)
+          .trim()
+          .replace(/\.0$/, "")
+          .replace(/\D/g, "")
+          .slice(-10);
 
               if (!phone) {
                 skipped++;
                 continue;
               }
 
-            const existingLead = await Lead.findOne({
-        phone
-            });
+           const project =
+  row["Enquiry"]?.trim() || "";
 
+const existingLead =
+  await Lead.findOne({
 
-              if (!existingLead) {
-                skipped++;
-                continue;
-              }
+    phone,
+
+    project
+
+  });
+
+if (!existingLead) {
+
+  skipped++;
+
+  continue;
+
+}
+
+/* SAME PROJECT DUPLICATE */
+
+duplicates.push({
+
+  name:
+    existingLead.name,
+
+  phone,
+
+  project,
+
+  assigned_to:
+    existingLead.assigned_to || "N/A"
+
+});
 
               const updateData = {};
 
@@ -1512,11 +1585,16 @@ const phone = String(rawPhone)
             fs.unlinkSync(req.file.path);
 
             res.json({
-              success: true,
-              updated,
-              skipped
-            });
 
+  success: true,
+
+  updated,
+
+  skipped,
+
+  duplicates
+
+});
           }
 
           catch (err) {
