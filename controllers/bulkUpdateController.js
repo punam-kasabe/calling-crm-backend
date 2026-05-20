@@ -1,7 +1,6 @@
 const multer = require("multer");
 const csv = require("csv-parser");
 const fs = require("fs");
-
 const Lead = require("../models/Lead");
 
 const upload = multer({
@@ -15,7 +14,7 @@ exports.bulkUpdate = (req, res) => {
     if (err) {
 
       return res.status(500).json({
-        message: "File upload failed ❌"
+        message: "File upload error ❌"
       });
 
     }
@@ -28,7 +27,7 @@ exports.bulkUpdate = (req, res) => {
 
     }
 
-    const results = [];
+    const leads = [];
 
     fs.createReadStream(req.file.path)
 
@@ -36,7 +35,105 @@ exports.bulkUpdate = (req, res) => {
 
       .on("data", (row) => {
 
-        results.push(row);
+        try {
+
+          console.log("CSV ROW =>", row);
+
+          const cleanPhone = String(
+            row.phone || ""
+          )
+            .replace(/\D/g, "")
+            .slice(-10);
+
+          if (!cleanPhone || cleanPhone.length !== 10) {
+
+            console.log("INVALID PHONE =>", row.phone);
+
+            return;
+
+          }
+
+          leads.push({
+
+            name:
+              row.name || "",
+
+            phone:
+              cleanPhone,
+
+            email:
+              row.Email || "",
+
+            other_contacts:
+              row["Other Contacts"] || "",
+
+            source:
+              row["Lead Source"] || "",
+
+            channel_partner:
+              row["Channel Partner(CP UUID)"] || "",
+
+            referal_name:
+              row["Referal Name"] || "",
+
+            referal_mobile:
+              row["Referal Mobile"] || "",
+
+            sub_source:
+              row["Sub Source"] || "",
+
+            status:
+              row["Lead Status"] || "New",
+
+            next_call_date:
+              row["Next Call Date"] || "",
+
+            secondary_email:
+              row["Secondary Email"] || "",
+
+            assigned_to:
+              String(
+                row.assigned_to || ""
+              )
+                .trim()
+                .toLowerCase(),
+
+            closing_executive:
+              row["Closing Executive"] || "",
+
+            enquiry:
+              row["Enquiry"] || "",
+
+            city:
+              row["City"] || "",
+
+            locality:
+              row["Locality"] || "",
+
+            dead_reason:
+              row["Dead Reason"] || "",
+
+            description:
+              row["Description"] || "",
+
+            created_at:
+              row["Created at"] || "",
+
+            visited:
+              row["Visited"] || "",
+
+            visited_date:
+              row["Visited Date"] || ""
+
+          });
+
+        }
+
+        catch (e) {
+
+          console.log("ROW ERROR =>", e);
+
+        }
 
       })
 
@@ -44,166 +141,89 @@ exports.bulkUpdate = (req, res) => {
 
         try {
 
-          let updated = 0;
           let inserted = 0;
+          let updated = 0;
           let skipped = 0;
 
-          const duplicates = [];
+          for (const lead of leads) {
 
-          for (const row of results) {
+            try {
 
-            // ✅ CLEAN PHONE
-            const phone = String(
+              const existingLead =
+                await Lead.findOne({
+                  phone: lead.phone
+                });
 
-              row.phone ||
-              row.Phone ||
-              ""
+              // UPDATE EXISTING
+              if (existingLead) {
 
-            )
-              .replace(/\D/g, "")
-              .slice(-10);
+                await Lead.updateOne(
 
-            if (!phone || phone.length !== 10) {
+                  {
+                    phone: lead.phone
+                  },
 
-              skipped++;
-              continue;
+                  {
+                    $set: lead
+                  }
+
+                );
+
+                updated++;
+
+              }
+
+              // INSERT NEW
+              else {
+
+                await Lead.create(lead);
+
+                inserted++;
+
+              }
 
             }
 
-            // ✅ ALL FIELDS
-            const leadData = {
+            catch (err) {
 
-              name:
-                row.name || "",
-
-              phone,
-
-              email:
-                row.Email || "",
-
-              other_contact:
-                row["Other Contact"] || "",
-
-              source:
-                row["Lead Source"] || "",
-
-              channel_partner:
-                row["Channel Partner"] || "",
-
-              referral_name:
-                row["Referral Name"] || "",
-
-              referral_mobile:
-                row["Referral Mobile"] || "",
-
-              sub_source:
-                row["Sub Source"] || "",
-
-              status:
-                row["Lead Status"] || "New",
-
-              next_call_date:
-                row["Next Call Date"] || "",
-
-              secondary_email:
-                row["Secondary Email"] || "",
-
-              assigned_to:
-                String(
-                  row.assigned_to || ""
-                )
-                  .trim()
-                  .toLowerCase(),
-
-              closing_executive:
-                row["Closing Executive"] || "",
-
-              enquiry:
-                row.Enquiry || "",
-
-              city:
-                row.City || "",
-
-              locality:
-                row.Locality || "",
-
-              dead_reason:
-                row["Dead Reason"] || "",
-
-              description:
-                row.Description || "",
-
-              created_at:
-                row["Created at"] || "",
-
-              visited:
-                row.Visited || "",
-
-              visited_date:
-                row["Visited Date"] || ""
-
-            };
-
-            // ✅ FIND EXISTING LEAD
-            const existingLead = await Lead.findOne({
-              phone
-            });
-
-            // ✅ UPDATE EXISTING
-            if (existingLead) {
-
-              await Lead.updateOne(
-
-                { phone },
-
-                {
-                  $set: leadData
-                }
-
+              console.log(
+                "INSERT ERROR =>",
+                err
               );
 
-              updated++;
-
-            }
-
-            // ✅ INSERT NEW
-            else {
-
-              await Lead.create(leadData);
-
-              inserted++;
+              skipped++;
 
             }
 
           }
 
-          // ✅ DELETE TEMP FILE
           fs.unlinkSync(req.file.path);
 
           return res.json({
 
             success: true,
 
-            updated,
             inserted,
+
+            updated,
+
             skipped,
 
-            duplicates,
-
             message:
-              `Updated: ${updated}, Inserted: ${inserted}, Skipped: ${skipped}`
+              "CSV Upload Successful ✅"
 
           });
 
         }
 
-        catch (error) {
+        catch (err) {
 
-          console.log(error);
+          console.log(err);
 
           return res.status(500).json({
 
-            message: "Bulk update failed ❌"
+            message:
+              "Processing Error ❌"
 
           });
 
