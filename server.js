@@ -1734,7 +1734,7 @@ app.post("/api/add-lead", async (req, res) => {
     }
     
 
-    const cleanPhone = String(phone)
+const cleanPhone = String(item.phone || "")
   .replace(/\D/g, "")
   .slice(-10);
 
