@@ -1517,30 +1517,27 @@ app.post(
                 skipped++;
                 continue;
               }
-
-        
-
-const existingLead = await Lead.findOne({
-  phone
-});
+    
+        const existingLead = await Lead.findOne({
+      phone: { $regex: `${phone}$` }
+      });
  
-    if (!existingLead) {
-    skipped++;
-    continue;
-   }
+   if (!existingLead) {
+
+  console.log("❌ NOT FOUND =>", phone);
+
+  skipped++;
+
+  continue;
+}
 
   duplicates.push({
-
   name: existingLead.name,
-
   phone,
-
   project:
     existingLead.project || "N/A",
-
   assigned_to:
     existingLead.assigned_to || "N/A"
-
 });
 
 const updateData = {};
