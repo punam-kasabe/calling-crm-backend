@@ -31,7 +31,10 @@ exports.bulkUpdate = (req, res) => {
             row["phone"] ||
             row["Phone"] ||
             ""
-          ).trim();
+          )
+            .replace(/\D/g, "")
+            .slice(-10)
+            .trim();
 
           if (!phone) return;
 
@@ -43,9 +46,8 @@ exports.bulkUpdate = (req, res) => {
               "",
 
             assigned_to:
-              row["assigned_to"]
-                ?.toLowerCase()
-                .trim() || "",
+              row["assigned_to"] ||
+              "",
 
             status:
               row["status"] ||
@@ -83,23 +85,23 @@ exports.bulkUpdate = (req, res) => {
 
           for (const item of updates) {
 
+            const cleanPhone = String(item.phone || "")
+              .replace(/\D/g, "")
+              .slice(-10);
+
             /* FIND EXISTING LEAD */
 
-           const cleanPhone = String(phone || "")
-             .replace(/\D/g, "")
-          .slice(-10);
- 
-           const existingLead = await Lead.findOne({
-          phone: cleanPhone
-         });
+            const existingLead = await Lead.findOne({
+              phone: cleanPhone
+            });
 
-            /* UPDATE */
+            /* UPDATE EXISTING */
 
-            if (existing) {
+            if (existingLead) {
 
               await Lead.updateOne(
 
-                { phone: item.phone },
+                { phone: cleanPhone },
 
                 {
                   $set: item.data
@@ -117,19 +119,15 @@ exports.bulkUpdate = (req, res) => {
 
               await Lead.create({
 
-                phone: item.phone,
+                phone: cleanPhone,
 
-                source:
-                  item.data.source,
+                source: item.data.source,
 
-                assigned_to:
-                  item.data.assigned_to,
+                assigned_to: item.data.assigned_to,
 
-                status:
-                  item.data.status,
+                status: item.data.status,
 
-                project:
-                  item.data.project
+                project: item.data.project
 
               });
 
