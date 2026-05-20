@@ -1,10 +1,11 @@
 const multer = require("multer");
 const csv = require("csv-parser");
 const fs = require("fs");
+
 const Lead = require("../models/Lead");
 
 const upload = multer({
-  dest: "uploads/",
+  dest: "uploads/"
 }).single("file");
 
 exports.bulkUpdate = (req, res) => {
@@ -12,12 +13,22 @@ exports.bulkUpdate = (req, res) => {
   upload(req, res, async (err) => {
 
     if (err) {
+
       return res.status(500).json({
-        message: "File upload failed ❌",
+        message: "File upload failed ❌"
       });
+
     }
 
-    const rows = [];
+    if (!req.file) {
+
+      return res.status(400).json({
+        message: "CSV file required ❌"
+      });
+
+    }
+
+    const results = [];
 
     fs.createReadStream(req.file.path)
 
@@ -25,7 +36,7 @@ exports.bulkUpdate = (req, res) => {
 
       .on("data", (row) => {
 
-        rows.push(row);
+        results.push(row);
 
       })
 
@@ -35,48 +46,55 @@ exports.bulkUpdate = (req, res) => {
 
           let updated = 0;
           let inserted = 0;
+          let skipped = 0;
 
-          for (const row of rows) {
+          const duplicates = [];
 
-            /* CLEAN PHONE */
+          for (const row of results) {
 
-            const cleanPhone = String(
-              row["phone"] || ""
+            // ✅ CLEAN PHONE
+            const phone = String(
+
+              row.phone ||
+              row.Phone ||
+              ""
+
             )
               .replace(/\D/g, "")
               .slice(-10);
 
-            if (!cleanPhone) {
+            if (!phone || phone.length !== 10) {
+
+              skipped++;
               continue;
+
             }
 
-            /* DATA */
-
+            // ✅ ALL FIELDS
             const leadData = {
 
               name:
-                row["name"] || "",
+                row.name || "",
 
-              phone:
-                cleanPhone,
+              phone,
 
               email:
-                row["Email"] || "",
+                row.Email || "",
 
               other_contact:
-                row["Other Con"] || "",
+                row["Other Contact"] || "",
 
               source:
                 row["Lead Source"] || "",
 
               channel_partner:
-                row["Channel P"] || "",
+                row["Channel Partner"] || "",
 
-              referal_name:
-                row["Referal Name"] || "",
+              referral_name:
+                row["Referral Name"] || "",
 
-              referal_mobile:
-                row["Referal Mobile"] || "",
+              referral_mobile:
+                row["Referral Mobile"] || "",
 
               sub_source:
                 row["Sub Source"] || "",
@@ -92,7 +110,7 @@ exports.bulkUpdate = (req, res) => {
 
               assigned_to:
                 String(
-                  row["assigned_to"] || ""
+                  row.assigned_to || ""
                 )
                   .trim()
                   .toLowerCase(),
@@ -101,60 +119,57 @@ exports.bulkUpdate = (req, res) => {
                 row["Closing Executive"] || "",
 
               enquiry:
-                row["Enquiry"] || "",
+                row.Enquiry || "",
 
               city:
-                row["City"] || "",
+                row.City || "",
 
               locality:
-                row["Locality"] || "",
+                row.Locality || "",
 
               dead_reason:
                 row["Dead Reason"] || "",
 
               description:
-                row["Description"] || "",
+                row.Description || "",
 
               created_at:
                 row["Created at"] || "",
 
               visited:
-                row["Visited"] || "",
+                row.Visited || "",
 
               visited_date:
-                row["Visited Date"] || "",
+                row["Visited Date"] || ""
 
             };
 
-            /* FIND EXISTING */
+            // ✅ FIND EXISTING LEAD
+            const existingLead = await Lead.findOne({
+              phone
+            });
 
-            const existingLead =
-              await Lead.findOne({
-                phone: cleanPhone,
-              });
-
-            /* UPDATE */
-
+            // ✅ UPDATE EXISTING
             if (existingLead) {
 
               await Lead.updateOne(
-                { phone: cleanPhone },
+
+                { phone },
+
                 {
-                  $set: leadData,
+                  $set: leadData
                 }
+
               );
 
               updated++;
 
             }
 
-            /* INSERT */
-
+            // ✅ INSERT NEW
             else {
 
-              await Lead.create(
-                leadData
-              );
+              await Lead.create(leadData);
 
               inserted++;
 
@@ -162,20 +177,21 @@ exports.bulkUpdate = (req, res) => {
 
           }
 
+          // ✅ DELETE TEMP FILE
           fs.unlinkSync(req.file.path);
 
-          res.json({
+          return res.json({
 
             success: true,
 
             updated,
-
             inserted,
+            skipped,
 
-            skipped: 0,
+            duplicates,
 
             message:
-              "CSV Uploaded Successfully ✅",
+              `Updated: ${updated}, Inserted: ${inserted}, Skipped: ${skipped}`
 
           });
 
@@ -185,9 +201,10 @@ exports.bulkUpdate = (req, res) => {
 
           console.log(error);
 
-          res.status(500).json({
-            message:
-              "Bulk upload failed ❌",
+          return res.status(500).json({
+
+            message: "Bulk update failed ❌"
+
           });
 
         }
