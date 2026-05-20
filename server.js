@@ -30,7 +30,10 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-callback(new Error("CORS blocked ❌"));      }
+console.log("Blocked Origin:", origin);
+
+callback(new Error("CORS blocked ❌"));
+}
 
     },
 
@@ -84,13 +87,16 @@ const userSchema = new mongoose.Schema({
   name: String,
 
   email: {
-    type: String,
-    lowercase: true,
-    trim: true
-  },
+  type: String,
+  lowercase: true,
+  trim: true,
+  unique: true
+},
 
-  phone: String,
-
+phone: {
+  type: String,
+  trim: true
+},
    password: {
    type: String,
    select: false
@@ -130,8 +136,11 @@ const leadSchema = new mongoose.Schema({
       .replace(/\D/g, "")
       .slice(-10)
      },
-  email: String,
-
+email: {
+  type: String,
+  lowercase: true,
+  trim: true
+},
   source: String,
 
   project: String,
@@ -260,6 +269,12 @@ leadSchema.index(
 );
 
 
+leadSchema.index({ assigned_to: 1 });
+leadSchema.index({ assigned_manager: 1 });
+leadSchema.index({ status: 1 });
+leadSchema.index({ next_call_date: 1 });
+leadSchema.index({ createdAt: -1 });
+
 /* =========================================
    VISIT SCHEMA
 ========================================= */
@@ -353,11 +368,8 @@ const followupSchema = new mongoose.Schema({
   },
 
   clientName: String,
-
   phone: String,
-
   project: String,
-
   executive: String,
 
   note: {
@@ -496,8 +508,7 @@ app.post("/api/login", loginLimiter, async (req, res) => {
       });
 
     }
-    if (user.status !== "active") {
-
+if ((user.status || "").toLowerCase() !== "active") {
   return res.status(403).json({
     message: "User inactive ❌"
   });
@@ -517,10 +528,10 @@ app.post("/api/login", loginLimiter, async (req, res) => {
 
   process.env.JWT_SECRET,
 
-  {
-    expiresIn: "7d"
-  }
-
+ {
+  expiresIn: "7d",
+  issuer: "crm-backend"
+}
 );
 
    res.json({
@@ -584,8 +595,11 @@ if (
   });
 }
 
-const token = authHeader.split(" ")[1];
-
+if (!token || token === "null") {
+  return res.status(401).json({
+    message: "Invalid token ❌"
+  });
+}
     if (!token) {
 
       return res.status(401).json({
@@ -645,6 +659,12 @@ app.post("/api/add-user", auth, adminOnly, async (req, res) => {
       password,
       role
     } = req.body;
+
+    if (!password || password.length < 6) {
+  return res.status(400).json({
+    message: "Password must be at least 6 characters ❌"
+  });
+}
 
     const exists = await User.findOne({
 
@@ -1067,11 +1087,11 @@ app.get(
 
     try {
 
-      const lead =
-        await Lead.findOne({
-          phone: req.params.phone
-        });
-
+    await Lead.findOne({
+     phone: String(req.params.phone)
+    .replace(/\D/g, "")
+    .slice(-10)
+      });
       if (!lead) {
 
         return res.status(404).json({
@@ -1483,7 +1503,7 @@ app.post(
 
            const rawPhone =
            row["phone"] ||
-               row["Phone"] ||
+           row["Phone"] ||
            row["PHONE"] ||
            "";
 
@@ -1498,23 +1518,18 @@ app.post(
                 continue;
               }
 
-        const project =
-  row["Enquiry"] ||
-  row["Project"] ||
-  "";
+        
 
-const existingLead =
-  await Lead.findOne({
-    phone,
-    project: project.trim()
-  });
+const existingLead = await Lead.findOne({
+  phone
+});
+ 
+    if (!existingLead) {
+    skipped++;
+    continue;
+   }
 
-if (!existingLead) {
-  skipped++;
-  continue;
-}
-
-duplicates.push({
+  duplicates.push({
 
   name: existingLead.name,
 
@@ -1592,8 +1607,9 @@ await Lead.findByIdAndUpdate(
     updated++;
             }
 
-            fs.unlinkSync(req.file.path);
-
+if (fs.existsSync(req.file.path)) {
+  fs.unlinkSync(req.file.path);
+}
             res.json({
 
   success: true,
@@ -1719,14 +1735,31 @@ app.post("/api/add-lead", async (req, res) => {
       });
 
     }
+    
+
+    const cleanPhone = String(phone)
+  .replace(/\D/g, "")
+  .slice(-10);
+
+const existingLead = await Lead.findOne({
+  phone: cleanPhone,
+  project: project || ""
+});
+
+if (existingLead) {
+  return res.status(400).json({
+    message: "Lead already exists ❌"
+  });
+}
+
 
     const lead = await Lead.create({
 
       name: name.trim(),
 
-phone: String(phone)
-  .replace(/\D/g, "")
-  .slice(-10),
+       
+      phone: cleanPhone,
+
       email: email || "",
 
       source: source || "",
@@ -3520,14 +3553,24 @@ app.use((err, req, res, next) => {
 
   console.log("GLOBAL ERROR ❌", err);
 
-  res.status(500).json({
-    message: err.message || "Server Error ❌"
-  });
+  res.status(err.status || 500).json({
+  success: false,
+  message: err.message || "Server Error ❌"
+});
 
 });
 /* =========================================
    START SERVER
 ========================================= */
+
+
+process.on("unhandledRejection", (err) => {
+  console.log("UNHANDLED REJECTION ❌", err);
+});
+
+process.on("uncaughtException", (err) => {
+  console.log("UNCAUGHT EXCEPTION ❌", err);
+});
 
 const PORT = process.env.PORT || 5000;
 app.get("/", (req, res) => {

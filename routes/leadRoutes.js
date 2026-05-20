@@ -192,7 +192,7 @@ router.get("/manager-clients", async (req, res) => {
       ?.toLowerCase()
       .trim();
 
-    /* 🔥 manager ला फक्त assigned clients */
+    /* 🔥 only manager assigned clients */
 
     const leads = await Lead.find({
 
@@ -231,11 +231,11 @@ router.get("/search-client/:mobile", async (req, res) => {
 
     const mobile = req.params.mobile;
 
-    const lead = await Lead.findOne({
+   const lead = await Lead.findOne({
 
-      mobile
+  phone: mobile
 
-    });
+});
 
     if (!lead) {
 
@@ -395,70 +395,100 @@ router.post("/filter-leads", async (req, res) => {
   try {
 
     const {
-
       email,
       role,
       page = 1,
-      status
-
+      filters = {}
     } = req.body;
 
     const limit = 10;
 
-    const skip = (page - 1) * limit;
+    const skip =
+      (page - 1) * limit;
 
-    const r = role
-      ?.toLowerCase();
+    const r =
+      role?.toLowerCase();
 
     let query = {};
 
-    /* 🔥 executive */
+    /* EXECUTIVE */
 
     if (r === "executive") {
 
-      query.assigned_to = email
-        ?.toLowerCase()
-        .trim();
+      query.assigned_to =
+        email
+          ?.toLowerCase()
+          .trim();
 
     }
 
-    /* 🔥 manager */
+    /* MANAGER */
 
     if (r === "manager") {
 
-      query.assigned_manager = email
-        ?.toLowerCase()
-        .trim();
+      query.assigned_manager =
+        email
+          ?.toLowerCase()
+          .trim();
 
     }
 
-    if (status) {
+    /* STATUS */
 
-      query.status = status;
+    if (filters.status) {
+
+      query.status =
+        filters.status;
 
     }
 
-    const total = await Lead.countDocuments(query);
+    /* ASSIGNED */
 
-    const leads = await Lead.find(query)
+    if (filters.assigned) {
 
-      .sort({
+      query.assigned_to =
+        filters.assigned
+          .toLowerCase()
+          .trim();
 
-        _id: -1
+    }
 
-      })
+    /* PROJECT */
 
-      .skip(skip)
+    if (filters.project) {
 
-      .limit(limit);
+      query.project =
+        new RegExp(
+          filters.project,
+          "i"
+        );
+
+    }
+
+    const total =
+      await Lead.countDocuments(
+        query
+      );
+
+    const leads =
+      await Lead.find(query)
+
+        .sort({
+          _id: -1
+        })
+
+        .skip(skip)
+
+        .limit(limit);
 
     res.json({
 
       data: leads,
 
-      totalPages: Math.ceil(
-        total / limit
-      ),
+      totalPages:
+        Math.ceil(
+          total / limit
+        )
 
     });
 
@@ -470,7 +500,8 @@ router.post("/filter-leads", async (req, res) => {
 
     res.status(500).json({
 
-      message: "Filter error ❌"
+      message:
+        "Filter error ❌"
 
     });
 
