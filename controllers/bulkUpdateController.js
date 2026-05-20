@@ -4,7 +4,7 @@ const fs = require("fs");
 const Lead = require("../models/Lead");
 
 const upload = multer({
-  dest: "uploads/"
+  dest: "uploads/",
 }).single("file");
 
 exports.bulkUpdate = (req, res) => {
@@ -13,11 +13,11 @@ exports.bulkUpdate = (req, res) => {
 
     if (err) {
       return res.status(500).json({
-        message: "File upload error ❌"
+        message: "File upload failed ❌",
       });
     }
 
-    const updates = [];
+    const rows = [];
 
     fs.createReadStream(req.file.path)
 
@@ -25,54 +25,7 @@ exports.bulkUpdate = (req, res) => {
 
       .on("data", (row) => {
 
-        try {
-
-          const phone = String(
-            row["phone"] ||
-            row["Phone"] ||
-            ""
-          )
-            .replace(/\D/g, "")
-            .slice(-10)
-            .trim();
-
-          if (!phone) return;
-
-          const leadData = {
-
-            source:
-              row["source"] ||
-              row["Lead Source"] ||
-              "",
-
-            assigned_to:
-              row["assigned_to"] ||
-              "",
-
-            status:
-              row["status"] ||
-              row["Lead Status"] ||
-              "New",
-
-            project:
-              row["project"] ||
-              row["Project"] ||
-              ""
-
-          };
-
-          updates.push({
-            phone,
-            data: leadData
-          });
-
-        }
-
-        catch (e) {
-
-          console.log("Row Error ❌", row);
-
-        }
+        rows.push(row);
 
       })
 
@@ -80,64 +33,134 @@ exports.bulkUpdate = (req, res) => {
 
         try {
 
-          let updatedCount = 0;
-          let insertedCount = 0;
+          let updated = 0;
+          let inserted = 0;
 
-          for (const item of updates) {
+          for (const row of rows) {
 
-            const cleanPhone = String(item.phone || "")
+            /* CLEAN PHONE */
+
+            const cleanPhone = String(
+              row["phone"] || ""
+            )
               .replace(/\D/g, "")
               .slice(-10);
 
-            /* FIND EXISTING LEAD */
+            if (!cleanPhone) {
+              continue;
+            }
 
-            const existingLead = await Lead.findOne({
-              phone: cleanPhone
-            });
+            /* DATA */
 
-            /* UPDATE EXISTING */
+            const leadData = {
+
+              name:
+                row["name"] || "",
+
+              phone:
+                cleanPhone,
+
+              email:
+                row["Email"] || "",
+
+              other_contact:
+                row["Other Con"] || "",
+
+              source:
+                row["Lead Source"] || "",
+
+              channel_partner:
+                row["Channel P"] || "",
+
+              referal_name:
+                row["Referal Name"] || "",
+
+              referal_mobile:
+                row["Referal Mobile"] || "",
+
+              sub_source:
+                row["Sub Source"] || "",
+
+              status:
+                row["Lead Status"] || "New",
+
+              next_call_date:
+                row["Next Call Date"] || "",
+
+              secondary_email:
+                row["Secondary Email"] || "",
+
+              assigned_to:
+                String(
+                  row["assigned_to"] || ""
+                )
+                  .trim()
+                  .toLowerCase(),
+
+              closing_executive:
+                row["Closing Executive"] || "",
+
+              enquiry:
+                row["Enquiry"] || "",
+
+              city:
+                row["City"] || "",
+
+              locality:
+                row["Locality"] || "",
+
+              dead_reason:
+                row["Dead Reason"] || "",
+
+              description:
+                row["Description"] || "",
+
+              created_at:
+                row["Created at"] || "",
+
+              visited:
+                row["Visited"] || "",
+
+              visited_date:
+                row["Visited Date"] || "",
+
+            };
+
+            /* FIND EXISTING */
+
+            const existingLead =
+              await Lead.findOne({
+                phone: cleanPhone,
+              });
+
+            /* UPDATE */
 
             if (existingLead) {
 
               await Lead.updateOne(
-
                 { phone: cleanPhone },
-
                 {
-                  $set: item.data
+                  $set: leadData,
                 }
-
               );
 
-              updatedCount++;
+              updated++;
 
             }
 
-            /* INSERT NEW */
+            /* INSERT */
 
             else {
 
-              await Lead.create({
+              await Lead.create(
+                leadData
+              );
 
-                phone: cleanPhone,
-
-                source: item.data.source,
-
-                assigned_to: item.data.assigned_to,
-
-                status: item.data.status,
-
-                project: item.data.project
-
-              });
-
-              insertedCount++;
+              inserted++;
 
             }
 
           }
-
-          /* DELETE TEMP FILE */
 
           fs.unlinkSync(req.file.path);
 
@@ -145,22 +168,26 @@ exports.bulkUpdate = (req, res) => {
 
             success: true,
 
-            message: "Bulk Update Done ✅",
+            updated,
 
-            updated: updatedCount,
+            inserted,
 
-            inserted: insertedCount
+            skipped: 0,
+
+            message:
+              "CSV Uploaded Successfully ✅",
 
           });
 
         }
 
-        catch (err) {
+        catch (error) {
 
-          console.log(err);
+          console.log(error);
 
           res.status(500).json({
-            message: "Processing Error ❌"
+            message:
+              "Bulk upload failed ❌",
           });
 
         }
