@@ -1528,13 +1528,24 @@ app.post(
 
       fs.createReadStream(req.file.path)
 
-        .pipe(csv())
+  .pipe(csv())
 
-        .on("data", (data) => {
-          results.push(data);
-        })
+  .on("data", (row) => {
 
-        .on("end", async () => {
+    // EMPTY ROW SKIP
+    if (
+      !row.phone &&
+      !row.Phone &&
+      !row.PHONE
+    ) {
+      return;
+    }
+
+    results.push(row);
+
+  })
+
+  .on("end", async () => {
 
           try {
 
@@ -1556,6 +1567,7 @@ app.post(
           .replace(/\D/g, "")
           .slice(-10);
 
+           console.log("CSV ROW =>", row);
               if (!phone) {
                 skipped++;
                 continue;
