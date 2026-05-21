@@ -984,16 +984,31 @@ app.post(
             let inserted = 0;
             let duplicateLeads = [];
 
-            for (const data of rows) {
+           for (const data of rows) {
 
-              if (!data["Phone"])
-                continue;
+  if (!data["Phone"])
+    continue;
 
-              const phone = String(
-  data["Phone"] || ""
-)
-  .replace(/\D/g, "")
-  .slice(-10);
+  const cleanPhone = String(
+    data["Phone"] || ""
+  )
+    .replace(/\D/g, "")
+    .slice(-10);
+
+  /* INVALID PHONE SKIP */
+
+  if (!cleanPhone || cleanPhone.length !== 10) {
+    continue;
+  }
+
+  const project = String(
+    data["Project"] || ""
+  ).trim();
+
+  const exists = await Lead.findOne({
+    phone: cleanPhone,
+    project
+  });
 
 const project = String(
   data["Project"] || ""
@@ -1030,12 +1045,7 @@ if (exists) {
                 name:
                   data["Name"] || "",
 
-               phone: String(
-             data["Phone"] || ""
-               )
-           .replace(/\D/g, "")
-            .slice(-10),
-
+                phone: cleanPhone,
                 email:
                   data["Email"] || "",
 
