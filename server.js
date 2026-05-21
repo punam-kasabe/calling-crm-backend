@@ -621,7 +621,6 @@ if (!isAdmin) {
    AUTH MIDDLEWARE
 ========================================= */
 
-
 const auth = (req, res, next) => {
 
   try {
@@ -673,16 +672,6 @@ const auth = (req, res, next) => {
   }
 
 };
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
-
-    req.user = decoded;
-
-    next();
-
-  
 
 const adminOnly = (req, res, next) => {
 
@@ -697,7 +686,6 @@ const adminOnly = (req, res, next) => {
   next();
 
 };
-
 
 /* =========================================
    ADD USER
