@@ -1554,21 +1554,42 @@ const phone = normalizePhone(rawPhone);
 
 console.log("SEARCH PHONE =>", phone);
 
-const existingLead = await Lead.findOne({
-  phone: {
-    $regex: phone.trim(),
-    $options: "i"
-  }
+
+  await Lead.create({
+
+  name: row["name"] || "",
+
+  phone: normalizePhone(rawPhone),
+
+  email: row["Email"] || "",
+
+  source: row["Lead Source"] || "",
+
+  subSource: row["Sub Source"] || "",
+
+  project:
+    row["Enquiry"] ||
+    row["Project"] ||
+    "",
+
+  status:
+    row["Lead Status"] || "New",
+
+  assigned_to:
+    row["assigned_to"]
+      ?.toLowerCase()
+      ?.trim() || "",
+
+  closingExecutive:
+    row["Closing Executive"] || "",
+
+  description:
+    row["Description"] || ""
+
 });
 
-if (!existingLead) {
+updated++;
 
-  console.log("❌ NOT FOUND IN DB =>", phone);
-
-  skipped++;
-
-  continue;
-}
 
               duplicates.push({
                 name: existingLead.name,
