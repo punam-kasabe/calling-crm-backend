@@ -12,6 +12,7 @@ const rateLimit = require("express-rate-limit");
 const compression = require("compression");
 
 const app = express();
+app.set("trust proxy", 1);
 app.use(helmet());
 app.use(compression());
 
@@ -1584,9 +1585,10 @@ if (!phone || phone.length < 10) {
   continue;
 }
                console.log("SEARCH PHONE =>", phone);
+
              const existingLead = await Lead.findOne({
-             phone: phone
-                 });
+            phone: { $regex: phone + "$" }
+           });
 
               if (!existingLead) {
 
