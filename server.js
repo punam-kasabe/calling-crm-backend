@@ -515,6 +515,34 @@ if ((user.status || "").toLowerCase() !== "active") {
 
 }
 
+/* =========================================
+   LOGIN TIME CHECK (10 AM - 7 PM)
+========================================= */
+
+if (!isAdmin) {
+
+  const now = new Date();
+
+  const indiaTime = new Date(
+    now.toLocaleString("en-US", {
+      timeZone: "Asia/Kolkata"
+    })
+  );
+
+  const hour = indiaTime.getHours();
+
+  if (hour < 10 || hour >= 19) {
+
+    return res.status(403).json({
+      message:
+        "Login allowed only between 10 AM and 7 PM ❌"
+    });
+
+  }
+
+}
+
+
     const role = user.role?.toLowerCase();
 
     const isAdmin = role === "admin";
@@ -595,12 +623,17 @@ if (
   });
 }
 
-if (!token || token === "null") {
-  return res.status(401).json({
-    message: "Invalid token ❌"
-  });
-}
-    if (!token) {
+const auth = (req, res, next) => {
+
+  try {
+
+    const authHeader =
+      req.headers.authorization;
+
+    if (
+      !authHeader ||
+      !authHeader.startsWith("Bearer ")
+    ) {
 
       return res.status(401).json({
         message: "No token ❌"
@@ -608,6 +641,39 @@ if (!token || token === "null") {
 
     }
 
+    const token =
+      authHeader.split(" ")[1];
+
+    if (!token || token === "null") {
+
+      return res.status(401).json({
+        message: "Invalid token ❌"
+      });
+
+    }
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    req.user = decoded;
+
+    next();
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(401).json({
+      message: "Invalid token ❌"
+    });
+
+  }
+
+};
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET
@@ -1087,8 +1153,8 @@ app.get(
 
     try {
 
-    await Lead.findOne({
-     phone: String(req.params.phone)
+const lead = await Lead.findOne({
+       phone: String(req.params.phone)
     .replace(/\D/g, "")
     .slice(-10)
       });
@@ -1519,8 +1585,8 @@ app.post(
               }
     
         const existingLead = await Lead.findOne({
-      phone: { $regex: `${phone}$` }
-      });
+  phone
+});
  
    if (!existingLead) {
 
@@ -1734,7 +1800,7 @@ app.post("/api/add-lead", async (req, res) => {
     }
     
 
-const cleanPhone = String(item.phone || "")
+const cleanPhone = String(phone || "")
   .replace(/\D/g, "")
   .slice(-10);
 
