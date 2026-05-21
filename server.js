@@ -984,89 +984,88 @@ app.post(
             let inserted = 0;
             let duplicateLeads = [];
 
-           for (const data of rows) {
+            for (const data of rows) {
 
-  for (const data of rows) {
+              if (!data["Phone"])
+                continue;
 
-  if (!data["Phone"])
-    continue;
+              const phone = String(
+  data["Phone"] || ""
+)
+  .replace(/\D/g, "")
+  .slice(-10);
 
-  const cleanPhone = String(
-    data["Phone"] || ""
-  )
-    .replace(/\D/g, "")
-    .slice(-10);
+const project = String(
+  data["Project"] || ""
+).trim();
 
-  /* INVALID PHONE SKIP */
+const exists = await Lead.findOne({
+  phone,
+  project
+});
 
-  if (!cleanPhone || cleanPhone.length !== 10) {
-    continue;
-  }
+/* DUPLICATE FOUND */
 
-  const project = String(
-    data["Project"] || ""
-  ).trim();
+if (exists) {
 
-  const exists = await Lead.findOne({
-    phone: cleanPhone,
-    project
-  });
-
-  /* DUPLICATE */
-
-  if (exists) {
-
-    duplicateLeads.push({
-
-      name:
-        data["Name"] || "",
-
-      phone: cleanPhone,
-
-      project,
-
-      assigned_to:
-        exists.assigned_to || ""
-
-    });
-
-    continue;
-  }
-
-  await Lead.create({
+  duplicateLeads.push({
 
     name:
       data["Name"] || "",
 
-    phone: cleanPhone,
-
-    email:
-      data["Email"] || "",
-
-    source:
-      data["Lead Source"] || "",
+    phone,
 
     project,
 
-    status:
-      data["Lead Status"] || "New",
-
     assigned_to:
-
-      data["assigned_to"]
-
-        ? data["assigned_to"]
-            .toLowerCase()
-            .trim()
-
-        : assigned_to,
-
-    created_by
+      exists.assigned_to || ""
 
   });
 
-  inserted++;
+  continue;
 }
+
+              await Lead.create({
+
+                name:
+                  data["Name"] || "",
+
+               phone: String(
+             data["Phone"] || ""
+               )
+           .replace(/\D/g, "")
+            .slice(-10),
+
+                email:
+                  data["Email"] || "",
+
+                source:
+                  data["Lead Source"] || "",
+
+                project:
+                  data["Project"] || "",
+
+                status:
+                  data["Lead Status"] || "New",
+
+                assigned_to:
+
+                  data["assigned_to"]
+
+                    ? data["assigned_to"]
+                        .toLowerCase()
+                        .trim()
+
+                    : assigned_to,
+
+                created_by
+
+              });
+
+              inserted++;
+
+            }
+
             fs.unlinkSync(
               req.file.path
             );
@@ -1568,7 +1567,7 @@ app.post(
           .replace(/\D/g, "")
           .slice(-10);
 
-           console.log("CSV ROW =>", row);
+           
               if (!phone) {
                 skipped++;
                 continue;
