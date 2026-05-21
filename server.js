@@ -79,6 +79,39 @@ mongoose.connect(process.env.MONGO_URI)
     console.log("DB Error ❌", err);
   });
 
+
+
+  /* =========================================
+   PHONE NORMALIZER
+========================================= */
+
+const normalizePhone = (phone) => {
+
+  if (!phone) return "";
+
+  // REMOVE EVERYTHING EXCEPT DIGITS
+  let cleaned = String(phone)
+    .replace(/\D/g, "");
+
+  // REMOVE INDIA CODE
+  if (cleaned.startsWith("91") && cleaned.length > 10) {
+    cleaned = cleaned.slice(-10);
+  }
+
+  // REMOVE 0091
+  if (cleaned.startsWith("0091") && cleaned.length > 10) {
+    cleaned = cleaned.slice(-10);
+  }
+
+  // KEEP LAST 10 DIGITS
+  if (cleaned.length > 10) {
+    cleaned = cleaned.slice(-10);
+  }
+
+  return cleaned;
+};
+
+
 /* =========================================
    USER SCHEMA
 ========================================= */
@@ -129,14 +162,11 @@ const leadSchema = new mongoose.Schema({
 
   name: String,
   phone: {
-    type: String,
-    trim: true,
-    index: true,
-    set: (v) =>
-      String(v || "")
-        .replace(/\D/g, "")
-        .slice(-10)
-  },
+  type: String,
+  trim: true,
+  index: true
+},
+
   email: {
     type: String,
     lowercase: true,
@@ -254,20 +284,6 @@ const leadSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
-
-/* =========================================
-   UNIQUE PHONE + PROJECT
-========================================= */
-
-leadSchema.index(
-  {
-    phone: 1,
-    project: 1
-  },
-  {
-    unique: true
-  }
-);
 
 
 leadSchema.index({ assigned_to: 1 });
@@ -990,54 +1006,23 @@ app.post(
               if (!data["Phone"])
                 continue;
 
-              const phone = String(
-                data["Phone"] || ""
-              )
-                .replace(/\D/g, "")
-                .slice(-10);
+             const phone = normalizePhone(
+            data["Phone"]
+               );
 
               const projectName = String(
                 data["Project"] || ""
               ).trim();
 
 
-              const exists = await Lead.findOne({
-                phone,
-                project: projectName
-              });
-
-
-              /* DUPLICATE FOUND */
-
-              if (exists) {
-
-                duplicateLeads.push({
-
-                  name:
-                    data["Name"] || "",
-
-                  phone,
-
-                  project: projectName,
-
-                  assigned_to:
-                    exists.assigned_to || ""
-
-                });
-
-                continue;
-              }
+            
 
               await Lead.create({
 
                 name:
                   data["Name"] || "",
 
-                phone: String(
-                  data["Phone"] || ""
-                )
-                  .replace(/\D/g, "")
-                  .slice(-10),
+                phone,
 
                 email:
                   data["Email"] || "",
@@ -1133,11 +1118,11 @@ app.get(
 
     try {
 
-      const lead = await Lead.findOne({
-        phone: String(req.params.phone)
-          .replace(/\D/g, "")
-          .slice(-10)
+     const lead = await Lead.findOne({
+     phone: normalizePhone(req.params.phone)
       });
+
+
       if (!lead) {
 
         return res.status(404).json({
@@ -1273,8 +1258,7 @@ app.post(
       const existingLead =
         await Lead.findOne({
 
-          phone: mobile
-
+       phone: normalizePhone(mobile)
         });
 
       /* ===============================
@@ -1314,9 +1298,7 @@ app.post(
 
           name: clientName,
 
-          phone: String(mobile)
-            .replace(/\D/g, "")
-            .slice(-10),
+          phone: normalizePhone(mobile),
           project: project,
 
           source: "Visit",
@@ -1566,38 +1548,27 @@ const rawPhone =
   row["phone"] ||
   row["Phone"] ||
   row["PHONE"] ||
-  row["Mobile"] ||
-  row["mobile"] ||
   "";
 
-const phone = String(rawPhone || "")
-  .replace(/\.0$/, "")
-  .replace(/\s/g, "")
-  .replace(/\D/g, "")
-  .slice(-10);
+const phone = normalizePhone(rawPhone);
 
-if (!phone || phone.length < 10) {
+console.log("SEARCH PHONE =>", phone);
 
-  console.log("INVALID PHONE ❌", rawPhone);
+const existingLead = await Lead.findOne({
+  phone: {
+    $regex: phone.trim(),
+    $options: "i"
+  }
+});
+
+if (!existingLead) {
+
+  console.log("❌ NOT FOUND IN DB =>", phone);
 
   skipped++;
 
   continue;
 }
-               console.log("SEARCH PHONE =>", phone);
-
-             const existingLead = await Lead.findOne({
-            phone: { $regex: phone + "$" }
-           });
-
-              if (!existingLead) {
-
-              console.log("❌ NOT FOUND IN DB =>", phone);
-
-              skipped++;
-
-               continue;
-              }
 
               duplicates.push({
                 name: existingLead.name,
@@ -1802,22 +1773,8 @@ app.post("/api/add-lead", async (req, res) => {
     }
 
 
-    const cleanPhone = String(phone || "")
-      .replace(/\D/g, "")
-      .slice(-10);
-
-    const existingLead = await Lead.findOne({
-      phone: cleanPhone,
-      project: project || ""
-    });
-
-    if (existingLead) {
-      return res.status(400).json({
-        message: "Lead already exists ❌"
-      });
-    }
-
-
+    const cleanPhone = normalizePhone(phone);
+  
     const lead = await Lead.create({
 
       name: name.trim(),
