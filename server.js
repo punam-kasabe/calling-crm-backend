@@ -1552,7 +1552,7 @@ const rawPhone =
 
 const phone = normalizePhone(rawPhone);
 
-console.log("SEARCH PHONE =>", phone);
+console.log("INSERT PHONE =>", phone);
 
 
   await Lead.create({
@@ -1586,82 +1586,12 @@ console.log("SEARCH PHONE =>", phone);
   description:
     row["Description"] || ""
 
-});
+         });
 
-updated++;
+        updated++;
 
 
-              duplicates.push({
-                name: existingLead.name,
-                phone,
-                project:
-                  existingLead.project || "N/A",
-                assigned_to:
-                  existingLead.assigned_to || "N/A"
-              });
-
-              const updateData = {};
-
-              if (row["Enquiry"] || row["Project"]) {
-
-                updateData.project =
-                  (
-                    row["Enquiry"] ||
-                    row["Project"]
-                  ).trim();
-
-              }
-
-              if (row["Lead Status"]) {
-
-                updateData.status =
-                  row["Lead Status"].trim();
-
-              }
-
-              if (row["assigned_to"]) {
-
-                updateData.assigned_to =
-                  row["assigned_to"]
-                    .toLowerCase()
-                    .trim();
-
-              }
-
-              if (row["Lead Source"]) {
-
-                updateData.source =
-                  row["Lead Source"].trim();
-
-              }
-
-              if (row["Description"]) {
-
-                updateData.description =
-                  row["Description"].trim();
-
-              }
-
-              if (row["Sub Source"]) {
-
-                updateData.subSource =
-                  row["Sub Source"].trim();
-
-              }
-
-              if (row["Closing Executive"]) {
-
-                updateData.closingExecutive =
-                  row["Closing Executive"].trim();
-
-              }
-
-              await Lead.findByIdAndUpdate(
-                existingLead._id,
-                { $set: updateData },
-                { new: true }
-              );
-              updated++;
+        
             }
 
             if (fs.existsSync(req.file.path)) {
