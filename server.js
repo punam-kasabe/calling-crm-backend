@@ -1557,35 +1557,44 @@ app.post(
 
             for (const row of results) {
 
-              const rawPhone =
-                row["phone"] ||
-                row["Phone"] ||
-                row["PHONE"] ||
-                "";
+             /* ======================================
+              CLEAN PHONE
+               ====================================== */
 
-              const phone = String(rawPhone)
-                .trim()
-                .replace(/\.0$/, "")
-                .replace(/\D/g, "")
-                .slice(-10);
+const rawPhone =
+  row["phone"] ||
+  row["Phone"] ||
+  row["PHONE"] ||
+  row["Mobile"] ||
+  row["mobile"] ||
+  "";
 
+const phone = String(rawPhone || "")
+  .replace(/\.0$/, "")
+  .replace(/\s/g, "")
+  .replace(/\D/g, "")
+  .slice(-10);
 
-              if (!phone) {
-                skipped++;
-                continue;
-              }
+if (!phone || phone.length < 10) {
 
-              const existingLead = await Lead.findOne({
-                phone
-              });
+  console.log("INVALID PHONE ❌", rawPhone);
+
+  skipped++;
+
+  continue;
+}
+               console.log("SEARCH PHONE =>", phone);
+             const existingLead = await Lead.findOne({
+             phone: phone
+                 });
 
               if (!existingLead) {
 
-                console.log("❌ NOT FOUND =>", phone);
+              console.log("❌ NOT FOUND IN DB =>", phone);
 
-                skipped++;
+              skipped++;
 
-                continue;
+               continue;
               }
 
               duplicates.push({
