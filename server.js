@@ -2017,6 +2017,10 @@ app.post(
           query
         );
 
+        const totalLeads =
+  await Lead.countDocuments();
+
+
       const leads =
         await Lead.find(query)
 
@@ -2030,15 +2034,16 @@ app.post(
 
       res.json({
 
-        data: leads,
+  data: leads,
 
-        totalPages:
-          Math.ceil(
-            total / limit
-          )
+  totalPages:
+    Math.ceil(
+      total / limit
+    ),
 
-      });
+  totalLeads
 
+});
     }
 
     catch {
