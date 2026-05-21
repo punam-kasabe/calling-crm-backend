@@ -30,19 +30,19 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-console.log("Blocked Origin:", origin);
+        console.log("Blocked Origin:", origin);
 
-callback(new Error("CORS blocked ❌"));
-}
+        callback(new Error("CORS blocked ❌"));
+      }
 
     },
 
-methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 
-   allowedHeaders: [
-  "Content-Type",
-  "Authorization"
-],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization"
+    ],
     credentials: true
   })
 );
@@ -87,20 +87,20 @@ const userSchema = new mongoose.Schema({
   name: String,
 
   email: {
-  type: String,
-  lowercase: true,
-  trim: true,
-  unique: true
-},
+    type: String,
+    lowercase: true,
+    trim: true,
+    unique: true
+  },
 
-phone: {
-  type: String,
-  trim: true
-},
-   password: {
-   type: String,
-   select: false
-   },
+  phone: {
+    type: String,
+    trim: true
+  },
+  password: {
+    type: String,
+    select: false
+  },
   role: String,
 
   can_import: Boolean,
@@ -127,20 +127,20 @@ phone: {
 const leadSchema = new mongoose.Schema({
 
   name: String,
-     phone: {
-  type: String,
-  trim: true,
-  index: true,
-     set: (v) =>
-     String(v || "")
-      .replace(/\D/g, "")
-      .slice(-10)
-     },
-email: {
-  type: String,
-  lowercase: true,
-  trim: true
-},
+  phone: {
+    type: String,
+    trim: true,
+    index: true,
+    set: (v) =>
+      String(v || "")
+        .replace(/\D/g, "")
+        .slice(-10)
+  },
+  email: {
+    type: String,
+    lowercase: true,
+    trim: true
+  },
   source: String,
 
   project: String,
@@ -318,8 +318,8 @@ const visitSchema = new mongoose.Schema(
       ],
       default: "IN_OFFICE",
     },
-      
-    
+
+
     bookingStatus: {
       type: String,
       enum: [
@@ -329,21 +329,21 @@ const visitSchema = new mongoose.Schema(
       ],
       default: "PENDING",
     },
-     assigned_manager: {
-  type: String,
-  default: ""
-},
+    assigned_manager: {
+      type: String,
+      default: ""
+    },
 
-calling_by: [
-  {
-    type: String
-  }
-],
+    calling_by: [
+      {
+        type: String
+      }
+    ],
 
-remark: {
-  type: String,
-  default: ""
-},
+    remark: {
+      type: String,
+      default: ""
+    },
     visitDate: {
       type: Date,
       default: Date.now,
@@ -477,18 +477,18 @@ app.post("/api/login", loginLimiter, async (req, res) => {
     } = req.body;
 
     if (!email || !password) {
-     return res.status(400).json({
-    message: "Email & Password required ❌"
-    });
-     }
+      return res.status(400).json({
+        message: "Email & Password required ❌"
+      });
+    }
 
 
-       const user = await User.findOne({
-       email: email.toLowerCase().trim()
-       }).select("+password");
+    const user = await User.findOne({
+      email: email.toLowerCase().trim()
+    }).select("+password");
 
-      
-       if (!user) {
+
+    if (!user) {
 
       return res.status(401).json({
         message: "User not found ❌"
@@ -509,101 +509,101 @@ app.post("/api/login", loginLimiter, async (req, res) => {
 
     }
 
-if ((user.status || "").toLowerCase() !== "active") {
+    if ((user.status || "").toLowerCase() !== "active") {
 
-  return res.status(403).json({
-    message: "User inactive ❌"
-  });
+      return res.status(403).json({
+        message: "User inactive ❌"
+      });
 
-}
+    }
 
-/* =========================================
-   ROLE
-========================================= */
+    /* =========================================
+       ROLE
+    ========================================= */
 
-const role =
-  user.role?.toLowerCase();
+    const role =
+      user.role?.toLowerCase();
 
-const isAdmin =
-  role === "admin";
+    const isAdmin =
+      role === "admin";
 
-/* =========================================
-   LOGIN TIME CHECK
-========================================= */
+    /* =========================================
+       LOGIN TIME CHECK
+    ========================================= */
 
-if (!isAdmin) {
+    if (!isAdmin) {
 
-  const now = new Date();
+      const now = new Date();
 
-  const indiaTime = new Date(
+      const indiaTime = new Date(
 
-    now.toLocaleString("en-US", {
-      timeZone: "Asia/Kolkata"
-    })
+        now.toLocaleString("en-US", {
+          timeZone: "Asia/Kolkata"
+        })
 
-  );
+      );
 
-  const hour =
-    indiaTime.getHours();
+      const hour =
+        indiaTime.getHours();
 
-  if (hour < 10 || hour >= 19) {
+      if (hour < 10 || hour >= 19) {
 
-    return res.status(403).json({
+        return res.status(403).json({
 
-      message:
-        "Login allowed only between 10 AM and 7 PM ❌"
+          message:
+            "Login allowed only between 10 AM and 7 PM ❌"
+
+        });
+
+      }
+
+    }
+
+    const token = jwt.sign(
+
+      {
+        id: user._id,
+        email: user.email,
+        role
+      },
+
+      process.env.JWT_SECRET,
+
+      {
+        expiresIn: "7d",
+        issuer: "crm-backend"
+      }
+    );
+
+    res.json({
+
+      token,
+
+      user: {
+
+        id: user._id,
+
+        name: user.name,
+
+        email: user.email,
+
+        role,
+
+        can_import:
+          isAdmin || user.can_import,
+
+        can_export:
+          isAdmin || user.can_export,
+
+        can_delete_lead:
+          isAdmin || user.can_delete_lead,
+
+      }
 
     });
 
   }
 
-}
-
-    const token = jwt.sign(
-
-  {
-    id: user._id,
-    email: user.email,
-    role
-  },
-
-  process.env.JWT_SECRET,
-
- {
-  expiresIn: "7d",
-  issuer: "crm-backend"
-}
-);
-
-   res.json({
-
-  token,
-
-  user: {
-
-    id: user._id,
-
-    name: user.name,
-
-    email: user.email,
-
-    role,
-
-    can_import:
-      isAdmin || user.can_import,
-
-    can_export:
-      isAdmin || user.can_export,
-
-    can_delete_lead:
-      isAdmin || user.can_delete_lead,
-
-  }
-
-});
-
-  }
-  
 
   catch (err) {
 
@@ -704,10 +704,10 @@ app.post("/api/add-user", auth, adminOnly, async (req, res) => {
     } = req.body;
 
     if (!password || password.length < 6) {
-  return res.status(400).json({
-    message: "Password must be at least 6 characters ❌"
-  });
-}
+      return res.status(400).json({
+        message: "Password must be at least 6 characters ❌"
+      });
+    }
 
     const exists = await User.findOne({
 
@@ -804,14 +804,14 @@ app.post("/api/bulk-add-users", auth, adminOnly, async (req, res) => {
       } = userData;
 
       if (
-  !name ||
-  !email ||
-  !password ||
-  password.length < 6
-) {
-  skipped++;
-  continue;
-}
+        !name ||
+        !email ||
+        !password ||
+        password.length < 6
+      ) {
+        skipped++;
+        continue;
+      }
       const exists = await User.findOne({
         email: email.toLowerCase().trim()
       });
@@ -876,9 +876,9 @@ app.post("/api/bulk-add-users", auth, adminOnly, async (req, res) => {
 
     console.log(err);
 
-    res.status(500).json({    
+    res.status(500).json({
 
-        
+
       message: "Bulk add failed ❌"
     });
 
@@ -990,51 +990,53 @@ app.post(
                 continue;
 
               const phone = String(
-  data["Phone"] || ""
-)
-  .replace(/\D/g, "")
-  .slice(-10);
+                data["Phone"] || ""
+              )
+                .replace(/\D/g, "")
+                .slice(-10);
 
-const project = String(
-  data["Project"] || ""
-).trim();
+              const projectName = String(
+                data["Project"] || ""
+              ).trim();
 
-const exists = await Lead.findOne({
-  phone,
-  project
-});
 
-/* DUPLICATE FOUND */
+              const exists = await Lead.findOne({
+                phone,
+                project: projectName
+              });
 
-if (exists) {
 
-  duplicateLeads.push({
+              /* DUPLICATE FOUND */
 
-    name:
-      data["Name"] || "",
+              if (exists) {
 
-    phone,
+                duplicateLeads.push({
 
-    project,
+                  name:
+                    data["Name"] || "",
 
-    assigned_to:
-      exists.assigned_to || ""
+                  phone,
 
-  });
+                  project: projectName,
 
-  continue;
-}
+                  assigned_to:
+                    exists.assigned_to || ""
+
+                });
+
+                continue;
+              }
 
               await Lead.create({
 
                 name:
                   data["Name"] || "",
 
-               phone: String(
-             data["Phone"] || ""
-               )
-           .replace(/\D/g, "")
-            .slice(-10),
+                phone: String(
+                  data["Phone"] || ""
+                )
+                  .replace(/\D/g, "")
+                  .slice(-10),
 
                 email:
                   data["Email"] || "",
@@ -1053,8 +1055,8 @@ if (exists) {
                   data["assigned_to"]
 
                     ? data["assigned_to"]
-                        .toLowerCase()
-                        .trim()
+                      .toLowerCase()
+                      .trim()
 
                     : assigned_to,
 
@@ -1070,19 +1072,19 @@ if (exists) {
               req.file.path
             );
 
-           res.json({
+            res.json({
 
-  success: true,
+              success: true,
 
-  message:
-    "Upload Success ✅",
+              message:
+                "Upload Success ✅",
 
-  inserted,
+              inserted,
 
-  duplicates:
-    duplicateLeads
+              duplicates:
+                duplicateLeads
 
-});
+            });
 
           }
 
@@ -1130,10 +1132,10 @@ app.get(
 
     try {
 
-const lead = await Lead.findOne({
-       phone: String(req.params.phone)
-    .replace(/\D/g, "")
-    .slice(-10)
+      const lead = await Lead.findOne({
+        phone: String(req.params.phone)
+          .replace(/\D/g, "")
+          .slice(-10)
       });
       if (!lead) {
 
@@ -1241,18 +1243,18 @@ app.post(
       } = req.body;
 
       const visit = await Visit.create({
-  leadId,
-  clientName,
-  mobile,
-  project,
-  attendedManager,
-  receptionUser,
-  visitStatus,
-  bookingStatus,
-  calling_by,
-  remark,
-  assigned_manager
-});
+        leadId,
+        clientName,
+        mobile,
+        project,
+        attendedManager,
+        receptionUser,
+        visitStatus,
+        bookingStatus,
+        calling_by,
+        remark,
+        assigned_manager
+      });
 
       /* ===============================
          GET MANAGER EMAIL
@@ -1273,33 +1275,33 @@ app.post(
           phone: mobile
 
         });
-       
-/* ===============================
-         UPDATE EXISTING LEAD
-      =============================== */
+
+      /* ===============================
+               UPDATE EXISTING LEAD
+            =============================== */
 
       if (existingLead) {
 
-  existingLead.name = clientName;
+        existingLead.name = clientName;
 
-  existingLead.project = project;
+        existingLead.project = project;
 
-  existingLead.assigned_manager =
-    manager?.email || "";
+        existingLead.assigned_manager =
+          manager?.email || "";
 
-  existingLead.visit_created = true;
+        existingLead.visit_created = true;
 
-  existingLead.visit_status =
-    visitStatus;
+        existingLead.visit_status =
+          visitStatus;
 
-  existingLead.status =
-    bookingStatus === "BOOKED"
-      ? "Booked"
-      : "Followup";
+        existingLead.status =
+          bookingStatus === "BOOKED"
+            ? "Booked"
+            : "Followup";
 
-  await existingLead.save();
+        await existingLead.save();
 
-}
+      }
 
       /* ===============================
          CREATE NEW LEAD
@@ -1307,34 +1309,34 @@ app.post(
 
       else {
 
-  await Lead.create({
+        await Lead.create({
 
-    name: clientName,
+          name: clientName,
 
-phone: String(mobile)
-  .replace(/\D/g, "")
-  .slice(-10),
-    project: project,
+          phone: String(mobile)
+            .replace(/\D/g, "")
+            .slice(-10),
+          project: project,
 
-    source: "Visit",
+          source: "Visit",
 
-    status:
-      bookingStatus === "BOOKED"
-        ? "Booked"
-        : "Followup",
+          status:
+            bookingStatus === "BOOKED"
+              ? "Booked"
+              : "Followup",
 
-    assigned_manager:
-      manager?.email || "",
+          assigned_manager:
+            manager?.email || "",
 
-    visit_created: true,
+          visit_created: true,
 
-    visit_status: visitStatus,
+          visit_status: visitStatus,
 
-    created_by: "Reception"
+          created_by: "Reception"
 
-  });
+        });
 
-}
+      }
 
       res.json({
 
@@ -1528,24 +1530,24 @@ app.post(
 
       fs.createReadStream(req.file.path)
 
-  .pipe(csv())
+        .pipe(csv())
 
-  .on("data", (row) => {
+        .on("data", (row) => {
 
-    // EMPTY ROW SKIP
-    if (
-      !row.phone &&
-      !row.Phone &&
-      !row.PHONE
-    ) {
-      return;
-    }
+          // EMPTY ROW SKIP
+          if (
+            !row.phone &&
+            !row.Phone &&
+            !row.PHONE
+          ) {
+            return;
+          }
 
-    results.push(row);
+          results.push(row);
 
-  })
+        })
 
-  .on("end", async () => {
+        .on("end", async () => {
 
           try {
 
@@ -1555,124 +1557,124 @@ app.post(
 
             for (const row of results) {
 
-           const rawPhone =
-           row["phone"] ||
-           row["Phone"] ||
-           row["PHONE"] ||
-           "";
+              const rawPhone =
+                row["phone"] ||
+                row["Phone"] ||
+                row["PHONE"] ||
+                "";
 
-          const phone = String(rawPhone)
-          .trim()
-          .replace(/\.0$/, "")
-          .replace(/\D/g, "")
-          .slice(-10);
+              const phone = String(rawPhone)
+                .trim()
+                .replace(/\.0$/, "")
+                .replace(/\D/g, "")
+                .slice(-10);
 
-           
+
               if (!phone) {
                 skipped++;
                 continue;
               }
-    
-        const existingLead = await Lead.findOne({
-  phone
-});
- 
-   if (!existingLead) {
 
-  console.log("❌ NOT FOUND =>", phone);
+              const existingLead = await Lead.findOne({
+                phone
+              });
 
-  skipped++;
+              if (!existingLead) {
 
-  continue;
-}
+                console.log("❌ NOT FOUND =>", phone);
 
-  duplicates.push({
-  name: existingLead.name,
-  phone,
-  project:
-    existingLead.project || "N/A",
-  assigned_to:
-    existingLead.assigned_to || "N/A"
-});
+                skipped++;
 
-const updateData = {};
+                continue;
+              }
 
-if (row["Enquiry"] || row["Project"]) {
+              duplicates.push({
+                name: existingLead.name,
+                phone,
+                project:
+                  existingLead.project || "N/A",
+                assigned_to:
+                  existingLead.assigned_to || "N/A"
+              });
 
-  updateData.project =
-    (
-      row["Enquiry"] ||
-      row["Project"]
-    ).trim();
+              const updateData = {};
 
-}
+              if (row["Enquiry"] || row["Project"]) {
 
-if (row["Lead Status"]) {
+                updateData.project =
+                  (
+                    row["Enquiry"] ||
+                    row["Project"]
+                  ).trim();
 
-  updateData.status =
-    row["Lead Status"].trim();
+              }
 
-}
+              if (row["Lead Status"]) {
 
-if (row["assigned_to"]) {
+                updateData.status =
+                  row["Lead Status"].trim();
 
-  updateData.assigned_to =
-    row["assigned_to"]
-      .toLowerCase()
-      .trim();
+              }
 
-}
+              if (row["assigned_to"]) {
 
-if (row["Lead Source"]) {
+                updateData.assigned_to =
+                  row["assigned_to"]
+                    .toLowerCase()
+                    .trim();
 
-  updateData.source =
-    row["Lead Source"].trim();
+              }
 
-}
+              if (row["Lead Source"]) {
 
-if (row["Description"]) {
+                updateData.source =
+                  row["Lead Source"].trim();
 
-  updateData.description =
-    row["Description"].trim();
+              }
 
-}
+              if (row["Description"]) {
 
-if (row["Sub Source"]) {
+                updateData.description =
+                  row["Description"].trim();
 
-  updateData.subSource =
-    row["Sub Source"].trim();
+              }
 
-}
+              if (row["Sub Source"]) {
 
-if (row["Closing Executive"]) {
+                updateData.subSource =
+                  row["Sub Source"].trim();
 
-  updateData.closingExecutive =
-    row["Closing Executive"].trim();
+              }
 
-}
+              if (row["Closing Executive"]) {
 
-await Lead.findByIdAndUpdate(
-  existingLead._id,
-  { $set: updateData },
-  { new: true }
-);
-    updated++;
+                updateData.closingExecutive =
+                  row["Closing Executive"].trim();
+
+              }
+
+              await Lead.findByIdAndUpdate(
+                existingLead._id,
+                { $set: updateData },
+                { new: true }
+              );
+              updated++;
             }
 
-if (fs.existsSync(req.file.path)) {
-  fs.unlinkSync(req.file.path);
-}
+            if (fs.existsSync(req.file.path)) {
+              fs.unlinkSync(req.file.path);
+            }
             res.json({
 
-  success: true,
+              success: true,
 
-  updated,
+              updated,
 
-  skipped,
+              skipped,
 
-  duplicates
+              duplicates
 
-});
+            });
           }
 
           catch (err) {
@@ -1787,29 +1789,29 @@ app.post("/api/add-lead", async (req, res) => {
       });
 
     }
-    
 
-const cleanPhone = String(phone || "")
-  .replace(/\D/g, "")
-  .slice(-10);
 
-const existingLead = await Lead.findOne({
-  phone: cleanPhone,
-  project: project || ""
-});
+    const cleanPhone = String(phone || "")
+      .replace(/\D/g, "")
+      .slice(-10);
 
-if (existingLead) {
-  return res.status(400).json({
-    message: "Lead already exists ❌"
-  });
-}
+    const existingLead = await Lead.findOne({
+      phone: cleanPhone,
+      project: project || ""
+    });
+
+    if (existingLead) {
+      return res.status(400).json({
+        message: "Lead already exists ❌"
+      });
+    }
 
 
     const lead = await Lead.create({
 
       name: name.trim(),
 
-       
+
       phone: cleanPhone,
 
       email: email || "",
@@ -1889,13 +1891,13 @@ app.get(
 
       const leads = await Lead.find({
 
-  assigned_to: email
+        assigned_to: email
 
-}).sort({
+      }).sort({
 
-  createdAt: -1
+        createdAt: -1
 
-});
+      });
       res.json(leads);
 
     }
@@ -2070,15 +2072,15 @@ app.post(
       if (filters.status) {
         query.status = filters.status;
       }
-      
+
       /* ASSIGNED FILTER */
 
-     if (filters.assigned) {
+      if (filters.assigned) {
 
         query.assigned_to =
-      filters.assigned
-      .toLowerCase()
-      .trim();
+          filters.assigned
+            .toLowerCase()
+            .trim();
 
       }
       if (filters.project) {
@@ -2162,8 +2164,8 @@ app.post(
           next_call_date
 
             ? new Date(
-                next_call_date
-              )
+              next_call_date
+            )
 
             : null
 
@@ -2582,28 +2584,28 @@ app.get(
         });
 
 
-        /* TODAY FOLLOWUPS LIST */
+      /* TODAY FOLLOWUPS LIST */
 
-const todayFollowupsList =
-  await Followup.find({
+      const todayFollowupsList =
+        await Followup.find({
 
-    executive: email,
+          executive: email,
 
-    followup_date: {
+          followup_date: {
 
-      $gte: today,
+            $gte: today,
 
-      $lt: tomorrow
+            $lt: tomorrow
 
-    }
+          }
 
-  })
+        })
 
-  .sort({
-    followup_date: 1
-  })
+          .sort({
+            followup_date: 1
+          })
 
-  .limit(10);
+          .limit(10);
 
       /* PENDING CALLS */
 
@@ -2771,11 +2773,11 @@ app.get(
 
         })
 
-        .sort({
-          createdAt: -1
-        })
+          .sort({
+            createdAt: -1
+          })
 
-        .limit(10);
+          .limit(10);
 
       /* RESPONSE */
 
@@ -3371,9 +3373,9 @@ app.get("/api/dashboard-full", async (req, res) => {
 
       })
 
-      .select("name phone")
+        .select("name phone")
 
-      .limit(10);
+        .limit(10);
 
     /* =====================================
        MISSED FOLLOWUPS
@@ -3394,9 +3396,9 @@ app.get("/api/dashboard-full", async (req, res) => {
 
       })
 
-      .select("name phone")
+        .select("name phone")
 
-      .limit(10);
+        .limit(10);
 
     /* =====================================
        PROJECT ANALYSIS
@@ -3606,9 +3608,9 @@ app.use((err, req, res, next) => {
   console.log("GLOBAL ERROR ❌", err);
 
   res.status(err.status || 500).json({
-  success: false,
-  message: err.message || "Server Error ❌"
-});
+    success: false,
+    message: err.message || "Server Error ❌"
+  });
 
 });
 /* =========================================

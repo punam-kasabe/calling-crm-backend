@@ -1,14 +1,21 @@
 {
-  "name": "backend",
+  "name": "crm-backend",
   "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "main": "server.js",
+
+  "engines": {
+    "node": "20.x"
   },
+
+  "scripts": {
+    "start": "node server.js"
+  },
+
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
+
   "dependencies": {
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",
