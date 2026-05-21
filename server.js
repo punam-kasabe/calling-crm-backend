@@ -986,6 +986,8 @@ app.post(
 
            for (const data of rows) {
 
+  for (const data of rows) {
+
   if (!data["Phone"])
     continue;
 
@@ -1010,72 +1012,61 @@ app.post(
     project
   });
 
-const project = String(
-  data["Project"] || ""
-).trim();
+  /* DUPLICATE */
 
-const exists = await Lead.findOne({
-  phone,
-  project
-});
+  if (exists) {
 
-/* DUPLICATE FOUND */
+    duplicateLeads.push({
 
-if (exists) {
+      name:
+        data["Name"] || "",
 
-  duplicateLeads.push({
+      phone: cleanPhone,
+
+      project,
+
+      assigned_to:
+        exists.assigned_to || ""
+
+    });
+
+    continue;
+  }
+
+  await Lead.create({
 
     name:
       data["Name"] || "",
 
-    phone,
+    phone: cleanPhone,
+
+    email:
+      data["Email"] || "",
+
+    source:
+      data["Lead Source"] || "",
 
     project,
 
+    status:
+      data["Lead Status"] || "New",
+
     assigned_to:
-      exists.assigned_to || ""
+
+      data["assigned_to"]
+
+        ? data["assigned_to"]
+            .toLowerCase()
+            .trim()
+
+        : assigned_to,
+
+    created_by
 
   });
 
-  continue;
+  inserted++;
 }
-
-              await Lead.create({
-
-                name:
-                  data["Name"] || "",
-
-                phone: cleanPhone,
-                email:
-                  data["Email"] || "",
-
-                source:
-                  data["Lead Source"] || "",
-
-                project:
-                  data["Project"] || "",
-
-                status:
-                  data["Lead Status"] || "New",
-
-                assigned_to:
-
-                  data["assigned_to"]
-
-                    ? data["assigned_to"]
-                        .toLowerCase()
-                        .trim()
-
-                    : assigned_to,
-
-                created_by
-
-              });
-
-              inserted++;
-
-            }
-
             fs.unlinkSync(
               req.file.path
             );
