@@ -508,7 +508,9 @@ app.post("/api/login", loginLimiter, async (req, res) => {
       });
 
     }
+
 if ((user.status || "").toLowerCase() !== "active") {
+
   return res.status(403).json({
     message: "User inactive ❌"
   });
@@ -516,7 +518,17 @@ if ((user.status || "").toLowerCase() !== "active") {
 }
 
 /* =========================================
-   LOGIN TIME CHECK (10 AM - 7 PM)
+   ROLE
+========================================= */
+
+const role =
+  user.role?.toLowerCase();
+
+const isAdmin =
+  role === "admin";
+
+/* =========================================
+   LOGIN TIME CHECK
 ========================================= */
 
 if (!isAdmin) {
@@ -524,28 +536,29 @@ if (!isAdmin) {
   const now = new Date();
 
   const indiaTime = new Date(
+
     now.toLocaleString("en-US", {
       timeZone: "Asia/Kolkata"
     })
+
   );
 
-  const hour = indiaTime.getHours();
+  const hour =
+    indiaTime.getHours();
 
   if (hour < 10 || hour >= 19) {
 
     return res.status(403).json({
+
       message:
         "Login allowed only between 10 AM and 7 PM ❌"
+
     });
 
   }
 
 }
 
-
-    const role = user.role?.toLowerCase();
-
-    const isAdmin = role === "admin";
     const token = jwt.sign(
 
   {
@@ -608,20 +621,6 @@ if (!isAdmin) {
    AUTH MIDDLEWARE
 ========================================= */
 
-const auth = (req, res, next) => {
-
-  try {
-
-    const authHeader = req.headers.authorization;
-
-if (
-  !authHeader ||
-  !authHeader.startsWith("Bearer ")
-) {
-  return res.status(401).json({
-    message: "No token ❌"
-  });
-}
 
 const auth = (req, res, next) => {
 
@@ -683,17 +682,7 @@ const auth = (req, res, next) => {
 
     next();
 
-  }
-
-  catch (err) {
-
-    res.status(401).json({
-      message: "Invalid token ❌"
-    });
-
-  }
-
-};
+  
 
 const adminOnly = (req, res, next) => {
 
