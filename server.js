@@ -2347,6 +2347,56 @@ app.delete("/api/delete-lead/:id", auth, adminOnly, async (req, res) => {
   }
 
 });
+
+
+/* =========================================
+   DELETE MULTIPLE LEADS
+========================================= */
+
+app.post(
+  "/api/delete-multiple-leads",
+  auth,
+  adminOnly,
+
+  async (req, res) => {
+
+    try {
+
+      const { ids } = req.body;
+
+      if (!ids || !Array.isArray(ids)) {
+
+        return res.status(400).json({
+          message: "IDs array required ❌"
+        });
+
+      }
+
+      await Lead.deleteMany({
+        _id: { $in: ids }
+      });
+
+      res.json({
+        success: true,
+        message: "Selected leads deleted ✅"
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+        message: "Bulk delete failed ❌"
+      });
+
+    }
+
+  }
+
+);
+
 /* =========================================
    TODAY FOLLOWUPS
 ========================================= */
