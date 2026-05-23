@@ -214,7 +214,8 @@ const leadSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
-
+ 
+  
   followup_date: {
     type: Date,
     default: null
@@ -255,6 +256,12 @@ const leadSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+
+  created_date: {
+  type: Date,
+  default: Date.now
+  },
+
 
   next_call_date: {
     type: Date,
@@ -1032,6 +1039,8 @@ app.post(
 
                 project:
                   data["Project"] || "",
+
+                created_date: new Date(),
 
                 status:
                   data["Lead Status"] || "New",
@@ -3551,6 +3560,102 @@ process.on("uncaughtException", (err) => {
 });
 
 const PORT = process.env.PORT || 5000;
+
+/* =========================================
+   99ACRES WEBHOOK
+========================================= */
+
+app.post("/api/99acres-webhook", async (req, res) => {
+
+  try {
+
+    console.log("99acres Lead =>", req.body);
+
+    const data = req.body;
+
+    /* =========================
+       NORMALIZE PHONE
+    ========================= */
+
+    const phone = normalizePhone(
+      data.phone || data.mobile || ""
+    );
+
+    /* =========================
+       DUPLICATE CHECK
+    ========================= */
+
+    const exists = await Lead.findOne({
+      phone
+    });
+
+    if (exists) {
+
+      return res.json({
+        success: true,
+        message: "Duplicate skipped"
+      });
+
+    }
+
+    /* =========================
+       CREATE LEAD
+    ========================= */
+
+    const lead = await Lead.create({
+
+      name:
+        data.name ||
+        data.customer_name ||
+        "",
+
+      phone,
+
+      email:
+        data.email || "",
+
+      source: "99acres",
+
+      subSource: "99acres",
+
+      project:
+        data.project ||
+        data.project_name ||
+        "",
+
+      status: "New",
+
+      assigned_to: "",
+
+      created_by: "99acres"
+
+    });
+
+    res.json({
+
+      success: true,
+
+      message: "Lead Added ✅",
+
+      lead
+
+    });
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Webhook failed ❌"
+    });
+
+  }
+
+});
+
+
 app.get("/", (req, res) => {
   res.send("CRM Backend Running ✅");
 });
