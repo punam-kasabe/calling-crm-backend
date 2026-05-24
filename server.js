@@ -220,12 +220,24 @@ const leadSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+assignedTo: {
+  type: String,
+  default: "",
+  trim: true
+},
 
   assigned_to: {
     type: String,
     lowercase: true,
     trim: true
   },
+
+  assigned_to_email: {
+  type: String,
+  lowercase: true,
+  trim: true,
+  default: ""
+},
 
   assigned_manager: {
     type: String,
@@ -1716,6 +1728,7 @@ app.post("/api/add-lead", async (req, res) => {
       project,
       status,
       assignedTo,
+      assigned_to_email,
       closingExecutive,
       description,
       remark,
@@ -1752,9 +1765,15 @@ app.post("/api/add-lead", async (req, res) => {
 
       status: status || "New",
 
-      assigned_to:
-        assignedTo?.toLowerCase()?.trim() || "",
+      assignedTo:
+      assignedTo || "",
 
+      assigned_to:
+      assigned_to_email?.toLowerCase()?.trim() || "",
+
+      assigned_to_email:
+      assigned_to_email?.toLowerCase()?.trim() || "",
+      
       closingExecutive:
         closingExecutive || "",
 
@@ -2590,6 +2609,34 @@ app.get(
 
           .limit(10);
 
+                /* TODAY SITE VISITS */
+
+      const todaySiteVisits =
+        await Visit.find({
+
+          calling_by: {
+            $in: [email]
+          },
+
+          visitDate: {
+
+            $gte: today,
+
+            $lt: tomorrow
+
+          }
+
+        })
+
+          .sort({
+            visitDate: 1
+          })
+
+          .limit(10)
+          .select(
+            "clientName mobile project visitDate"
+          );
+
       /* PENDING CALLS */
 
       const pendingCalls =
@@ -2640,8 +2687,8 @@ app.get(
         pendingCalls,
 
         recentLeads,
-        todayFollowupsList
-
+        todayFollowupsList,
+         todaySiteVisits
       });
 
     }
@@ -3025,6 +3072,7 @@ app.delete("/api/projects/:id", auth, adminOnly, async (req, res) => {
     });
   }
 });
+
 /* =========================================
    FULL DASHBOARD API
 ========================================= */
@@ -3359,6 +3407,58 @@ app.get("/api/dashboard-full", async (req, res) => {
         .select("name phone")
 
         .limit(10);
+
+        /* =========================================
+   GET FOLLOWUPS
+========================================= */
+
+app.get("/api/followups/:id", async (req, res) => {
+
+  try {
+
+    const user = await User.findById(
+      req.params.id
+    );
+
+    if (!user) {
+
+      return res.status(404).json({
+        message: "User not found ❌"
+      });
+
+    }
+
+    const email = user.email
+      ?.toLowerCase()
+      .trim();
+
+    const followups = await Lead.find({
+
+      assigned_to: email,
+
+      status: "Followup"
+
+    }).sort({
+
+      followup_date: 1
+
+    });
+
+    res.json(followups);
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Followups fetch failed ❌"
+    });
+
+  }
+
+});
 
     /* =====================================
        MISSED FOLLOWUPS
