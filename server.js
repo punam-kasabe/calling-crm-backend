@@ -10,7 +10,7 @@ const helmet = require("helmet");
 require("dotenv").config();
 const rateLimit = require("express-rate-limit");
 const compression = require("compression");
-const stringSimilarity = require("string-similarity");
+
 
 const app = express();
 app.set("trust proxy", 1);
@@ -112,114 +112,7 @@ const normalizePhone = (phone) => {
   return cleaned;
 };
 
-/* =========================================
-   DUPLICATE LEAD CHECKER
-========================================= */
 
-const checkDuplicateLead = async ({
-  phone,
-  email,
-  name
-}) => {
-
-  const duplicates = [];
-
-  /* =========================
-     PHONE CHECK
-  ========================= */
-
-  if (phone) {
-
-    const existingPhone =
-      await Lead.findOne({
-        phone: normalizePhone(phone)
-      });
-
-    if (existingPhone) {
-
-      duplicates.push({
-
-        type: "PHONE",
-
-        lead: existingPhone
-
-      });
-
-    }
-
-  }
-
-  /* =========================
-     EMAIL CHECK
-  ========================= */
-
-  if (email) {
-
-    const existingEmail =
-      await Lead.findOne({
-
-        email:
-          email.toLowerCase().trim()
-
-      });
-
-    if (existingEmail) {
-
-      duplicates.push({
-
-        type: "EMAIL",
-
-        lead: existingEmail
-
-      });
-
-    }
-
-  }
-
-  /* =========================
-     NAME SIMILARITY
-  ========================= */
-
-  if (name) {
-
-    const allLeads =
-      await Lead.find()
-        .select("name phone");
-
-    for (const lead of allLeads) {
-
-      const similarity =
-        stringSimilarity.compareTwoStrings(
-
-          name.toLowerCase(),
-
-          (lead.name || "")
-            .toLowerCase()
-
-        );
-
-      if (similarity > 0.80) {
-
-        duplicates.push({
-
-          type: "NAME_SIMILARITY",
-
-          similarity,
-
-          lead
-
-        });
-
-      }
-
-    }
-
-  }
-
-  return duplicates;
-
-};
 /* =========================================
    USER SCHEMA
 ========================================= */
@@ -269,9 +162,11 @@ const userSchema = new mongoose.Schema({
 const leadSchema = new mongoose.Schema({
 
   name: String,
+
   phone: {
   type: String,
   trim: true,
+  unique: true,
   index: true
 },
 
@@ -1683,7 +1578,28 @@ const phone = normalizePhone(rawPhone);
 
 console.log("INSERT PHONE =>", phone);
 
+/* ======================================
+   DUPLICATE CHECK
+====================================== */
 
+const existingLead = await Lead.findOne({
+  phone
+});
+
+if (existingLead) {
+
+  duplicates.push({
+    phone,
+    name:
+      row["name"] ||
+      row["Name"] ||
+      ""
+  });
+
+  skipped++;
+
+  continue;
+}
   await Lead.create({
 
   name: row["name"] || "",
