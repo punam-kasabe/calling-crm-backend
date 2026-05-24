@@ -2480,6 +2480,49 @@ app.get(
   }
 
 );
+
+/* =========================================
+   MY FOLLOWUPS
+========================================= */
+
+app.get("/api/my-followups", async (req, res) => {
+
+  try {
+
+    const email = req.query.email
+      ?.toLowerCase()
+      .trim();
+
+    const leads = await Lead.find({
+
+      assigned_to: email,
+
+      next_call_date: {
+        $ne: null
+      }
+
+    }).sort({
+
+      next_call_date: 1
+
+    });
+
+    res.json(leads);
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Followups fetch failed ❌"
+    });
+
+  }
+
+});
+
 /* =========================================
    EXECUTIVE DASHBOARD
 ========================================= */
