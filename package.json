@@ -2,20 +2,16 @@
   "name": "crm-backend",
   "version": "1.0.0",
   "main": "server.js",
-
   "engines": {
     "node": "20.x"
   },
-
   "scripts": {
     "start": "node server.js"
   },
-
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
-
   "dependencies": {
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",
@@ -28,6 +24,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.23.0",
     "multer": "^2.1.1",
-    "mysql2": "^3.21.1"
+    "mysql2": "^3.21.1",
+    "string-similarity": "^4.0.4"
   }
 }
