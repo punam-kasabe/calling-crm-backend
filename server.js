@@ -1589,12 +1589,30 @@ const existingLead = await Lead.findOne({
 if (existingLead) {
 
   duplicates.push({
-    phone,
-    name:
-      row["name"] ||
-      row["Name"] ||
-      ""
-  });
+
+  phone,
+
+  name:
+    row["name"] ||
+    row["Name"] ||
+    "",
+
+  assigned_to:
+  existingLead.assignedTo || "",
+
+  assigned_to_email:
+    existingLead.assigned_to || "",
+
+  assigned_to_email:
+    existingLead.assigned_to_email || "",
+
+  project:
+    existingLead.project || "",
+
+  status:
+    existingLead.status || ""
+
+});
 
   skipped++;
 
