@@ -1602,28 +1602,33 @@ const existingLead = await Lead.findOne({
 
 if (existingLead) {
 
- duplicates.push({
+duplicates.push({
 
   phone,
 
   name:
-    existingLead.name || 
-    row["name"] || 
-    row["Name"] || "",
+    existingLead.name ||
+    row["name"] ||
+    row["Name"] ||
+    "No Name",
+
+  email:
+    existingLead.email || "",
+
+  project:
+    existingLead.project ||
+    row["Project"] ||
+    row["Enquiry"] ||
+    "Unknown Project",
 
   assigned_to:
     existingLead.assignedTo ||
     existingLead.assigned_to ||
+    existingLead.assigned_to_email ||
     "Unassigned",
 
-  assigned_to_email:
-    existingLead.assigned_to_email || "",
-
-  project:
-    existingLead.project || "",
-
   status:
-    existingLead.status || ""
+    existingLead.status || "New"
 
 });
   skipped++;
