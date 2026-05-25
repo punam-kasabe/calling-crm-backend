@@ -977,6 +977,33 @@ app.get("/api/managers", async (req, res) => {
 
 });
 
+
+const existingLead = await Lead.findOne({
+  phone
+});
+
+if (existingLead) {
+
+  duplicateLeads.push({
+
+  phone,
+
+  name:
+    existingLead.name || "",
+
+  project:
+    existingLead.project || "",
+
+  assigned_to:
+    existingLead.assigned_to || "",
+
+  status:
+    existingLead.status || "New"
+
+});
+
+  continue;
+}
 /* =========================================
    CSV UPLOAD
 ========================================= */
@@ -1035,9 +1062,6 @@ app.post(
               const projectName = String(
                 data["Project"] || ""
               ).trim();
-
-
-            
 
               await Lead.create({
 
@@ -1603,7 +1627,6 @@ const existingLead = await Lead.findOne({
 if (existingLead) {
 
 duplicates.push({
-
   phone,
 
   name:
@@ -1883,41 +1906,42 @@ app.post("/api/add-lead", async (req, res) => {
    EXECUTIVE LEADS
 ========================================= */
 
-app.get(
-  "/api/my-leads",
+app.get("/api/executive-leads", async (req, res) => {
 
-  async (req, res) => {
+  try {
 
-    try {
+    const email = req.query.email
+      ?.toLowerCase()
+      .trim();
 
-      const email = req.query.email
-        ?.toLowerCase()
-        .trim();
+    const leads = await Lead.find({
 
-      const leads = await Lead.find({
+      $or: [
+        { assigned_to: email },
+        { assigned_to_email: email }
+      ]
 
-        assigned_to: email
+    }).sort({
 
-      }).sort({
+      createdAt: -1
 
-        createdAt: -1
+    });
 
-      });
-      res.json(leads);
-
-    }
-
-    catch {
-
-      res.status(500).json({
-        message: "Fetch error ❌"
-      });
-
-    }
+    res.json(leads);
 
   }
 
-);
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Fetch error ❌"
+    });
+
+  }
+
+});
 
 /* =========================================
    MANAGER CLIENTS
@@ -3207,6 +3231,57 @@ app.get("/api/dashboard-full", async (req, res) => {
       match.assigned_manager = email;
 
     }
+     /* =========================================
+                      GET FOLLOWUPS
+     ========================================= */
+
+app.get("/api/followups/:id", async (req, res) => {
+
+  try {
+
+    const user = await User.findById(
+      req.params.id
+    );
+
+    if (!user) {
+
+      return res.status(404).json({
+        message: "User not found ❌"
+      });
+
+    }
+
+    const email = user.email
+      ?.toLowerCase()
+      .trim();
+
+    const followups = await Lead.find({
+
+      assigned_to: email,
+
+      status: "Followup"
+
+    }).sort({
+
+      followup_date: 1
+
+    });
+
+    res.json(followups);
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Followups fetch failed ❌"
+    });
+
+  }
+
+});
 
     /* =====================================
        SUMMARY COUNTS
@@ -3509,58 +3584,7 @@ app.get("/api/dashboard-full", async (req, res) => {
 
         .limit(10);
 
-        /* =========================================
-   GET FOLLOWUPS
-========================================= */
-
-app.get("/api/followups/:id", async (req, res) => {
-
-  try {
-
-    const user = await User.findById(
-      req.params.id
-    );
-
-    if (!user) {
-
-      return res.status(404).json({
-        message: "User not found ❌"
-      });
-
-    }
-
-    const email = user.email
-      ?.toLowerCase()
-      .trim();
-
-    const followups = await Lead.find({
-
-      assigned_to: email,
-
-      status: "Followup"
-
-    }).sort({
-
-      followup_date: 1
-
-    });
-
-    res.json(followups);
-
-  }
-
-  catch (err) {
-
-    console.log(err);
-
-    res.status(500).json({
-      message: "Followups fetch failed ❌"
-    });
-
-  }
-
-});
-
+       
     /* =====================================
        MISSED FOLLOWUPS
     ===================================== */
