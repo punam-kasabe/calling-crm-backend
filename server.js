@@ -1622,10 +1622,9 @@ duplicates.push({
     "Unknown Project",
 
   assigned_to:
-    existingLead.assignedTo ||
-    existingLead.assigned_to ||
-    existingLead.assigned_to_email ||
-    "Unassigned",
+  existingLead.assigned_to_email ||
+  existingLead.assigned_to ||
+  "Unassigned",
 
   status:
     existingLead.status || "New"
