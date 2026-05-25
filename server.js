@@ -1582,8 +1582,22 @@ console.log("INSERT PHONE =>", phone);
    DUPLICATE CHECK
 ====================================== */
 
+const projectName =
+  row["Enquiry"] ||
+  row["Project"] ||
+  "";
+
 const existingLead = await Lead.findOne({
-  phone
+
+  phone,
+
+  project: {
+    $regex: new RegExp(
+      `^${projectName.trim()}$`,
+      "i"
+    )
+  }
+
 });
 
 if (existingLead) {
