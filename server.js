@@ -978,7 +978,32 @@ app.get("/api/managers", async (req, res) => {
 });
 
 
+const existingLead = await Lead.findOne({
+  phone
+});
 
+if (existingLead) {
+
+  duplicateLeads.push({
+
+  phone,
+
+  name:
+    existingLead.name || "",
+
+  project:
+    existingLead.project || "",
+
+  assigned_to:
+    existingLead.assigned_to || "",
+
+  status:
+    existingLead.status || "New"
+
+});
+
+  continue;
+}
 /* =========================================
    CSV UPLOAD
 ========================================= */
@@ -1033,37 +1058,6 @@ app.post(
              const phone = normalizePhone(
             data["Phone"]
                );
-
-
-/* =========================
-     DUPLICATE CHECK
-  ========================= */
-  const existingLead = await Lead.findOne({
-  phone
-});
-
-if (existingLead) {
-
-  duplicateLeads.push({
-
-  phone,
-
-  name:
-    existingLead.name || "",
-
-  project:
-    existingLead.project || "",
-
-  assigned_to:
-    existingLead.assigned_to || "",
-
-  status:
-    existingLead.status || "New"
-
-});
-
-  continue;
-}
 
               const projectName = String(
                 data["Project"] || ""
@@ -2135,6 +2129,8 @@ app.post(
 
         const totalLeads =
       await Lead.countDocuments();
+
+
       const leads =
         await Lead.find(query)
 
@@ -2681,7 +2677,6 @@ app.get(
 
         });
 
-        
       /* TODAY FOLLOWUPS */
 
       const today = new Date();
