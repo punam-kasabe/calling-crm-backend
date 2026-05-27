@@ -1963,6 +1963,56 @@ app.get("/api/executive-leads", async (req, res) => {
 
 });
 
+
+
+/* =========================================
+   MY LEADS
+========================================= */
+
+app.get("/api/my-leads", async (req, res) => {
+
+  try {
+
+    const email = req.query.email
+      ?.toLowerCase()
+      .trim();
+
+    if (!email) {
+
+      return res.status(400).json({
+        message: "Email required ❌"
+      });
+
+    }
+
+    const leads = await Lead.find({
+
+      $or: [
+        { assigned_to: email },
+        { assigned_to_email: email }
+      ]
+
+    }).sort({
+
+      createdAt: -1
+
+    });
+
+    res.json(leads);
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Server Error ❌"
+    });
+
+  }
+
+});
 /* =========================================
    MANAGER CLIENTS
 ========================================= */
