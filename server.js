@@ -1040,7 +1040,7 @@ app.post(
   ========================= */
   const existingLead = await Lead.findOne({
   phone
-  });
+});
 
 if (existingLead) {
 
@@ -3203,8 +3203,40 @@ app.delete("/api/projects/:id", auth, adminOnly, async (req, res) => {
   }
 });
 
+/* =========================================
+   FULL DASHBOARD API
+========================================= */
 
- /* =========================================
+app.get("/api/dashboard-full", async (req, res) => {
+
+  try {
+
+    const email =
+      req.query.email
+        ?.toLowerCase()
+        .trim();
+
+    const role =
+      req.query.role
+        ?.toLowerCase()
+        .trim();
+
+    let match = {};
+
+    /* ROLE FILTER */
+
+    if (role === "executive") {
+
+      match.assigned_to = email;
+
+    }
+
+    if (role === "manager") {
+
+      match.assigned_manager = email;
+
+    }
+     /* =========================================
                       GET FOLLOWUPS
      ========================================= */
 
@@ -3255,40 +3287,6 @@ app.get("/api/followups/:id", async (req, res) => {
   }
 
 });
-/* =========================================
-   FULL DASHBOARD API
-========================================= */
-
-app.get("/api/dashboard-full", async (req, res) => {
-
-  try {
-
-    const email =
-      req.query.email
-        ?.toLowerCase()
-        .trim();
-
-    const role =
-      req.query.role
-        ?.toLowerCase()
-        .trim();
-
-    let match = {};
-
-    /* ROLE FILTER */
-
-    if (role === "executive") {
-
-      match.assigned_to = email;
-
-    }
-
-    if (role === "manager") {
-
-      match.assigned_manager = email;
-
-    }
-    
 
     /* =====================================
        SUMMARY COUNTS
