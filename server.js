@@ -977,6 +977,8 @@ app.get("/api/managers", async (req, res) => {
 
 });
 
+
+
 /* =========================================
    CSV UPLOAD
 ========================================= */
@@ -1023,62 +1025,83 @@ app.post(
             let inserted = 0;
             let duplicateLeads = [];
 
-            for (const data of rows) {
+           for (const data of rows) {
 
-              if (!data["Phone"])
-                continue;
+  if (!data["Phone"]) continue;
 
-             const phone = normalizePhone(
-            data["Phone"]
-               );
+  const phone = normalizePhone(
+    data["Phone"]
+  );
 
-              const projectName = String(
-                data["Project"] || ""
-              ).trim();
+  /* =========================
+     DUPLICATE CHECK
+  ========================= */
 
+  const existingLead = await Lead.findOne({
+    phone
+  });
 
-            
+  if (existingLead) {
 
-              await Lead.create({
+    duplicateLeads.push({
 
-                name:
-                  data["Name"] || "",
+      phone,
 
-                phone,
+      name:
+        existingLead.name || "",
 
-                email:
-                  data["Email"] || "",
+      project:
+        existingLead.project || "",
 
-                source:
-                  data["Lead Source"] || "",
+      assigned_to:
+        existingLead.assigned_to || "",
 
-                project:
-                  data["Project"] || "",
+      status:
+        existingLead.status || "New"
 
-                created_date: new Date(),
+    });
 
-                status:
-                  data["Lead Status"] || "New",
+    continue;
+  }
 
-                assigned_to:
+  await Lead.create({
 
-                  data["assigned_to"]
+    name:
+      data["Name"] || "",
 
-                    ? data["assigned_to"]
-                      .toLowerCase()
-                      .trim()
+    phone,
 
-                    : assigned_to,
+    email:
+      data["Email"] || "",
 
-                created_by
+    source:
+      data["Lead Source"] || "",
 
-              });
+    project:
+      data["Project"] || "",
 
-              inserted++;
+    created_date: new Date(),
 
-            }
+    status:
+      data["Lead Status"] || "New",
 
-            fs.unlinkSync(
+    assigned_to:
+
+      data["assigned_to"]
+
+        ? data["assigned_to"]
+            .toLowerCase()
+            .trim()
+
+        : assigned_to,
+
+    created_by
+
+  });
+
+  inserted++;
+
+}           fs.unlinkSync(
               req.file.path
             );
 
@@ -2104,9 +2127,7 @@ app.post(
         );
 
         const totalLeads =
-  await Lead.countDocuments();
-
-
+      await Lead.countDocuments();
       const leads =
         await Lead.find(query)
 
@@ -2653,6 +2674,7 @@ app.get(
 
         });
 
+        
       /* TODAY FOLLOWUPS */
 
       const today = new Date();
@@ -3174,6 +3196,58 @@ app.delete("/api/projects/:id", auth, adminOnly, async (req, res) => {
   }
 });
 
+
+ /* =========================================
+                      GET FOLLOWUPS
+     ========================================= */
+
+app.get("/api/followups/:id", async (req, res) => {
+
+  try {
+
+    const user = await User.findById(
+      req.params.id
+    );
+
+    if (!user) {
+
+      return res.status(404).json({
+        message: "User not found ❌"
+      });
+
+    }
+
+    const email = user.email
+      ?.toLowerCase()
+      .trim();
+
+    const followups = await Lead.find({
+
+      assigned_to: email,
+
+      status: "Followup"
+
+    }).sort({
+
+      followup_date: 1
+
+    });
+
+    res.json(followups);
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Followups fetch failed ❌"
+    });
+
+  }
+
+});
 /* =========================================
    FULL DASHBOARD API
 ========================================= */
@@ -3207,8 +3281,8 @@ app.get("/api/dashboard-full", async (req, res) => {
       match.assigned_manager = email;
 
     }
-
     
+
     /* =====================================
        SUMMARY COUNTS
     ===================================== */
