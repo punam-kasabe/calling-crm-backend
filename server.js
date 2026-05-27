@@ -1045,6 +1045,7 @@ app.post(
 
     duplicateLeads.push({
 
+
       phone,
 
       name:
@@ -1085,15 +1086,19 @@ app.post(
     status:
       data["Lead Status"] || "New",
 
-    assigned_to:
+   assigned_to:
+  data["assigned_to"]
+    ? data["assigned_to"]
+        .toLowerCase()
+        .trim()
+    : assigned_to,
 
-      data["assigned_to"]
-
-        ? data["assigned_to"]
-            .toLowerCase()
-            .trim()
-
-        : assigned_to,
+assigned_to_email:
+  data["assigned_to"]
+    ? data["assigned_to"]
+        .toLowerCase()
+        .trim()
+    : assigned_to,
 
     created_by
 
@@ -1846,13 +1851,29 @@ app.post("/api/add-lead", async (req, res) => {
       status: status || "New",
 
       assignedTo:
-      assignedTo || "",
+  assignedTo || "",
 
-      assigned_to:
-      assigned_to_email?.toLowerCase()?.trim() || "",
+assigned_to:
+  assigned_to_email
+    ?.toLowerCase()
+    ?.trim() ||
 
-      assigned_to_email:
-      assigned_to_email?.toLowerCase()?.trim() || "",
+  assignedTo
+    ?.toLowerCase()
+    ?.trim() ||
+
+  "",
+
+assigned_to_email:
+  assigned_to_email
+    ?.toLowerCase()
+    ?.trim() ||
+
+  assignedTo
+    ?.toLowerCase()
+    ?.trim() ||
+
+  "",
       
       closingExecutive:
         closingExecutive || "",
