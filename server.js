@@ -978,32 +978,7 @@ app.get("/api/managers", async (req, res) => {
 });
 
 
-const existingLead = await Lead.findOne({
-  phone
-});
 
-if (existingLead) {
-
-  duplicateLeads.push({
-
-  phone,
-
-  name:
-    existingLead.name || "",
-
-  project:
-    existingLead.project || "",
-
-  assigned_to:
-    existingLead.assigned_to || "",
-
-  status:
-    existingLead.status || "New"
-
-});
-
-  continue;
-}
 /* =========================================
    CSV UPLOAD
 ========================================= */
@@ -1058,6 +1033,37 @@ app.post(
              const phone = normalizePhone(
             data["Phone"]
                );
+
+
+/* =========================
+     DUPLICATE CHECK
+  ========================= */
+  const existingLead = await Lead.findOne({
+  phone
+  });
+
+if (existingLead) {
+
+  duplicateLeads.push({
+
+  phone,
+
+  name:
+    existingLead.name || "",
+
+  project:
+    existingLead.project || "",
+
+  assigned_to:
+    existingLead.assigned_to || "",
+
+  status:
+    existingLead.status || "New"
+
+});
+
+  continue;
+}
 
               const projectName = String(
                 data["Project"] || ""
@@ -2128,9 +2134,7 @@ app.post(
         );
 
         const totalLeads =
-  await Lead.countDocuments();
-
-
+      await Lead.countDocuments();
       const leads =
         await Lead.find(query)
 
@@ -2677,6 +2681,7 @@ app.get(
 
         });
 
+        
       /* TODAY FOLLOWUPS */
 
       const today = new Date();
@@ -3198,40 +3203,8 @@ app.delete("/api/projects/:id", auth, adminOnly, async (req, res) => {
   }
 });
 
-/* =========================================
-   FULL DASHBOARD API
-========================================= */
 
-app.get("/api/dashboard-full", async (req, res) => {
-
-  try {
-
-    const email =
-      req.query.email
-        ?.toLowerCase()
-        .trim();
-
-    const role =
-      req.query.role
-        ?.toLowerCase()
-        .trim();
-
-    let match = {};
-
-    /* ROLE FILTER */
-
-    if (role === "executive") {
-
-      match.assigned_to = email;
-
-    }
-
-    if (role === "manager") {
-
-      match.assigned_manager = email;
-
-    }
-     /* =========================================
+ /* =========================================
                       GET FOLLOWUPS
      ========================================= */
 
@@ -3282,6 +3255,40 @@ app.get("/api/followups/:id", async (req, res) => {
   }
 
 });
+/* =========================================
+   FULL DASHBOARD API
+========================================= */
+
+app.get("/api/dashboard-full", async (req, res) => {
+
+  try {
+
+    const email =
+      req.query.email
+        ?.toLowerCase()
+        .trim();
+
+    const role =
+      req.query.role
+        ?.toLowerCase()
+        .trim();
+
+    let match = {};
+
+    /* ROLE FILTER */
+
+    if (role === "executive") {
+
+      match.assigned_to = email;
+
+    }
+
+    if (role === "manager") {
+
+      match.assigned_manager = email;
+
+    }
+    
 
     /* =====================================
        SUMMARY COUNTS
