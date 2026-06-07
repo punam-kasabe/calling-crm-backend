@@ -329,9 +329,6 @@ const visitSchema = new mongoose.Schema(
 
     clientName: String,
 
-
-
-
     mobile: String,
 
     project: String,
@@ -948,7 +945,47 @@ app.get("/api/all-users", auth, async (req, res) => {
   }
 
 });
+app.get("/api/remove-duplicates", async (req, res) => {
+  try {
+    const duplicates = await Lead.aggregate([
+      {
+        $group: {
+          _id: "$phone",
+          ids: { $push: "$_id" },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $match: {
+          count: { $gt: 1 }
+        }
+      }
+    ]);
 
+    let deletedCount = 0;
+
+    for (const dup of duplicates) {
+      const idsToDelete = dup.ids.slice(1); // first record keep
+
+      if (idsToDelete.length) {
+        const result = await Lead.deleteMany({
+          _id: { $in: idsToDelete }
+        });
+
+        deletedCount += result.deletedCount;
+      }
+    }
+
+    res.json({
+      success: true,
+      deletedCount,
+      duplicateGroups: duplicates.length
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json(err);
+  }
+});
 /* =========================================
    GET MANAGERS
 ========================================= */
@@ -2002,6 +2039,7 @@ app.get("/api/my-leads", async (req, res) => {
 
   }
 
+
   catch (err) {
 
     console.log(err);
@@ -2013,6 +2051,10 @@ app.get("/api/my-leads", async (req, res) => {
   }
 
 });
+
+
+
+
 /* =========================================
    MANAGER CLIENTS
 ========================================= */
