@@ -393,43 +393,7 @@ const visitSchema = new mongoose.Schema(
 
 );
 
-app.get("/api/remove-duplicates", async (req, res) => {
-  try {
-    const duplicates = await Lead.aggregate([
-      {
-        $group: {
-          _id: "$phone",
-          ids: { $push: "$_id" },
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $match: {
-          count: { $gt: 1 }
-        }
-      }
-    ]);
 
-    let deleted = 0;
-
-    for (const dup of duplicates) {
-      const idsToDelete = dup.ids.slice(1);
-
-      const result = await Lead.deleteMany({
-        _id: { $in: idsToDelete }
-      });
-
-      deleted += result.deletedCount;
-    }
-
-    res.json({
-      success: true,
-      deleted
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 /* =========================================
    FOLLOWUP SCHEMA
@@ -515,6 +479,46 @@ const Followup = mongoose.model(
   "Followup",
   followupSchema
 );
+
+app.get("/api/remove-duplicates", async (req, res) => {
+  try {
+    const duplicates = await Lead.aggregate([
+      {
+        $group: {
+          _id: "$phone",
+          ids: { $push: "$_id" },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $match: {
+          count: { $gt: 1 }
+        }
+      }
+    ]);
+
+    let deleted = 0;
+
+    for (const dup of duplicates) {
+      const idsToDelete = dup.ids.slice(1);
+
+      const result = await Lead.deleteMany({
+        _id: { $in: idsToDelete }
+      });
+
+      deleted += result.deletedCount;
+    }
+
+    res.json({
+      success: true,
+      duplicatesFound: duplicates.length,
+      deletedRecords: deleted
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
 /* =========================================
    FILE UPLOAD
 ========================================= */
