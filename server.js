@@ -597,81 +597,6 @@ app.post("/api/login", loginLimiter, async (req, res) => {
 
 
 
-    app.post("/api/call/start", async (req, res) => {
-  try {
-
-    const {
-      leadId,
-      executive,
-      phone
-    } = req.body;
-
-    const log = await CallLog.create({
-      leadId,
-      executive,
-      phone,
-      startedAt: new Date()
-    });
-
-    res.json(log);
-
-  } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
-  }
-});
-
-
-app.post("/api/call/end", async (req, res) => {
-  try {
-
-    const {
-      callId,
-      status
-    } = req.body;
-
-    const call = await CallLog.findById(callId);
-
-    if (!call) {
-      return res.status(404).json({
-        error: "Call not found"
-      });
-    }
-
-    call.endedAt = new Date();
-
-    call.status = status;
-
-    call.duration = Math.floor(
-      (call.endedAt - call.startedAt) / 1000
-    );
-
-    await call.save();
-
-    res.json(call);
-
-  } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
-  }
-});
-
-
-app.get("/api/call-history/:leadId", async (req, res) => {
-
-  const logs = await CallLog.find({
-    leadId: req.params.leadId
-  }).sort({
-    createdAt: -1
-  });
-
-  res.json(logs);
-
-});
-
-
     /* =========================================
        ROLE
     ========================================= */
@@ -771,6 +696,83 @@ app.get("/api/call-history/:leadId", async (req, res) => {
   }
 
 });
+
+
+    app.post("/api/call/start", async (req, res) => {
+  try {
+
+    const {
+      leadId,
+      executive,
+      phone
+    } = req.body;
+
+    const log = await CallLog.create({
+      leadId,
+      executive,
+      phone,
+      startedAt: new Date()
+    });
+
+    res.json(log);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+
+app.post("/api/call/end", async (req, res) => {
+  try {
+
+    const {
+      callId,
+      status
+    } = req.body;
+
+    const call = await CallLog.findById(callId);
+
+    if (!call) {
+      return res.status(404).json({
+        error: "Call not found"
+      });
+    }
+
+    call.endedAt = new Date();
+
+    call.status = status;
+
+    call.duration = Math.floor(
+      (call.endedAt - call.startedAt) / 1000
+    );
+
+    await call.save();
+
+    res.json(call);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+
+app.get("/api/call-history/:leadId", async (req, res) => {
+
+  const logs = await CallLog.find({
+    leadId: req.params.leadId
+  }).sort({
+    createdAt: -1
+  });
+
+  res.json(logs);
+
+});
+
+
 
 /* =========================================
    AUTH MIDDLEWARE
