@@ -427,7 +427,6 @@ app.get("/api/remove-duplicates", async (req, res) => {
       deleted
     });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
