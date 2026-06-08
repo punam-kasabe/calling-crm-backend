@@ -426,6 +426,38 @@ const followupSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+const callLogSchema = new mongoose.Schema(
+{
+  leadId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Lead"
+  },
+
+  executive: String,
+
+  phone: String,
+
+  status: {
+    type: String,
+    default: "Connected"
+  },
+
+  duration: {
+    type: Number,
+    default: 0
+  },
+
+  startedAt: Date,
+
+  endedAt: Date
+},
+{
+  timestamps: true
+}
+);
+
+
 /* =========================================
    PROJECT SCHEMA
 ========================================= */
@@ -479,46 +511,11 @@ const Followup = mongoose.model(
   "Followup",
   followupSchema
 );
+const CallLog = mongoose.model(
+  "CallLog",
+  callLogSchema
+);
 
-app.get("/api/remove-duplicates", async (req, res) => {
-  try {
-    const duplicates = await Lead.aggregate([
-      {
-        $group: {
-          _id: "$phone",
-          ids: { $push: "$_id" },
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $match: {
-          count: { $gt: 1 }
-        }
-      }
-    ]);
-
-    let deleted = 0;
-
-    for (const dup of duplicates) {
-      const idsToDelete = dup.ids.slice(1);
-
-      const result = await Lead.deleteMany({
-        _id: { $in: idsToDelete }
-      });
-
-      deleted += result.deletedCount;
-    }
-
-    res.json({
-      success: true,
-      duplicatesFound: duplicates.length,
-      deletedRecords: deleted
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
 /* =========================================
    FILE UPLOAD
 ========================================= */
@@ -595,6 +592,85 @@ app.post("/api/login", loginLimiter, async (req, res) => {
       });
 
     }
+
+
+
+
+
+    app.post("/api/call/start", async (req, res) => {
+  try {
+
+    const {
+      leadId,
+      executive,
+      phone
+    } = req.body;
+
+    const log = await CallLog.create({
+      leadId,
+      executive,
+      phone,
+      startedAt: new Date()
+    });
+
+    res.json(log);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+
+app.post("/api/call/end", async (req, res) => {
+  try {
+
+    const {
+      callId,
+      status
+    } = req.body;
+
+    const call = await CallLog.findById(callId);
+
+    if (!call) {
+      return res.status(404).json({
+        error: "Call not found"
+      });
+    }
+
+    call.endedAt = new Date();
+
+    call.status = status;
+
+    call.duration = Math.floor(
+      (call.endedAt - call.startedAt) / 1000
+    );
+
+    await call.save();
+
+    res.json(call);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+
+app.get("/api/call-history/:leadId", async (req, res) => {
+
+  const logs = await CallLog.find({
+    leadId: req.params.leadId
+  }).sort({
+    createdAt: -1
+  });
+
+  res.json(logs);
+
+});
+
 
     /* =========================================
        ROLE
