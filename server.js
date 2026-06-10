@@ -562,6 +562,35 @@ mongoose.model(
 "Booking",
 bookingSchema
 );
+
+/* =========================================
+   TOTAL BOOKINGS
+========================================= */
+
+app.get("/api/bookings-count", async (req, res) => {
+
+  try {
+
+    const totalBookings =
+      await Booking.countDocuments();
+
+    res.json({
+      total: totalBookings
+    });
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Failed"
+    });
+
+  }
+
+});
 /* =========================================
    FILE UPLOAD
 ========================================= */
@@ -2606,7 +2635,37 @@ app.post(
   }
 
 );
+/* =========================================
+   GET BOOKING COUNT
+========================================= */
 
+app.get(
+  "/api/booking-count",
+  async (req, res) => {
+
+    try {
+
+      const count =
+        await Booking.countDocuments();
+
+      res.json({
+        total: count
+      });
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+        message: "Failed"
+      });
+
+    }
+
+  }
+);
 /* =========================================
    UPDATE LEAD
 ========================================= */
