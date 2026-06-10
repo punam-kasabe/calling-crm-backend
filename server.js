@@ -142,6 +142,10 @@ const userSchema = new mongoose.Schema({
 
   role: String,
 
+  passwordChangedAt: {
+  type: Date
+},
+
   can_import: Boolean,
 
   can_export: Boolean,
@@ -1152,11 +1156,37 @@ app.put("/api/update-user/:id", async (req, res) => {
 
   try {
 
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+    const updateData = {
+      name: req.body.name,
+      email: req.body.email,
+      role: req.body.role,
+      birth_date: req.body.birth_date
+    };
+
+    if (
+      req.body.newPassword &&
+      req.body.newPassword.trim() !== ""
+    ) {
+
+      const bcrypt =
+        require("bcryptjs");
+
+      updateData.password =
+        await bcrypt.hash(
+          req.body.newPassword,
+          10
+        );
+
+      updateData.passwordChangedAt =
+        new Date();
+    }
+
+    const user =
+      await User.findByIdAndUpdate(
+        req.params.id,
+        updateData,
+        { new: true }
+      );
 
     res.json(user);
 
