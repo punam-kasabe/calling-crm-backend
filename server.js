@@ -81,28 +81,7 @@ mongoose.connect(process.env.MONGO_URI)
   });
 
 
-
-
-
   
-
-  app.get("/api/interested-to-new", async (req, res) => {
-  try {
-
-    const result = await Lead.updateMany(
-      { status: "Interested" },
-      { $set: { status: "New" } }
-    );
-
-    res.json(result);
-
-  } catch (err) {
-    console.log(err);
-    res.status(500).json(err);
-  }
-});
-
-
   /* =========================================
    PHONE NORMALIZER
 ========================================= */
@@ -2485,6 +2464,44 @@ app.post(
 
         const totalLeads =
       await Lead.countDocuments();
+
+      const hotLeads = await Lead.countDocuments({
+  status: "Interested"
+});
+
+const newLeads = await Lead.countDocuments({
+  status: "New"
+});
+
+const bookedLeads = await Lead.countDocuments({
+  status: "Booked"
+});
+
+const inactiveLeads = await Lead.countDocuments({
+  status: "Not Interested"
+});
+
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+const tomorrow = new Date(today);
+tomorrow.setDate(tomorrow.getDate() + 1);
+
+const todayFollowups = await Lead.countDocuments({
+  next_call_date: {
+    $gte: today,
+    $lt: tomorrow
+  }
+});
+
+const backlog = await Lead.countDocuments({
+  $or: [
+    { next_call_date: null },
+    { next_call_date: { $exists: false } }
+  ]
+});
+
+
       const leads =
         await Lead.find(query)
 
@@ -2497,16 +2514,17 @@ app.post(
           .limit(limit);
 
       res.json({
-
   data: leads,
+  total,
+  totalPages: Math.ceil(total / limit),
 
-  totalPages:
-    Math.ceil(
-      total / limit
-    ),
-
-  totalLeads
-
+  totalLeads,
+  hotLeads,
+  newLeads,
+  bookedLeads,
+  inactiveLeads,
+  todayFollowups,
+  backlog
 });
     }
 
