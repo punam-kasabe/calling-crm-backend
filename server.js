@@ -82,6 +82,27 @@ mongoose.connect(process.env.MONGO_URI)
 
 
 
+
+
+  
+
+  app.get("/api/interested-to-new", async (req, res) => {
+  try {
+
+    const result = await Lead.updateMany(
+      { status: "Interested" },
+      { $set: { status: "New" } }
+    );
+
+    res.json(result);
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json(err);
+  }
+});
+
+
   /* =========================================
    PHONE NORMALIZER
 ========================================= */
