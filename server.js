@@ -2714,10 +2714,12 @@ app.delete("/api/delete-lead/:id", auth, adminOnly, async (req, res) => {
 
   try {
 
+    console.log("DELETE REQUEST");
+    console.log("Lead ID:", req.params.id);
+    console.log("User:", req.user);
+
     const deletedLead =
-      await Lead.findByIdAndDelete(
-        req.params.id
-      );
+      await Lead.findByIdAndDelete(req.params.id);
 
     if (!deletedLead) {
 
@@ -2735,7 +2737,7 @@ app.delete("/api/delete-lead/:id", auth, adminOnly, async (req, res) => {
 
   catch (err) {
 
-    console.log(err);
+    console.log("DELETE ERROR:", err);
 
     res.status(500).json({
       message: "Delete failed ❌"
