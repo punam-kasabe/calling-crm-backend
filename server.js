@@ -288,6 +288,11 @@ assignedTo: {
     default: 0
   },
 
+  totalBookings: {
+  type: Number,
+  default: 0
+  },
+
   followups: [
     {
       note: String,
@@ -503,19 +508,60 @@ const Visit = mongoose.model(
   "Visit",
   visitSchema
 );
+
 const Project = mongoose.model(
   "Project",
   projectSchema
 );
+
 const Followup = mongoose.model(
   "Followup",
   followupSchema
 );
+
 const CallLog = mongoose.model(
   "CallLog",
   callLogSchema
 );
+/* =========================================
+   BOOKING SCHEMA
+========================================= */
 
+const bookingSchema = new mongoose.Schema({
+
+  leadId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Lead"
+  },
+
+  clientName: String,
+
+  phone: String,
+
+  project: String,
+
+  unitNo: String,
+
+  bookingAmount: Number,
+
+  executive: String,
+
+  attendingOfficer: String,
+
+  bookingDate: {
+    type: Date,
+    default: Date.now
+  }
+
+},{
+  timestamps:true
+});
+
+const Booking =
+mongoose.model(
+"Booking",
+bookingSchema
+);
 /* =========================================
    FILE UPLOAD
 ========================================= */
@@ -2689,6 +2735,180 @@ app.post(
 
 );
 
+/* =========================================
+   GET LEAD BOOKINGS
+========================================= */
+
+app.get(
+"/api/lead-bookings/:leadId",
+
+async(req,res)=>{
+
+try{
+
+const bookings =
+await Booking.find({
+
+leadId:
+req.params.leadId
+
+})
+.sort({
+createdAt:-1
+});
+
+res.json(bookings);
+
+}catch(err){
+
+console.log(err);
+
+res.status(500).json({
+message:"Failed"
+});
+
+}
+
+});
+
+
+/* =========================================
+   CREATE BOOKING
+========================================= */
+
+app.post(
+"/api/create-booking",
+async(req,res)=>{
+
+try{
+
+const booking =
+await Booking.create({
+
+leadId:
+req.body.leadId,
+
+clientName:
+req.body.clientName,
+
+phone:
+req.body.phone,
+
+project:
+req.body.project,
+
+unitNo:
+req.body.unitNo,
+
+bookingAmount:
+req.body.bookingAmount,
+
+executive:
+req.body.executive,
+
+attendingOfficer:
+req.body.attendingOfficer
+
+});
+
+await Lead.findByIdAndUpdate(
+req.body.leadId,
+{
+$inc:{
+totalBookings:1
+}
+}
+);
+
+res.json({
+success:true,
+booking
+});
+
+}catch(err){
+
+console.log(err);
+
+res.status(500).json({
+message:"Booking failed"
+});
+
+}
+
+});
+/* =========================================
+   BOOKING HISTORY
+========================================= */
+
+app.get(
+  "/api/bookings/:leadId",
+
+  async (req, res) => {
+
+    try {
+
+      const bookings =
+        await Booking.find({
+
+          leadId:
+            req.params.leadId
+
+        }).sort({
+          createdAt: -1
+        });
+
+      res.json(bookings);
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+        message: "Error"
+      });
+
+    }
+
+  }
+
+);
+/* =========================================
+   GET LEAD BOOKINGS
+========================================= */
+
+app.get(
+"/api/lead-bookings/:leadId",
+
+async(req,res)=>{
+
+try{
+
+const bookings =
+await Booking.find({
+
+leadId:
+req.params.leadId
+
+})
+.sort({
+createdAt:-1
+});
+
+res.json(bookings);
+
+}catch(err){
+
+console.log(err);
+
+res.status(500).json({
+message:"Failed"
+});
+
+}
+
+});
 /* =========================================
    TODAY FOLLOWUPS
 ========================================= */
