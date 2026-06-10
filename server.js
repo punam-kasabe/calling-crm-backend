@@ -132,10 +132,14 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+
+  birth_date: Date,   // 👈 NEW FIELD
+
   password: {
     type: String,
     select: false
   },
+
   role: String,
 
   can_import: Boolean,
@@ -1136,6 +1140,32 @@ app.get("/api/all-users", auth, async (req, res) => {
 
     res.status(500).json({
       message: "Fetch users error ❌"
+    });
+
+  }
+
+});
+
+/* ================= UPDATE USER ================= */
+
+app.put("/api/update-user/:id", async (req, res) => {
+
+  try {
+
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    res.json(user);
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Update failed"
     });
 
   }
