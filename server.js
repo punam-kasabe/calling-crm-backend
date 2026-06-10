@@ -2366,9 +2366,16 @@ app.post(
 
       }
 
-      if (filters.status) {
-        query.status = filters.status;
-      }
+      if (
+  filters.status &&
+  filters.status.length > 0
+) {
+  query.status = {
+    $in: filters.status.map(
+      (s) => s.value
+    )
+  };
+}
 
       /* ASSIGNED FILTER */
 
