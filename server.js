@@ -1154,6 +1154,7 @@ app.get("/api/all-users", auth, async (req, res) => {
 
 app.put("/api/update-user/:id", async (req, res) => {
 
+   console.log("UPDATE BODY =", req.body);
   try {
 
     const updateData = {
