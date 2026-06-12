@@ -2385,13 +2385,12 @@ app.post(
     try {
 
       const {
-
-        email,
-        role,
-        page = 1,
-        filters = {}
-
-      } = req.body;
+  email,
+  role,
+  page = 1,
+  filters = {},
+  search = ""
+} = req.body;
 
       const limit = 10;
 
@@ -2458,6 +2457,58 @@ app.post(
 
       }
 
+      /* SEARCH */
+
+if (search && search.trim()) {
+
+  query.$or = [
+
+    {
+      name: {
+        $regex: search.trim(),
+        $options: "i"
+      }
+    },
+
+    {
+      phone: {
+        $regex: search.trim(),
+        $options: "i"
+      }
+    },
+
+    {
+      project: {
+        $regex: search.trim(),
+        $options: "i"
+      }
+    },
+
+    {
+      status: {
+        $regex: search.trim(),
+        $options: "i"
+      }
+    },
+
+    {
+      assigned_to: {
+        $regex: search.trim(),
+        $options: "i"
+      }
+    },
+
+    {
+      assigned_manager: {
+        $regex: search.trim(),
+        $options: "i"
+      }
+    }
+
+  ];
+
+}
+
       const total =
         await Lead.countDocuments(
           query
@@ -2518,7 +2569,6 @@ const backlog = await Lead.countDocuments({
   data: leads,
   total,
   totalPages: Math.ceil(total / limit),
-
   totalLeads,
   hotLeads,
   newLeads,
