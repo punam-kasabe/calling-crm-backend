@@ -2304,44 +2304,56 @@ app.get("/api/users", async (req, res) => {
    MANAGER CLIENTS
 ========================================= */
 
-app.get(
-  "/api/manager-clients",
+app.get("/api/manager-clients", async (req, res) => {
 
-  async (req, res) => {
+  try {
 
-    try {
-
-      const email = req.query.email
+    const email =
+      req.query.email
         ?.toLowerCase()
         .trim();
 
-      const leads =
-        await Lead.find({
-
-          assigned_manager:
-            email
-
-        }).sort({
-
-          createdAt: -1
-
-        });
-
-      res.json(leads);
-
-    }
-
-    catch {
-
-      res.status(500).json({
-        message: "Manager fetch error ❌"
+    const user =
+      await User.findOne({
+        email
       });
 
-    }
+    const leads =
+      await Lead.find({
+
+        $or: [
+
+          {
+            assigned_to_email:
+              email
+          },
+
+          {
+            assignedTo:
+              user?.name
+          }
+
+        ]
+
+      }).sort({
+        createdAt: -1
+      });
+
+    res.json(leads);
 
   }
 
-);
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Server Error"
+    });
+
+  }
+
+});
 
 /* =========================================
    UPDATE STATUS
