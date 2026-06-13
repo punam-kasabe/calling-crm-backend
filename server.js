@@ -1151,6 +1151,49 @@ app.get("/api/all-leads", async (req, res) => {
   }
 
 });
+
+
+
+app.get("/api/new-leads", async (req, res) => {
+  try {
+    const page =
+      parseInt(req.query.page) || 1;
+
+    const limit =
+      parseInt(req.query.limit) || 30;
+
+    const skip =
+      (page - 1) * limit;
+
+    const leads = await Lead.find({
+      status: "New"
+    })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const totalLeads =
+      await Lead.countDocuments({
+        status: "New"
+      });
+
+    res.json({
+      leads,
+      totalLeads,
+      totalPages: Math.ceil(
+        totalLeads / limit
+      ),
+      currentPage: page
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      message:
+        "Error fetching new leads"
+    });
+  }
+});
 /* =========================================
    GET USERS
 ========================================= */
