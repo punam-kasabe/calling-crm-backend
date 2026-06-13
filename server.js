@@ -2269,9 +2269,6 @@ app.get("/api/my-leads", async (req, res) => {
 
 });
 
-
-
-
 /* =========================================
    MANAGER CLIENTS
 ========================================= */
@@ -2552,8 +2549,6 @@ const backlog = await Lead.countDocuments({
     { next_call_date: { $exists: false } }
   ]
 });
-
-
       const leads =
         await Lead.find(query)
 
