@@ -1125,7 +1125,32 @@ app.post("/api/bulk-add-users", auth, adminOnly, async (req, res) => {
   }
 
 });
+/* =========================================
+   ALL LEADS
+========================================= */
 
+app.get("/api/all-leads", async (req, res) => {
+
+  try {
+
+    const leads = await Lead.find()
+      .sort({ createdAt: -1 });
+
+    res.json(leads);
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Server Error"
+    });
+
+  }
+
+});
 /* =========================================
    GET USERS
 ========================================= */
