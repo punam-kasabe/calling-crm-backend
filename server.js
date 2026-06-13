@@ -2269,6 +2269,37 @@ app.get("/api/my-leads", async (req, res) => {
 
 });
 
+
+/* =========================================
+   GET ALL USERS
+========================================= */
+
+app.get("/api/users", async (req, res) => {
+
+  try {
+
+    const users = await User.find(
+      {},
+      {
+        password: 0
+      }
+    );
+
+    res.json(users);
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Server Error ❌"
+    });
+
+  }
+
+});
+
+
 /* =========================================
    MANAGER CLIENTS
 ========================================= */
