@@ -4028,30 +4028,18 @@ app.get("/api/dashboard-full", async (req, res) => {
     const total =
       await Lead.countDocuments(match);
 
-    /* TODAY NEW LEADS */
+    /* NEW STATUS LEADS */
 
-    const today = new Date();
+const newLeads =
+  await Lead.countDocuments({
 
-    today.setHours(0, 0, 0, 0);
+    ...match,
 
-    const tomorrow = new Date(today);
+    status: {
+      $regex: /^new$/i
+    }
 
-    tomorrow.setDate(
-      tomorrow.getDate() + 1
-    );
-
-    const newLeads =
-      await Lead.countDocuments({
-
-        ...match,
-
-        createdAt: {
-          $gte: today,
-          $lt: tomorrow
-        }
-
-      });
-
+  });
     const interested =
       await Lead.countDocuments({
 
@@ -4089,6 +4077,12 @@ app.get("/api/dashboard-full", async (req, res) => {
         }
 
       });
+
+      const newCount =
+  await Lead.countDocuments({
+    status: { $regex: /^new$/i }
+  });
+
 
     /* =====================================
        STATUS CHART
