@@ -4028,9 +4028,19 @@ app.get("/api/dashboard-full", async (req, res) => {
     const total =
       await Lead.countDocuments(match);
 
-    /* NEW STATUS LEADS */
+    /* TODAY NEW LEADS */
 
-const newLeads =
+    const today = new Date();
+
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+
+    tomorrow.setDate(
+      tomorrow.getDate() + 1
+    );
+
+    const newLeads =
   await Lead.countDocuments({
 
     ...match,
@@ -4082,8 +4092,6 @@ const newLeads =
   await Lead.countDocuments({
     status: { $regex: /^new$/i }
   });
-
-
     /* =====================================
        STATUS CHART
     ===================================== */
