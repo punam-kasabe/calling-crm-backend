@@ -2545,6 +2545,25 @@ app.post(
   };
 }
 
+
+app.get("/api/all-leads", async (req, res) => {
+  try {
+
+    const leads = await Lead.find({})
+      .sort({ createdAt: -1 });
+
+    res.json(leads);
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Error fetching leads"
+    });
+
+  }
+});
       /* ASSIGNED FILTER */
 
       if (filters.assigned) {
