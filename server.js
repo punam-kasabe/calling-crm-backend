@@ -3805,12 +3805,6 @@ const followups = await Lead.countDocuments({
   }
 });
 
-
-    const interested = await Lead.countDocuments({
-      ...match,
-      status: "Interested"
-    });
-
     const notInterested = await Lead.countDocuments({
       ...match,
       status: "Not Interested"
