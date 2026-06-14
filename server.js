@@ -3762,9 +3762,9 @@ app.get("/api/dashboard", async (req, res) => {
     });
 
     const interested = await Lead.countDocuments({
-  ...match,
-  status: "Interested"
-});
+      ...match,
+       status: "Interested"
+      });
 
 const pending = await Lead.countDocuments({
   ...match,
@@ -3784,11 +3784,7 @@ const followups = await Lead.countDocuments({
   }
 });
     
-    const interested = await Lead.countDocuments({
-  assigned_manager: email,
-  status: "Interested"
-});
-
+  
 const pending = await Lead.countDocuments({
   assigned_manager: email,
   status: "New"
