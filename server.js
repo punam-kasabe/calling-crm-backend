@@ -3632,16 +3632,7 @@ app.get(
 
         });
 
-      /* INTERESTED */
-
-      const interested =
-        await Lead.countDocuments({
-
-          assigned_to: email,
-
-          status: "Interested"
-
-        });
+      
 
       /* SITE VISITS */
 
@@ -4108,15 +4099,7 @@ app.get("/api/dashboard-full", async (req, res) => {
     }
 
   });
-    const interested =
-      await Lead.countDocuments({
-
-        ...match,
-
-        status: "Interested"
-
-      });
-
+   
     const booked =
       await Lead.countDocuments({
 
