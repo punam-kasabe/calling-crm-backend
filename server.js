@@ -3762,6 +3762,51 @@ app.get("/api/dashboard", async (req, res) => {
     });
 
     const interested = await Lead.countDocuments({
+  ...match,
+  status: "Interested"
+});
+
+const pending = await Lead.countDocuments({
+  ...match,
+  status: "New"
+});
+
+const visits = await Lead.countDocuments({
+  ...match,
+  status: "Site Visit"
+});
+
+const followups = await Lead.countDocuments({
+  ...match,
+  next_followup: {
+    $exists: true,
+    $ne: null
+  }
+});
+    
+    const interested = await Lead.countDocuments({
+  assigned_manager: email,
+  status: "Interested"
+});
+
+const pending = await Lead.countDocuments({
+  assigned_manager: email,
+  status: "New"
+});
+
+const visits = await Visit.countDocuments({
+  manager_email: email
+});
+
+const followups = await Lead.countDocuments({
+  assigned_manager: email,
+  next_followup_date: {
+    $exists: true
+  }
+});
+
+
+    const interested = await Lead.countDocuments({
       ...match,
       status: "Interested"
     });
@@ -3782,10 +3827,11 @@ app.get("/api/dashboard", async (req, res) => {
       }
     ]);
 
+
     res.json({
 
       total,
-
+       siteVisit,
       new: newLeads,
 
       booked,
@@ -3793,8 +3839,9 @@ app.get("/api/dashboard", async (req, res) => {
       interested,
 
       not_interested: notInterested,
-
-      status
+       
+      status,
+      recentLeads
 
     });
 
@@ -4514,6 +4561,7 @@ app.get("/api/dashboard-full", async (req, res) => {
     ===================================== */
 
     res.json({
+
 
       total,
 
