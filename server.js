@@ -2437,11 +2437,13 @@ app.put(
 
       const {
 
-        status,
-        remark,
-        followup_date
+  status,
+  remark,
+  followup_date,
+  visitDate,
+  visit_created
 
-      } = req.body;
+} = req.body;
 
       const updated =
         await Lead.findByIdAndUpdate(
@@ -2451,10 +2453,10 @@ app.put(
           {
 
             status,
-
-            remark,
-
-            followup_date
+    remark,
+    followup_date,
+    visitDate,
+    visit_created
 
           },
 
