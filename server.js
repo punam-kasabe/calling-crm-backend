@@ -3809,17 +3809,16 @@ const followups = await Lead.countDocuments({
     });
 
   }
+catch (err) {
 
-  catch (err) {
+  console.log("DASHBOARD ERROR =>", err);
 
-    console.log(err);
+  res.status(500).json({
+    message: "Dashboard API Error ❌",
+    error: err.message
+  });
 
-    res.status(500).json({
-      message: "Dashboard error ❌"
-    });
-
-  }
-
+}
 });
 /* =========================================
    CREATE PROJECT
