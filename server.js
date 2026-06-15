@@ -3815,7 +3815,8 @@ catch (err) {
 
   res.status(500).json({
     message: "Dashboard API Error ❌",
-    error: err.message
+    error: err.message,
+    stack: err.stack
   });
 
 }
