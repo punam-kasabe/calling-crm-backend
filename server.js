@@ -3847,15 +3847,7 @@ const followups = await Lead.countDocuments({
         }
       }
     ]);
-/* SITE VISIT COUNT */
 
-const siteVisit = await Lead.countDocuments({
-
-  ...match,
-
-  visit_created: true
-
-});
 
 
 /* RECENT LEADS */
