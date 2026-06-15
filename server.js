@@ -3741,8 +3741,14 @@ app.get("/api/dashboard", async (req, res) => {
       match.assigned_manager = email;
     }
 
-    const total = await Lead.countDocuments(match);
+    console.log("================================");
+    console.log("EMAIL =>", email);
+    console.log("ROLE =>", role);
+    console.log("MATCH =>", match);
+    console.log("================================");
 
+    const total = await Lead.countDocuments(match);
+    console.log("TOTAL LEADS =>", total);
     const newLeads = await Lead.countDocuments({
       ...match,
       status: "New"
