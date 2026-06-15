@@ -3738,8 +3738,23 @@ app.get("/api/dashboard", async (req, res) => {
     }
 
     if (role === "manager") {
-      match.assigned_manager = email;
-    }
+
+  const user = await User.findOne({
+    email
+  });
+
+  match = {
+    $or: [
+      {
+        assigned_to_email: email
+      },
+      {
+        assignedTo: user?.name
+      }
+    ]
+  };
+
+}
 
     console.log("================================");
     console.log("EMAIL =>", email);
@@ -3748,6 +3763,8 @@ app.get("/api/dashboard", async (req, res) => {
     console.log("================================");
 
     const total = await Lead.countDocuments(match);
+
+
     console.log("TOTAL LEADS =>", total);
     const newLeads = await Lead.countDocuments({
       ...match,
@@ -3755,38 +3772,70 @@ app.get("/api/dashboard", async (req, res) => {
     });
 
     const booked = await Lead.countDocuments({
-      ...match,
-      status: "Booked"
-    });
+  $and: [
+    match,
+    { status: "Booked" }
+  ]
+});
 
     const interested = await Lead.countDocuments({
-      ...match,
-       status: "Interested"
-      });
+  $and: [
+    match,
+    { status: "Interested" }
+  ]
+});
+
 
 const pending = await Lead.countDocuments({
-  ...match,
-  status: "New"
+  $and: [
+    match,
+    {
+      $or: [
+        { status: "New" },
+        { status: "" },
+        { status: null }
+      ]
+    }
+  ]
 });
 
 const visits = await Lead.countDocuments({
-  ...match,
-  status: "Site Visit"
+  $and: [
+    match,
+    {
+      visit_created: true
+    }
+  ]
 });
+
+const siteVisit = await Lead.countDocuments({
+  ...match,
+  visit_created: true
+});
+const today = new Date();
+today.setHours(0,0,0,0);
+
+const tomorrow = new Date(today);
+tomorrow.setDate(today.getDate() + 1);
 
 const followups = await Lead.countDocuments({
-  ...match,
-  next_followup: {
-    $exists: true,
-    $ne: null
-  }
+  $and: [
+    match,
+    {
+      followup_date: {
+        $gte: today,
+        $lt: tomorrow
+      }
+    }
+  ]
 });
-  
 
-    const notInterested = await Lead.countDocuments({
-      ...match,
-      status: "Not Interested"
-    });
+   const notInterested = await Lead.countDocuments({
+  $and: [
+    match,
+    { status: "Not Interested" }
+  ]
+});
 
     const status = await Lead.aggregate([
       { $match: match },
