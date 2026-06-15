@@ -3792,7 +3792,30 @@ const followups = await Lead.countDocuments({
         }
       }
     ]);
+/* SITE VISIT COUNT */
 
+const siteVisit = await Lead.countDocuments({
+
+  ...match,
+
+  visit_created: true
+
+});
+
+
+/* RECENT LEADS */
+
+const recentLeads = await Lead.find(match)
+
+  .sort({
+    createdAt: -1
+  })
+
+  .limit(10)
+
+  .select(
+    "name phone status assigned_to createdAt"
+  );
 
     res.json({
 
