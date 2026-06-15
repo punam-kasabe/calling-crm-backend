@@ -3796,18 +3796,16 @@ const followups = await Lead.countDocuments({
     res.json({
 
       total,
-       siteVisit,
+      siteVisit,
       new: newLeads,
-
       booked,
-
       interested,
-
       not_interested: notInterested,
-       
       status,
-      recentLeads
-
+      recentLeads,
+      pending,
+      visits,
+      followups
     });
 
   }
