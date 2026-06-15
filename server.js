@@ -531,6 +531,7 @@ const CallLog = mongoose.model(
   "CallLog",
   callLogSchema
 );
+
 /* =========================================
    BOOKING SCHEMA
 ========================================= */
@@ -3809,19 +3810,19 @@ const followups = await Lead.countDocuments({
     });
 
   }
+
 catch (err) {
 
-  console.log("DASHBOARD ERROR =>", err);
+  console.log("DASHBOARD ERROR ❌");
+  console.log(err);
 
   res.status(500).json({
-    message: "Dashboard API Error ❌",
-    error: err.message,
-    stack: err.stack
+    message: err.message
   });
 
 }
-
 });
+
 /* =========================================
    CREATE PROJECT
 ========================================= */
@@ -4091,6 +4092,14 @@ app.get("/api/dashboard-full", async (req, res) => {
 
       });
 
+      const interested =
+  await Lead.countDocuments({
+
+    ...match,
+
+    status: "Interested"
+
+  });
     const notInterested =
       await Lead.countDocuments({
 
