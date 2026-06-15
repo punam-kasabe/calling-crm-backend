@@ -3774,23 +3774,7 @@ const followups = await Lead.countDocuments({
     $ne: null
   }
 });
-    
   
-const pending = await Lead.countDocuments({
-  assigned_manager: email,
-  status: "New"
-});
-
-const visits = await Visit.countDocuments({
-  manager_email: email
-});
-
-const followups = await Lead.countDocuments({
-  assigned_manager: email,
-  next_followup_date: {
-    $exists: true
-  }
-});
 
     const notInterested = await Lead.countDocuments({
       ...match,
@@ -4097,7 +4081,6 @@ app.get("/api/dashboard-full", async (req, res) => {
     status: {
       $regex: /^new$/i
     }
-
   });
    
     const booked =
