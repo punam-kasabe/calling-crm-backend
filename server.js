@@ -231,6 +231,13 @@ const leadSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+
+  visitDate: {
+  type: Date,
+  default: null
+},
+
+
 assignedTo: {
   type: String,
   default: "",
@@ -2308,18 +2315,44 @@ app.get("/api/my-leads", async (req, res) => {
 
     }
 
-    const leads = await Lead.find({
 
-      $or: [
-        { assigned_to: email },
-        { assigned_to_email: email }
-      ]
+    const leads =
+  await Lead.find({
 
-    }).sort({
+    $and: [
 
-      createdAt: -1
+      {
+        $or: [
 
-    });
+          {
+            assigned_to_email:
+              email
+          },
+
+          {
+            assignedTo:
+              user?.name
+          }
+
+        ]
+      },
+
+      {
+        status: {
+          $in: [
+            "Interested",
+            "Very Interested"
+          ]
+        }
+      }
+
+    ]
+
+  }).sort({
+    createdAt: -1
+  });
+
+
 
     res.json(leads);
 
@@ -3287,7 +3320,7 @@ app.get(
           executive:
             req.params.email,
 
-          followup_date: {
+            followup_date: {
 
             $gte: today,
 
@@ -3322,6 +3355,64 @@ app.get(
 
 );
 
+
+/* =========================================
+   TODAY SITE VISITS
+========================================= */
+
+app.get(
+  "/api/today-site-visits/:email",
+
+  async (req, res) => {
+
+    try {
+
+      const today =
+      new Date();
+
+      today.setHours(
+        0,0,0,0
+      );
+
+      const tomorrow =
+      new Date(today);
+
+      tomorrow.setDate(
+        tomorrow.getDate() + 1
+      );
+
+      const visits =
+      await Lead.find({
+
+        assigned_to:
+          req.params.email
+            .toLowerCase(),
+
+        visitDate: {
+
+          $gte: today,
+
+          $lt: tomorrow
+
+        }
+
+      });
+
+      res.json(visits);
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+      res.status(500).json({
+        message:
+          "Site visit fetch failed"
+      });
+    }
+  }
+);
 /* =========================================
    MY FOLLOWUPS
 ========================================= */
@@ -3478,7 +3569,7 @@ app.get(
 
           executive: email,
 
-          followup_date: {
+            followup_date: {
 
             $gte: today,
 
@@ -3732,7 +3823,6 @@ app.get("/api/dashboard", async (req, res) => {
 
     const email = req.query.email?.toLowerCase();
     const role = req.query.role?.toLowerCase();
-
     let match = {};
 
     if (role === "executive") {
@@ -4405,28 +4495,57 @@ app.get("/api/dashboard-full", async (req, res) => {
 
         .slice(0, 5);
 
-    /* =====================================
-       TODAY FOLLOWUPS
-    ===================================== */
+    /* =========================================
+   TODAY FOLLOWUPS
+========================================= */
 
-    const followups =
-      await Lead.find({
+app.get(
+  "/api/today-followups/:email",
+  async (req, res) => {
 
-        ...match,
+    try {
 
-        next_call_date: {
+      const today = new Date();
+      today.setHours(0,0,0,0);
 
-          $gte: today,
+      const tomorrow =
+        new Date(today);
 
-          $lt: tomorrow
+      tomorrow.setDate(
+        tomorrow.getDate() + 1
+      );
 
-        }
+      const leads =
+        await Lead.find({
 
-      })
+          assigned_to_email:
+            req.params.email,
 
-        .select("name phone")
+          followup_date: {
 
-        .limit(10);
+            $gte: today,
+            $lt: tomorrow
+
+          }
+
+        });
+
+      res.json(leads);
+
+    }
+
+    catch(err){
+
+      console.log(err);
+
+      res.status(500).json({
+        message:"Error"
+      });
+
+    }
+
+  }
+);
 
        
     /* =====================================
