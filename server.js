@@ -2326,10 +2326,10 @@ app.get("/api/my-leads", async (req, res) => {
 });
 
 
-app.post("/api/reception-entries", async (req, res) => {
-  try {
+app.get("/api/manager/reception-entries", async (req, res) => {
+    try {
 
-    const { email } = req.body;
+    const { email } = req.query;
 
     const leads = await Lead.find({
       assigned_to: email,
