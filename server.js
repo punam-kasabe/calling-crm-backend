@@ -2308,37 +2308,18 @@ app.get("/api/my-leads", async (req, res) => {
       .trim();
 
     if (!email) {
-
       return res.status(400).json({
         message: "Email required ❌"
       });
-
     }
 
-    const user =
-      await User.findOne({
-        email
-      });
+    const leads = await Lead.find({
 
-    const leads =
-      await Lead.find({
+      assigned_to_email: email
 
-        $or: [
-
-          {
-            assigned_to_email: email
-          },
-
-          {
-            assignedTo:
-              user?.name
-          }
-
-        ]
-
-      }).sort({
-        createdAt: -1
-      });
+    }).sort({
+      createdAt: -1
+    });
 
     res.json(leads);
 
