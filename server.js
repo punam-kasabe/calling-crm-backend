@@ -2327,8 +2327,7 @@ app.get("/api/my-leads", async (req, res) => {
 
 
 app.get("/api/manager/reception-entries", async (req, res) => {
-    try {
-
+  try {
     const { email } = req.query;
 
     const leads = await Lead.find({
@@ -2342,6 +2341,7 @@ app.get("/api/manager/reception-entries", async (req, res) => {
 
   } catch (err) {
     console.log(err);
+
     res.status(500).json({
       message: "Server Error"
     });
