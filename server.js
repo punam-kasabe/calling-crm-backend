@@ -2314,8 +2314,6 @@ app.get("/api/my-leads", async (req, res) => {
       });
 
     }
-
-
     const leads =
   await Lead.find({
 
