@@ -2315,18 +2315,18 @@ app.get("/api/my-leads", async (req, res) => {
 
     }
 
+    const user =
+      await User.findOne({
+        email
+      });
 
     const leads =
-  await Lead.find({
+      await Lead.find({
 
-    $and: [
-
-      {
         $or: [
 
           {
-            assigned_to_email:
-              email
+            assigned_to_email: email
           },
 
           {
@@ -2335,29 +2335,14 @@ app.get("/api/my-leads", async (req, res) => {
           }
 
         ]
-      },
 
-      {
-        status: {
-          $in: [
-            "Interested",
-            "Very Interested"
-          ]
-        }
-      }
-
-    ]
-
-  }).sort({
-    createdAt: -1
-  });
-
-
+      }).sort({
+        createdAt: -1
+      });
 
     res.json(leads);
 
   }
-
 
   catch (err) {
 
@@ -2370,8 +2355,6 @@ app.get("/api/my-leads", async (req, res) => {
   }
 
 });
-
-
 /* =========================================
    GET ALL USERS
 ========================================= */
