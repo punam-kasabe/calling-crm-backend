@@ -2308,22 +2308,56 @@ app.get("/api/my-leads", async (req, res) => {
       .trim();
 
     if (!email) {
+
       return res.status(400).json({
         message: "Email required ❌"
       });
+
     }
 
-    const leads = await Lead.find({
 
-      assigned_to_email: email
+    const leads =
+  await Lead.find({
 
-    }).sort({
-      createdAt: -1
-    });
+    $and: [
+
+      {
+        $or: [
+
+          {
+            assigned_to_email:
+              email
+          },
+
+          {
+            assignedTo:
+              user?.name
+          }
+
+        ]
+      },
+
+      {
+        status: {
+          $in: [
+            "Interested",
+            "Very Interested"
+          ]
+        }
+      }
+
+    ]
+
+  }).sort({
+    createdAt: -1
+  });
+
+
 
     res.json(leads);
 
   }
+
 
   catch (err) {
 
@@ -2336,6 +2370,8 @@ app.get("/api/my-leads", async (req, res) => {
   }
 
 });
+
+
 /* =========================================
    GET ALL USERS
 ========================================= */
@@ -3319,64 +3355,6 @@ app.get(
 
 );
 
-
-/* =========================================
-   TODAY SITE VISITS
-========================================= */
-
-app.get(
-  "/api/today-site-visits/:email",
-
-  async (req, res) => {
-
-    try {
-
-      const today =
-      new Date();
-
-      today.setHours(
-        0,0,0,0
-      );
-
-      const tomorrow =
-      new Date(today);
-
-      tomorrow.setDate(
-        tomorrow.getDate() + 1
-      );
-
-      const visits =
-      await Lead.find({
-
-        assigned_to:
-          req.params.email
-            .toLowerCase(),
-
-        visitDate: {
-
-          $gte: today,
-
-          $lt: tomorrow
-
-        }
-
-      });
-
-      res.json(visits);
-
-    }
-
-    catch (err) {
-
-      console.log(err);
-
-      res.status(500).json({
-        message:
-          "Site visit fetch failed"
-      });
-    }
-  }
-);
 /* =========================================
    MY FOLLOWUPS
 ========================================= */
@@ -3787,6 +3765,7 @@ app.get("/api/dashboard", async (req, res) => {
 
     const email = req.query.email?.toLowerCase();
     const role = req.query.role?.toLowerCase();
+
     let match = {};
 
     if (role === "executive") {
@@ -4459,57 +4438,28 @@ app.get("/api/dashboard-full", async (req, res) => {
 
         .slice(0, 5);
 
-    /* =========================================
-   TODAY FOLLOWUPS
-========================================= */
+    /* =====================================
+       TODAY FOLLOWUPS
+    ===================================== */
 
-app.get(
-  "/api/today-followups/:email",
-  async (req, res) => {
+    const followups =
+      await Lead.find({
 
-    try {
+        ...match,
 
-      const today = new Date();
-      today.setHours(0,0,0,0);
+        next_call_date: {
 
-      const tomorrow =
-        new Date(today);
+          $gte: today,
 
-      tomorrow.setDate(
-        tomorrow.getDate() + 1
-      );
+          $lt: tomorrow
 
-      const leads =
-        await Lead.find({
+        }
 
-          assigned_to_email:
-            req.params.email,
+      })
 
-          followup_date: {
+        .select("name phone")
 
-            $gte: today,
-            $lt: tomorrow
-
-          }
-
-        });
-
-      res.json(leads);
-
-    }
-
-    catch(err){
-
-      console.log(err);
-
-      res.status(500).json({
-        message:"Error"
-      });
-
-    }
-
-  }
-);
+        .limit(10);
 
        
     /* =====================================
