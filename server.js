@@ -2300,21 +2300,14 @@ app.get("/api/executive-leads", async (req, res) => {
 ========================================= */
 
 app.get("/api/my-leads", async (req, res) => {
-
   try {
 
     const email = req.query.email
       ?.toLowerCase()
       .trim();
 
-    if (!email) {
-      return res.status(400).json({
-        message: "Email required"
-      });
-    }
-
     const leads = await Lead.find({
-      assigned_to_email: email
+      assigned_to: email
     }).sort({
       createdAt: -1
     });
@@ -2330,7 +2323,7 @@ app.get("/api/my-leads", async (req, res) => {
     });
 
   }
-
+});
 });
 /* =========================================
    GET ALL USERS
