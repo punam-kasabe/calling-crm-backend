@@ -2325,6 +2325,29 @@ app.get("/api/my-leads", async (req, res) => {
   }
 });
 
+
+app.post("/api/reception-entries", async (req, res) => {
+  try {
+
+    const { email } = req.body;
+
+    const leads = await Lead.find({
+      assigned_to: email,
+      source: "Reception"
+    }).sort({
+      createdAt: -1
+    });
+
+    res.json(leads);
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      message: "Server Error"
+    });
+  }
+});
+
 /* =========================================
    GET ALL USERS
 ========================================= */
