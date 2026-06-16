@@ -2308,68 +2308,30 @@ app.get("/api/my-leads", async (req, res) => {
       .trim();
 
     if (!email) {
-
       return res.status(400).json({
-        message: "Email required ❌"
+        message: "Email required"
       });
-
     }
-    const leads =
-  await Lead.find({
 
-    $and: [
-
-      {
-        $or: [
-
-          {
-            assigned_to_email:
-              email
-          },
-
-          {
-            assignedTo:
-              user?.name
-          }
-
-        ]
-      },
-
-      {
-        status: {
-          $in: [
-            "Interested",
-            "Very Interested"
-          ]
-        }
-      }
-
-    ]
-
-  }).sort({
-    createdAt: -1
-  });
-
-
+    const leads = await Lead.find({
+      assigned_to_email: email
+    }).sort({
+      createdAt: -1
+    });
 
     res.json(leads);
 
-  }
-
-
-  catch (err) {
+  } catch (err) {
 
     console.log(err);
 
     res.status(500).json({
-      message: "Server Error ❌"
+      message: "Server Error"
     });
 
   }
 
 });
-
-
 /* =========================================
    GET ALL USERS
 ========================================= */
