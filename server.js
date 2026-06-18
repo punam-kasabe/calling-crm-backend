@@ -2326,28 +2326,6 @@ app.get("/api/my-leads", async (req, res) => {
 });
 
 
-app.get("/api/manager/reception-entries", async (req, res) => {
-  try {
-    const { email } = req.query;
-
-    const leads = await Lead.find({
-      assigned_to: email,
-      source: "Reception"
-    }).sort({
-      createdAt: -1
-    });
-
-    res.json(leads);
-
-  } catch (err) {
-    console.log(err);
-
-    res.status(500).json({
-      message: "Server Error"
-    });
-  }
-});
-
 /* =========================================
    GET ALL USERS
 ========================================= */
@@ -3859,7 +3837,25 @@ const followups = await Lead.countDocuments({
       }
     ]);
 
-
+const projectStats = await Lead.aggregate([
+  {
+    $match: match
+  },
+  {
+    $group: {
+      _id: "$project"
+      ,
+      count: {
+        $sum: 1
+      }
+    }
+  },
+  {
+    $sort: {
+      count: -1
+    }
+  }
+]);
 
 /* RECENT LEADS */
 
@@ -3875,20 +3871,28 @@ const recentLeads = await Lead.find(match)
     "name phone status assigned_to createdAt"
   );
 
-    res.json({
+  res.json({
 
-      total,
-      siteVisit,
-      new: newLeads,
-      booked,
-      interested,
-      not_interested: notInterested,
-      status,
-      recentLeads,
-      pending,
-      visits,
-      followups
-    });
+  total,
+  siteVisit,
+  new: newLeads,
+  booked,
+  interested,
+  not_interested: notInterested,
+  status,
+  recentLeads,
+  pending,
+  visits,
+  followups,
+
+  projectStats: projectStats.map(
+    (p) => ({
+      project: p._id,
+      count: p.count
+    })
+  )
+
+});
 
   }
 
