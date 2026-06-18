@@ -1621,6 +1621,7 @@ app.post(
         bookingStatus,
         calling_by,
         remark,
+        status,
         assigned_manager
       });
 
@@ -1661,10 +1662,7 @@ app.post(
         existingLead.visit_status =
           visitStatus;
 
-        existingLead.status =
-          bookingStatus === "BOOKED"
-            ? "Booked"
-            : "Followup";
+        existingLead.status = status || "New";
 
         await existingLead.save();
 
@@ -1679,16 +1677,10 @@ app.post(
         await Lead.create({
 
           name: clientName,
-
           phone: normalizePhone(mobile),
           project: project,
-
           source: "Visit",
-
-          status:
-            bookingStatus === "BOOKED"
-              ? "Booked"
-              : "Followup",
+          status: status || "New",
 
           assigned_manager:
             manager?.email || "",
