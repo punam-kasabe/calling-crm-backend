@@ -1606,7 +1606,9 @@ app.post(
         bookingStatus,
         calling_by,
         remark,
-        assigned_manager
+        assigned_manager,department,
+source,
+assigned_to
 
       } = req.body;
 
@@ -1622,7 +1624,10 @@ app.post(
         calling_by,
         remark,
         status,
-        assigned_manager
+        assigned_manager,
+        department,
+source,
+assigned_to
       });
 
       /* ===============================
@@ -1663,7 +1668,10 @@ app.post(
           visitStatus;
 
         existingLead.status = status || "New";
-
+        existingLead.department = department;
+        existingLead.source = source;
+        existingLead.assigned_to = assigned_to;
+        existingLead.assigned_to_email = assigned_to;
         await existingLead.save();
 
       }
@@ -1689,7 +1697,11 @@ app.post(
 
           visit_status: visitStatus,
 
-          created_by: "Reception"
+          created_by: "Reception",
+          department,
+          source,
+          assigned_to,
+          assigned_to_email: assigned_to
 
         });
 
