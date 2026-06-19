@@ -2862,9 +2862,7 @@ app.post(
 
       lead.next_call_date =
         followup_date;
-
       lead.remark = note;
-      
       lead.followups.push({
 
         note,
