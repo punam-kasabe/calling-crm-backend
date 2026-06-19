@@ -1596,21 +1596,20 @@ app.post(
 
       const {
 
-        leadId,
-        clientName,
-        mobile,
-        project,
-        attendedManager,
-        receptionUser,
-        visitStatus,
-        bookingStatus,
-        calling_by,
-        remark,
-        assigned_manager,department,
-source,
-assigned_to
+  leadId,
+  clientName,
+  mobile,
+  project,
+  attendedManager,
+  receptionUser,
+  visitStatus,
+  bookingStatus,
+  calling_by,
+  remark,
+  assigned_manager,
+  status
 
-      } = req.body;
+} = req.body;
 
       const visit = await Visit.create({
         leadId,
