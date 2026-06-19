@@ -413,8 +413,6 @@ const visitSchema = new mongoose.Schema(
 
 );
 
-
-
 /* =========================================
    FOLLOWUP SCHEMA
 ========================================= */
@@ -1691,20 +1689,15 @@ existingLead.status = status;
           project: project,
           source: "Visit",
           status: status || "New",
-
           assigned_manager:
             manager?.email || "",
-
           visit_created: true,
-
           visit_status: visitStatus,
-
           created_by: "Reception",
           department,
           source,
           assigned_to,
           assigned_to_email: assigned_to
-
         });
 
       }
@@ -2765,14 +2758,11 @@ app.post(
 
             },
 
-            $set: {
-
-              status,
-
-              next_call_date:
-                followup.next_call_date
-
-            }
+           $set: {
+           status,
+           next_call_date: followup.next_call_date,
+           remark: note
+              }
 
           },
 
@@ -2873,6 +2863,8 @@ app.post(
       lead.next_call_date =
         followup_date;
 
+      lead.remark = note;
+      
       lead.followups.push({
 
         note,
