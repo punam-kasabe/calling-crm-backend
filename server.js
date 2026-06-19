@@ -2758,11 +2758,11 @@ app.post(
 
             },
 
-           $set: {
-           status,
-           next_call_date: followup.next_call_date,
-           remark: note
-              }
+          $set: {
+       status,
+       next_call_date: followup.next_call_date,
+        remark: note
+          }
 
           },
 
@@ -2866,9 +2866,7 @@ app.post(
       lead.followups.push({
 
         note,
-
         status: "Followup",
-
         next_call_date:
           followup_date
 
