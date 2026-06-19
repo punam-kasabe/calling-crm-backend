@@ -1594,8 +1594,7 @@ app.post(
 
     try {
 
-      const {
-
+     const {
   leadId,
   clientName,
   mobile,
@@ -1607,28 +1606,32 @@ app.post(
   calling_by,
   remark,
   assigned_manager,
+
+  department,
+  source,
+  assigned_to,
   status
 
 } = req.body;
 
-      const visit = await Visit.create({
-        leadId,
-        clientName,
-        mobile,
-        project,
-        attendedManager,
-        receptionUser,
-        visitStatus,
-        bookingStatus,
-        calling_by,
-        remark,
-        status,
-        assigned_manager,
-        department,
-source,
-assigned_to
-      });
+ const visit = await Visit.create({
+  leadId,
+  clientName,
+  mobile,
+  project,
+  attendedManager,
+  receptionUser,
+  visitStatus,
+  bookingStatus,
+  calling_by,
+  remark,
+  assigned_manager,
 
+  department,
+  source,
+  assigned_to,
+  status
+});
       /* ===============================
          GET MANAGER EMAIL
       =============================== */
@@ -1668,9 +1671,9 @@ assigned_to
 
         existingLead.status = status || "New";
         existingLead.department = department;
-        existingLead.source = source;
-        existingLead.assigned_to = assigned_to;
-        existingLead.assigned_to_email = assigned_to;
+existingLead.source = source;
+existingLead.assigned_to = assigned_to;
+existingLead.status = status;
         await existingLead.save();
 
       }
