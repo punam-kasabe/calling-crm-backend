@@ -2305,12 +2305,16 @@ app.get("/api/my-leads", async (req, res) => {
       ?.toLowerCase()
       .trim();
 
-    const leads = await Lead.find({
-      assigned_to: email
-    }).sort({
-      createdAt: -1
-    });
-
+   const leads = await Lead.find({
+  assigned_to: email
+})
+.select(
+  "name phone project status next_call_date createdAt source"
+)
+.sort({
+  createdAt: -1
+})
+.lean();
     res.json(leads);
 
   } catch (err) {
