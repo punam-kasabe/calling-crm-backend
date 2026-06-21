@@ -2428,6 +2428,7 @@ app.put(
 
   status,
   remark,
+  description,
   followup_date,
   visitDate,
   visit_created
