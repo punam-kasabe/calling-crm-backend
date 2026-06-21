@@ -1277,6 +1277,33 @@ app.put("/api/update-user/:id", async (req, res) => {
 
 });
 
+app.get(
+  "/api/attending-officers",
+
+  async (req, res) => {
+
+    try {
+
+      const users = await User.find({
+
+        role: "attending_officer"
+
+      }).select(
+        "name email"
+      );
+
+      res.json(users);
+
+    } catch (err) {
+
+      res.status(500).json({
+        message: "Error"
+      });
+
+    }
+
+  }
+);
 /* =========================================
    GET MANAGERS
 ========================================= */
