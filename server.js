@@ -81,12 +81,12 @@ mongoose.connect(process.env.MONGO_URI)
   });
 
 
-  
-  /* =========================================
+
+/* =========================================
    PHONE NORMALIZER
 ========================================= */
 
-const normalizePhone = (phone) => {
+ const normalizePhone = (phone) => {
 
   if (!phone) return "";
 
@@ -98,6 +98,7 @@ const normalizePhone = (phone) => {
   if (cleaned.startsWith("91") && cleaned.length > 10) {
     cleaned = cleaned.slice(-10);
   }
+
 
   // REMOVE 0091
   if (cleaned.startsWith("0091") && cleaned.length > 10) {
@@ -235,14 +236,13 @@ const leadSchema = new mongoose.Schema({
   visitDate: {
   type: Date,
   default: null
-},
-
-
-assignedTo: {
+  },
+  
+  assignedTo: {
   type: String,
   default: "",
   trim: true
-},
+  },
 
   assigned_to: {
     type: String,
@@ -255,6 +255,12 @@ assignedTo: {
   lowercase: true,
   trim: true,
   default: ""
+},
+
+  executive_email: {
+  type: String,
+  lowercase: true,
+  trim: true
 },
 
   assigned_manager: {
@@ -2230,7 +2236,11 @@ assigned_to_email:
     ?.trim() ||
 
   "",
-      
+      executive_email:
+  req.body.executive_email
+    ?.toLowerCase()
+    ?.trim() || "",
+
       closingExecutive:
         closingExecutive || "",
 
