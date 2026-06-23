@@ -2332,8 +2332,31 @@ app.get("/api/my-leads", async (req, res) => {
       ?.toLowerCase()
       .trim();
 
+    const user = await User.findOne({
+      email
+    });
+
+    const userName =
+      user?.name || "";
+
     const leads = await Lead.find({
-      assigned_to: email
+
+      $or: [
+
+        {
+          assigned_to: email
+        },
+
+        {
+          assigned_to_email: email
+        },
+
+        {
+          closingExecutive: userName
+        }
+
+      ]
+
     }).sort({
       createdAt: -1
     });
@@ -2350,7 +2373,6 @@ app.get("/api/my-leads", async (req, res) => {
 
   }
 });
-
 /* =========================================
    GET ALL USERS
 ========================================= */
@@ -2521,7 +2543,6 @@ app.post(
         (page - 1) * limit;
 
       let query = {};
-      
 
       const userRole =
         role?.toLowerCase();
@@ -2535,7 +2556,7 @@ app.post(
           email
             ?.toLowerCase()
             .trim();
-      query.status = "Interested";
+
       }
 
       if (
@@ -3595,7 +3616,7 @@ const recentActivities =
         recentLeads,
         recentActivities,
         todayFollowupsList,
-        todaySiteVisits
+         todaySiteVisits
       });
 
     }
