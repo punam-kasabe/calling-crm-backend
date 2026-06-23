@@ -2521,6 +2521,7 @@ app.post(
         (page - 1) * limit;
 
       let query = {};
+      
 
       const userRole =
         role?.toLowerCase();
@@ -2534,7 +2535,7 @@ app.post(
           email
             ?.toLowerCase()
             .trim();
-
+      query.status = "Interested";
       }
 
       if (
@@ -3557,6 +3558,26 @@ app.get(
 
           .limit(5);
 
+          /* RECENT ACTIVITIES */
+
+const recentActivities =
+  await Lead.find({
+
+    assigned_to: email
+
+  })
+
+  .sort({
+
+    updatedAt: -1
+
+  })
+
+  .limit(10)
+
+  .select(
+    "name status remark updatedAt"
+  );
       /* CALLS */
 
       const calls =
@@ -3565,22 +3586,16 @@ app.get(
       res.json({
 
         totalLeads,
-
         followups,
-
         calls,
-
         converted,
-
         todayFollowups,
-
         hotLeads,
-
         pendingCalls,
-
         recentLeads,
+        recentActivities,
         todayFollowupsList,
-         todaySiteVisits
+        todaySiteVisits
       });
 
     }
@@ -3692,6 +3707,24 @@ app.get(
 
           .limit(10);
 
+            /* RECENT ACTIVITIES */
+
+const recentActivities =
+  await Lead.find({
+
+    assigned_to: email
+
+  })
+
+  .sort({
+    updatedAt: -1
+  })
+
+  .limit(10)
+
+  .select(
+    "name status remark updatedAt"
+  );
       /* RESPONSE */
 
       res.json({
@@ -3706,7 +3739,9 @@ app.get(
 
         booked,
 
-        recentLeads
+        recentLeads,
+        recentActivities
+
 
       });
 
