@@ -2353,6 +2353,9 @@ app.get("/api/my-leads", async (req, res) => {
 
       $or: [
 
+         {
+            executive_email: email
+          },
         {
           assigned_to: email
         },
