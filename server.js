@@ -1283,20 +1283,23 @@ app.put("/api/update-user/:id", async (req, res) => {
 
 });
 
+
+
 app.get(
   "/api/attending-officers",
-
   async (req, res) => {
-
     try {
 
       const users = await User.find({
 
-        role: "attending_officer"
+        role: {
+          $in: [
+            "attending_officer",
+            "sales"
+          ]
+        }
 
-      }).select(
-        "name email"
-      );
+      }).select("name email");
 
       res.json(users);
 
@@ -1307,7 +1310,6 @@ app.get(
       });
 
     }
-
   }
 );
 /* =========================================
