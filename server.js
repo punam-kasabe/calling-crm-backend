@@ -1283,8 +1283,6 @@ app.put("/api/update-user/:id", async (req, res) => {
 
 });
 
-
-
 app.get(
   "/api/attending-officers",
   async (req, res) => {
