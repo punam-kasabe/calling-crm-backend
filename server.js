@@ -3811,9 +3811,13 @@ app.get("/api/dashboard", async (req, res) => {
 
     let match = {};
 
-    if (role === "executive") {
-      match.assigned_to = email;
-    }
+   if (role === "executive") {
+
+  match = {
+    assigned_to_email: email
+  };
+
+}
 
     if (role === "manager") {
 
