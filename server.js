@@ -171,7 +171,6 @@ const userSchema = new mongoose.Schema({
 const leadSchema = new mongoose.Schema({
 
   name: String,
-
   phone: {
   type: String,
   trim: true,
@@ -226,7 +225,15 @@ const leadSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
- 
+  executive_remark: {
+  type: String,
+  default: ""
+},
+
+attending_remark: {
+  type: String,
+  default: ""
+},
   
   followup_date: {
     type: Date,
@@ -406,6 +413,7 @@ const visitSchema = new mongoose.Schema(
       type: String,
       default: ""
     },
+
     visitDate: {
       type: Date,
       default: Date.now,
@@ -3439,44 +3447,60 @@ app.get(
 
       /* TOTAL LEADS */
 
-      const totalLeads =
-        await Lead.countDocuments({
+    const totalLeads =
+  await Lead.countDocuments({
 
-          assigned_to: email
+    $or: [
+      {
+        assigned_to: email
+      },
+      {
+        assigned_to_email: email
+      }
+    ]
 
-        });
-
+  });
       /* FOLLOWUPS */
 
       const followups =
-        await Lead.countDocuments({
+await Lead.countDocuments({
 
-          assigned_to: email,
-          status: "Followup"
+  $or: [
+    { assigned_to: email },
+    { assigned_to_email: email }
+  ],
 
-        });
+  status: "Followup"
+
+});
 
       /* CONVERTED */
 
-      const converted =
-        await Lead.countDocuments({
+     const converted =
+  await Lead.countDocuments({
 
-          assigned_to: email,
+  $or: [
+    { assigned_to: email },
+    { assigned_to_email: email }
+  ],
 
-          status: "Booked"
+  status: "Booked"
 
-        });
+});
 
       /* INTERESTED */
 
-      const hotLeads =
-        await Lead.countDocuments({
+     const hotLeads =
+await Lead.countDocuments({
 
-          assigned_to: email,
+  $or: [
+    { assigned_to: email },
+    { assigned_to_email: email }
+  ],
 
-          status: "Interested"
+  status: "Interested"
 
-        });
+});
 
         
       /* TODAY FOLLOWUPS */
@@ -3567,51 +3591,53 @@ app.get(
       /* PENDING CALLS */
 
       const pendingCalls =
-        await Lead.countDocuments({
+await Lead.countDocuments({
 
-          assigned_to: email,
+  $or: [
+    { assigned_to: email },
+    { assigned_to_email: email }
+  ],
 
-          status: "New"
+  status: "New"
 
-        });
+});
 
       /* RECENT LEADS */
 
-      const recentLeads =
-        await Lead.find({
+     const recentLeads =
+await Lead.find({
 
-          assigned_to: email
+  $or: [
+    { assigned_to: email },
+    { assigned_to_email: email }
+  ]
 
-        })
-
-          .sort({
-
-            createdAt: -1
-
-          })
-
-          .limit(5);
+})
+.sort({
+  createdAt: -1
+})
+.limit(5);
 
           /* RECENT ACTIVITIES */
 
 const recentActivities =
-  await Lead.find({
+await Lead.find({
 
-    assigned_to: email
+  $or: [
+    { assigned_to: email },
+    { assigned_to_email: email }
+  ]
 
-  })
+})
+.sort({
+  updatedAt: -1
+})
+.limit(10)
+.select(
+  "name status remark updatedAt"
+);
 
-  .sort({
 
-    updatedAt: -1
-
-  })
-
-  .limit(10)
-
-  .select(
-    "name status remark updatedAt"
-  );
       /* CALLS */
 
       const calls =
@@ -3757,8 +3783,8 @@ const recentActivities =
   .limit(10)
 
   .select(
-    "name status remark updatedAt"
-  );
+  "name status executive_remark updatedAt"
+);
       /* RESPONSE */
 
       res.json({
