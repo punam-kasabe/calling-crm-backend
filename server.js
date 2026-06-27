@@ -2623,6 +2623,30 @@ app.post(
 
       }
 
+/* CREATED DATE FILTER */
+
+if (filters.createdFrom || filters.createdTo) {
+
+  query.createdAt = {};
+
+  if (filters.createdFrom) {
+
+    query.createdAt.$gte = new Date(filters.createdFrom);
+
+  }
+
+  if (filters.createdTo) {
+
+    const toDate = new Date(filters.createdTo);
+
+    toDate.setHours(23, 59, 59, 999);
+
+    query.createdAt.$lte = toDate;
+
+  }
+
+}
+
       /* SEARCH */
 
 if (search && search.trim()) {
@@ -2681,24 +2705,32 @@ if (search && search.trim()) {
           query
         );
 
-        const totalLeads =
-      await Lead.countDocuments();
+       const totalLeads =
+  await Lead.countDocuments(query);
 
-      const hotLeads = await Lead.countDocuments({
-  status: "Interested"
-});
+const hotLeads =
+  await Lead.countDocuments({
+    ...query,
+    status: "Interested"
+  });
 
-const newLeads = await Lead.countDocuments({
-  status: "New"
-});
+const newLeads =
+  await Lead.countDocuments({
+    ...query,
+    status: "New"
+  });
 
-const bookedLeads = await Lead.countDocuments({
-  status: "Booked"
-});
+const bookedLeads =
+  await Lead.countDocuments({
+    ...query,
+    status: "Booked"
+  });
 
-const inactiveLeads = await Lead.countDocuments({
-  status: "Not Interested"
-});
+const inactiveLeads =
+  await Lead.countDocuments({
+    ...query,
+    status: "Not Interested"
+  });
 
 const today = new Date();
 today.setHours(0, 0, 0, 0);
@@ -2706,17 +2738,27 @@ today.setHours(0, 0, 0, 0);
 const tomorrow = new Date(today);
 tomorrow.setDate(tomorrow.getDate() + 1);
 
-const todayFollowups = await Lead.countDocuments({
+const todayFollowups =
+await Lead.countDocuments({
+  ...query,
   next_call_date: {
     $gte: today,
     $lt: tomorrow
   }
 });
 
-const backlog = await Lead.countDocuments({
+const backlog =
+await Lead.countDocuments({
+  ...query,
   $or: [
-    { next_call_date: null },
-    { next_call_date: { $exists: false } }
+    {
+      next_call_date: null
+    },
+    {
+      next_call_date: {
+        $exists: false
+      }
+    }
   ]
 });
       const leads =
