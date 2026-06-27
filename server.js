@@ -2338,7 +2338,6 @@ app.get("/api/executive-leads", async (req, res) => {
 });
 
 
-
 /* =========================================
    MY LEADS
 ========================================= */
@@ -3907,14 +3906,17 @@ const pending = await Lead.countDocuments({
   ]
 });
 
-const visits = await Lead.countDocuments({
-  $and: [
-    match,
-    {
-      visit_created: true
-    }
-  ]
+const visits = await Visit.countDocuments({
+
+  calling_by: email,
+
+  visitDate: {
+    $gte: today,
+    $lt: tomorrow
+  }
+
 });
+
 
 const siteVisit = await Lead.countDocuments({
   ...match,
