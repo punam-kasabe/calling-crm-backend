@@ -3543,6 +3543,7 @@ await Lead.countDocuments({
     { assigned_to: email },
     { assigned_to_email: email }
   ],
+
   followup_date: {
     $gte: today,
     $lt: tomorrow
@@ -3626,9 +3627,8 @@ await Lead.find({
 })
 .limit(10)
 .select(
-  "name status remark updatedAt"
+  "name status remark createdAt updatedAt"
 );
-
 
       /* CALLS */
 
