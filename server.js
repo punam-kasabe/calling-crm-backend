@@ -3975,6 +3975,22 @@ const projectStats = await Lead.aggregate([
   }
 ]);
 
+const todayFollowupsList = await Lead.find({
+  ...match,
+  followup_date: {
+    $gte: today,
+    $lt: tomorrow
+  }
+}).select("name phone project");
+
+const todaySiteVisits = await Lead.find({
+  ...match,
+  visit_date: {
+    $gte: today,
+    $lt: tomorrow
+  }
+}).select("name phone project");
+
 /* RECENT LEADS */
 
 const recentLeads = await Lead.find(match)
