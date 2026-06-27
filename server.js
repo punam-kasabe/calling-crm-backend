@@ -4024,8 +4024,10 @@ const recentLeads = await Lead.find(match)
       project: p._id,
       count: p.count
     })
-  )
+  ),
 
+  todayFollowupsList: todayFollowupsList,
+  todaySiteVisits: todaySiteVisits
 });
 
   }
