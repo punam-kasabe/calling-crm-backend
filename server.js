@@ -3906,17 +3906,14 @@ const pending = await Lead.countDocuments({
   ]
 });
 
-const visits = await Visit.countDocuments({
-
-  calling_by: email,
-
-  visitDate: {
-    $gte: today,
-    $lt: tomorrow
-  }
-
+const visits = await Lead.countDocuments({
+  $and: [
+    match,
+    {
+      visit_created: true
+    }
+  ]
 });
-
 
 const siteVisit = await Lead.countDocuments({
   ...match,
