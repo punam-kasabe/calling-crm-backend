@@ -3538,26 +3538,19 @@ await Lead.countDocuments({
 
       /* TODAY FOLLOWUPS LIST */
 
-      const todayFollowupsList =
-        await Followup.find({
-
-          executive: email,
-
-            followup_date: {
-
-            $gte: today,
-
-            $lt: tomorrow
-
-          }
-
-        })
-
-          .sort({
-            followup_date: 1
-          })
-
-          .limit(10);
+      const todayFollowupsList = await Lead.find({
+  $or: [
+    { assigned_to: email },
+    { assigned_to_email: email }
+  ],
+  followup_date: {
+    $gte: today,
+    $lt: tomorrow
+  }
+})
+.select("name phone project followup_date")
+.sort({ followup_date: 1 })
+.limit(10);
 
                 /* TODAY SITE VISITS */
 
@@ -3906,6 +3899,7 @@ const pending = await Lead.countDocuments({
   ]
 });
 
+
 const visits = await Lead.countDocuments({
   $and: [
     match,
@@ -3915,10 +3909,13 @@ const visits = await Lead.countDocuments({
   ]
 });
 
+
 const siteVisit = await Lead.countDocuments({
   ...match,
   visit_created: true
 });
+
+
 const today = new Date();
 today.setHours(0,0,0,0);
 
