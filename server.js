@@ -501,33 +501,48 @@ app.get("/api/reception-dashboard", async (req, res) => {
 
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    // Total Visits
     const totalVisits = await Visit.countDocuments();
 
+    // Today's Visit Count
     const todayVisits = await Visit.countDocuments({
 
       createdAt: {
-
         $gte: today,
-
         $lt: tomorrow
-
       }
 
     });
 
+    // Assigned Managers
     const assignedManagers = await User.countDocuments({
 
       role: "manager"
 
     });
 
+    // ✅ Today's Visit List
+    const todayVisitList = await Visit.find({
+
+      createdAt: {
+        $gte: today,
+        $lt: tomorrow
+      }
+
+    })
+
+    .sort({ createdAt: -1 })
+
+    .select(
+      "client_name project manager_name visitDate status createdAt"
+    );
+
     res.json({
 
       totalVisits,
-
       todayVisits,
-
-      assignedManagers
+      assignedManagers,
+      todayVisitList
 
     });
 
