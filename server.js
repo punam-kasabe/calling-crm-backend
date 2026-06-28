@@ -4377,7 +4377,7 @@ app.get("/api/dashboard-full", async (req, res) => {
       req.query.role
         ?.toLowerCase()
         .trim();
-
+    const receptionEntries = await Visit.countDocuments();
     let match = {};
 
     /* ROLE FILTER */
