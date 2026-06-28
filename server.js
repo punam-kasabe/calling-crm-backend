@@ -1896,13 +1896,15 @@ app.put(
 
     try {
 
-      const {
-
-        visitStatus,
-        bookingStatus,
-        attendedManager
-
-      } = req.body;
+    const {
+  clientName,
+  mobile,
+  project,
+  visitStatus,
+  bookingStatus,
+  remark,
+  attendedManager
+} = req.body;
 
       const updated =
         await Visit.findByIdAndUpdate(
@@ -1911,11 +1913,19 @@ app.put(
 
           {
 
-            visitStatus,
-            bookingStatus,
-            attendedManager
+  clientName,
 
-          },
+  mobile,
+
+  project,
+
+  visitStatus,
+
+  bookingStatus,
+
+  attendedManager
+
+},
 
           {
             new: true
@@ -1938,7 +1948,7 @@ app.put(
       console.log(err);
 
       res.status(500).json({
-        message: "Visit update failed ❌"
+        message: "Visit update failed"
       });
 
     }
