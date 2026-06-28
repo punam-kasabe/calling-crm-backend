@@ -489,7 +489,63 @@ const callLogSchema = new mongoose.Schema(
 }
 );
 
+app.get("/api/reception-dashboard", async (req, res) => {
 
+  try {
+
+    const today = new Date();
+
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const totalVisits = await Visit.countDocuments();
+
+    const todayVisits = await Visit.countDocuments({
+
+      createdAt: {
+
+        $gte: today,
+
+        $lt: tomorrow
+
+      }
+
+    });
+
+    const assignedManagers = await User.countDocuments({
+
+      role: "manager"
+
+    });
+
+    res.json({
+
+      totalVisits,
+
+      todayVisits,
+
+      assignedManagers
+
+    });
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+
+      message: "Server Error"
+
+    });
+
+  }
+
+});
 /* =========================================
    PROJECT SCHEMA
 ========================================= */
@@ -2806,7 +2862,7 @@ app.get("/api/all-leads", async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.json(leads);
-    
+
   } catch (err) {
 
     console.log(err);
