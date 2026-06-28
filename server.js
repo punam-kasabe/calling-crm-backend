@@ -2806,7 +2806,7 @@ app.get("/api/all-leads", async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.json(leads);
-
+    
   } catch (err) {
 
     console.log(err);
