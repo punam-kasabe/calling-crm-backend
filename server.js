@@ -533,9 +533,9 @@ app.get("/api/reception-dashboard", async (req, res) => {
 
     .sort({ createdAt: -1 })
 
-    .select(
-      "client_name project manager_name visitDate status createdAt"
-    );
+   .select(
+  "clientName mobile project assigned_manager visitDate visitStatus createdAt"
+);
 
     res.json({
 
