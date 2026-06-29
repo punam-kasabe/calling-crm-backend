@@ -413,7 +413,11 @@ const visitSchema = new mongoose.Schema(
       type: String,
       default: ""
     },
-
+clientType: {
+  type: String,
+  enum: ["New", "Old"],
+  default: "New"
+},
     visitDate: {
       type: Date,
       default: Date.now,
@@ -1709,6 +1713,7 @@ app.post(
   clientName,
   mobile,
   project,
+  clientType,
   attendedManager,
   receptionUser,
   visitStatus,
@@ -1716,7 +1721,6 @@ app.post(
   calling_by,
   remark,
   assigned_manager,
-
   department,
   source,
   assigned_to,
@@ -1729,6 +1733,7 @@ app.post(
   clientName,
   mobile,
   project,
+  clientType,
   attendedManager,
   receptionUser,
   visitStatus,
@@ -1742,6 +1747,8 @@ app.post(
   assigned_to,
   status
 });
+
+
       /* ===============================
          GET MANAGER EMAIL
       =============================== */
@@ -3205,7 +3212,6 @@ app.delete("/api/delete-lead/:id", auth, adminOnly, async (req, res) => {
   }
 
 });
-
 
 /* =========================================
    DELETE MULTIPLE LEADS
