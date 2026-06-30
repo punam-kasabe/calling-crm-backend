@@ -1369,14 +1369,19 @@ app.put("/api/update-user/:id", async (req, res) => {
 app.get(
   "/api/attending-officers",
   async (req, res) => {
+
     try {
 
       const users = await User.find({
 
-        role: {
+        email: {
           $in: [
-            "attending_officer",
-            "sales"
+            "suvarna@zaminwale.com",
+            "sreeniwas@zaminwale.com",
+            "harsh@zaminwale.com",
+            "avdhut@zaminwale.com",
+            "chaitanya@zaminwale.com",
+            "yash@zaminwale.com"
           ]
         }
 
@@ -1391,6 +1396,7 @@ app.get(
       });
 
     }
+
   }
 );
 /* =========================================
