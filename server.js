@@ -1366,39 +1366,41 @@ app.put("/api/update-user/:id", async (req, res) => {
 
 });
 
-app.get(
-  "/api/attending-officers",
-  async (req, res) => {
+app.get("/api/attending-officers", async (req, res) => {
 
-    try {
+  try {
 
-      const users = await User.find({
+    const users = await User.find({
 
-        email: {
-          $in: [
-            "suvarna@zaminwale.com",
-            "sreeniwas@zaminwale.com",
-            "harsh@zaminwale.com",
-            "avdhut@zaminwale.com",
-            "chaitanya@zaminwale.com",
-            "yash@zaminwale.com"
-          ]
-        }
+      email: {
+        $in: [
 
-      }).select("name email");
+          "suvarna@zaminwale.com",
+          "sreeniwas@zaminwale.com",
 
-      res.json(users);
+          "harsh@zaminwale.com",
+          "avdhut@zaminwale.com",
+          "chaitanya@zaminwale.com",
+          "yash@zaminwale.com"
 
-    } catch (err) {
+        ]
+      }
 
-      res.status(500).json({
-        message: "Error"
-      });
+    }).select("name email");
 
-    }
+    res.json(users);
 
   }
-);
+
+  catch (err) {
+
+    res.status(500).json({
+      message: "Error"
+    });
+
+  }
+
+});
 /* =========================================
    GET MANAGERS
 ========================================= */
@@ -1426,8 +1428,6 @@ app.get("/api/managers", async (req, res) => {
   }
 
 });
-
-
 
 /* =========================================
    CSV UPLOAD
