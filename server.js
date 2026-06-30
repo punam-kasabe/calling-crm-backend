@@ -666,6 +666,79 @@ mongoose.model(
 bookingSchema
 );
 
+
+/* =========================================
+   DAILY REPORT SCHEMA
+========================================= */
+
+const dailyReportSchema = new mongoose.Schema({
+
+  executive_email: {
+    type: String,
+    lowercase: true,
+    trim: true
+  },
+
+  executive_name: String,
+
+  reportDate: {
+    type: Date,
+    default: Date.now
+  },
+
+  totalCalls: {
+    type: Number,
+    default: 0
+  },
+
+  connectedCalls: {
+    type: Number,
+    default: 0
+  },
+
+  interested: {
+    type: Number,
+    default: 0
+  },
+
+  followups: {
+    type: Number,
+    default: 0
+  },
+
+  siteVisits: {
+    type: Number,
+    default: 0
+  },
+
+  bookings: {
+    type: Number,
+    default: 0
+  },
+
+  pendingWork: {
+    type: String,
+    default: ""
+  },
+
+  tomorrowPlan: {
+    type: String,
+    default: ""
+  },
+
+  summary: {
+    type: String,
+    default: ""
+  }
+
+}, {
+  timestamps: true
+});
+
+const DailyReport = mongoose.model(
+  "DailyReport",
+  dailyReportSchema
+);
 /* =========================================
    TOTAL BOOKINGS
 ========================================= */
@@ -770,9 +843,6 @@ app.post("/api/login", loginLimiter, async (req, res) => {
       });
 
     }
-
-
-
 
 
     /* =========================================
@@ -5072,6 +5142,198 @@ app.post("/api/99acres-webhook", async (req, res) => {
 app.get("/", (req, res) => {
   res.send("CRM Backend Running ✅");
 });
+/* =========================================
+   SAVE DAILY REPORT
+========================================= */
+
+app.post("/api/daily-report", async (req, res) => {
+
+  try {
+
+    const {
+
+      executive_email,
+      executive_name,
+
+      totalCalls,
+      connectedCalls,
+      interested,
+      followups,
+      siteVisits,
+      bookings,
+
+      pendingWork,
+      tomorrowPlan,
+      summary
+
+    } = req.body;
+
+    // आजचा report आधीपासून आहे का?
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const existing = await DailyReport.findOne({
+
+      executive_email,
+
+      reportDate: {
+        $gte: today,
+        $lt: tomorrow
+      }
+
+    });
+
+    if (existing) {
+
+      existing.totalCalls = totalCalls;
+      existing.connectedCalls = connectedCalls;
+      existing.interested = interested;
+      existing.followups = followups;
+      existing.siteVisits = siteVisits;
+      existing.bookings = bookings;
+      existing.pendingWork = pendingWork;
+      existing.tomorrowPlan = tomorrowPlan;
+      existing.summary = summary;
+
+      await existing.save();
+
+      return res.json({
+        message: "Today's report updated ✅",
+        report: existing
+      });
+
+    }
+
+    const report = await DailyReport.create({
+
+      executive_email,
+      executive_name,
+
+      totalCalls,
+      connectedCalls,
+      interested,
+      followups,
+      siteVisits,
+      bookings,
+
+      pendingWork,
+      tomorrowPlan,
+      summary
+
+    });
+
+    res.json({
+
+      message: "Daily Report Saved ✅",
+
+      report
+
+    });
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+
+      message: "Unable to save report ❌"
+
+    });
+
+  }
+
+});
+
+/* =========================================
+   MY DAILY REPORTS
+========================================= */
+
+app.get("/api/my-daily-reports", async (req, res) => {
+
+  try {
+
+    const { email } = req.query;
+
+    if (!email) {
+
+      return res.status(400).json({
+        message: "Email required"
+      });
+
+    }
+
+    const reports = await DailyReport.find({
+
+      executive_email: email
+        .toLowerCase()
+        .trim()
+
+    })
+
+      .sort({
+
+        reportDate: -1
+
+      });
+
+    res.json(reports);
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+
+      message: "Error fetching reports"
+
+    });
+
+  }
+
+});
+
+
+/* =========================================
+   ALL DAILY REPORTS
+========================================= */
+
+app.get("/api/all-daily-reports", async (req, res) => {
+
+  try {
+
+    const reports = await DailyReport.find()
+
+      .sort({
+
+        reportDate: -1
+
+      });
+
+    res.json(reports);
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+
+      message: "Error fetching reports"
+
+    });
+
+  }
+
+});
+
 app.listen(PORT, () => {
 
   console.log(`🚀 Server Running On Port ${PORT}`);
