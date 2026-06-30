@@ -3140,9 +3140,25 @@ app.put("/api/update-lead/:id", async (req, res) => {
 
   try {
 
+    const data = { ...req.body };
+
+    // If Attending Officer selected
+    if (data.assigned_to_email) {
+
+      const officer = await User.findOne({
+        email: data.assigned_to_email.toLowerCase().trim()
+      });
+
+      if (officer) {
+        data.assignedTo = officer.name;          // Display Name
+        data.assigned_to = officer.email;        // Email
+        data.assigned_to_email = officer.email;  // Email
+      }
+    }
+
     const updated = await Lead.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      data,
       { new: true }
     );
 
@@ -3150,7 +3166,6 @@ app.put("/api/update-lead/:id", async (req, res) => {
       return res.status(404).json({
         message: "Lead not found ❌"
       });
-
     }
 
     res.json({
@@ -3158,9 +3173,7 @@ app.put("/api/update-lead/:id", async (req, res) => {
       lead: updated
     });
 
-  }
-
-  catch (err) {
+  } catch (err) {
 
     console.log(err);
 
@@ -3171,7 +3184,6 @@ app.put("/api/update-lead/:id", async (req, res) => {
   }
 
 });
-
 /* =========================================
    DELETE LEAD
 ========================================= */
