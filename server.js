@@ -347,6 +347,47 @@ leadSchema.index({ status: 1 });
 leadSchema.index({ next_call_date: 1 });
 leadSchema.index({ createdAt: -1 });
 
+
+const DailyReportSchema = new mongoose.Schema({
+
+  executive_name: String,
+
+  executive_email: String,
+
+  totalCalls: Number,
+
+  followups: Number,
+
+  interested: Number,
+
+  siteVisits: Number,
+
+  bookings: Number,
+
+  pendingWork: String,
+
+  tomorrowPlan: String,
+
+  remarks: String,
+
+  createdAt: {
+
+    type: Date,
+
+    default: Date.now
+
+  }
+
+});
+
+const DailyReport =
+mongoose.model(
+"DailyReport",
+DailyReportSchema
+);
+
+
+
 /* =========================================
    VISIT SCHEMA
 ========================================= */
@@ -5331,6 +5372,74 @@ app.get("/api/all-daily-reports", async (req, res) => {
     });
 
   }
+
+});
+
+app.post(
+"/api/daily-report",
+
+async(req,res)=>{
+
+try{
+
+const report =
+new DailyReport(req.body);
+
+await report.save();
+
+res.json({
+
+success:true
+
+});
+
+}
+
+catch(err){
+
+console.log(err);
+
+res.status(500).json({
+
+success:false
+
+});
+
+}
+
+});
+
+app.get(
+"/api/daily-report/:email",
+
+async(req,res)=>{
+
+try{
+
+const reports =
+await DailyReport.find({
+
+executive_email:
+req.params.email
+
+})
+.sort({
+
+createdAt:-1
+
+});
+
+res.json(reports);
+
+}
+
+catch(err){
+
+console.log(err);
+
+res.status(500).json([]);
+
+}
 
 });
 
