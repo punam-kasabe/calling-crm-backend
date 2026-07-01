@@ -348,45 +348,6 @@ leadSchema.index({ next_call_date: 1 });
 leadSchema.index({ createdAt: -1 });
 
 
-const DailyReportSchema = new mongoose.Schema({
-
-  executive_name: String,
-
-  executive_email: String,
-
-  totalCalls: Number,
-
-  followups: Number,
-
-  interested: Number,
-
-  siteVisits: Number,
-
-  bookings: Number,
-
-  pendingWork: String,
-
-  tomorrowPlan: String,
-
-  remarks: String,
-
-  createdAt: {
-
-    type: Date,
-
-    default: Date.now
-
-  }
-
-});
-
-const DailyReport =
-mongoose.model(
-"DailyReport",
-DailyReportSchema
-);
-
-
 
 /* =========================================
    VISIT SCHEMA
