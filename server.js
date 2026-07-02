@@ -1830,69 +1830,56 @@ app.get(
 
 app.get("/api/search-lead/:search", async (req, res) => {
 
-  try {
+  const search = req.params.search.trim();
 
-    const search = req.params.search.trim();
+  const leads = await Lead.find({
 
-    const leads = await Lead.find({
+    $or: [
 
-      $or: [
-
-        {
-          name: {
-            $regex: search,
-            $options: "i"
-          }
-        },
-
-        {
-          phone: normalizePhone(search)
+      {
+        name: {
+          $regex: search,
+          $options: "i"
         }
-
-      ]
-
-    });
-
-    const result = leads.map((lead) => ({
-
-      _id: lead._id,
-
-      clientName: lead.name,
-      mobile: lead.phone,
-
-      project: lead.project || "-",
-
-      clientType: "Old",
-
-      visitStatus: lead.status || "-",
-
-      bookingStatus: "PENDING",
-
-      attendedManager: {
-        name: lead.assignedTo || "-"
       },
 
-      calling_by: lead.assignedTo || "-",
+      {
+        phone: normalizePhone(search)
+      }
 
-      remark: lead.remark || "-",
+    ]
 
-      createdAt: lead.createdAt
+  });
 
-    }));
+  const data = leads.map((lead) => ({
 
-    res.json(result);
+    _id: lead._id,
 
-  }
+    clientName: lead.name,
 
-  catch (err) {
+    mobile: lead.phone,
 
-    console.log(err);
+    project: lead.project || "-",
 
-    res.status(500).json({
-      message: "Search Error"
-    });
+    clientType: "Old",
 
-  }
+    visitStatus: lead.status || "-",
+
+    bookingStatus: "PENDING",
+
+    attendedManager: {
+      name: lead.assignedTo || "-"
+    },
+
+    calling_by: lead.assignedTo || "-",
+
+    remark: lead.remark || "-",
+
+    createdAt: lead.createdAt
+
+  }));
+
+  res.json(data);
 
 });
 /* =========================================
