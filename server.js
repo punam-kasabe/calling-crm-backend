@@ -1738,6 +1738,38 @@ app.get(
   }
 
 );
+
+app.get("/api/search-visit/:search", async (req, res) => {
+  try {
+
+    const search = req.params.search.trim();
+
+    const visits = await Visit.find({
+
+      $or: [
+        { mobile: normalizePhone(search) },
+        {
+          clientName: {
+            $regex: search,
+            $options: "i"
+          }
+        }
+      ]
+
+    }).populate("attendedManager");
+
+    res.json(visits);
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Search Error"
+    });
+
+  }
+});
 /* =========================================
    SEARCH CLIENT BY NAME
 ========================================= */
