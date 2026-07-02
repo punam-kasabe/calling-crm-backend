@@ -1851,6 +1851,8 @@ app.get("/api/search-lead/:search", async (req, res) => {
 
   });
 
+
+
   const data = leads.map((lead) => ({
 
     _id: lead._id,
@@ -1882,6 +1884,42 @@ app.get("/api/search-lead/:search", async (req, res) => {
   res.json(data);
 
 });
+
+/* =========================================
+   SEARCH SUGGESTIONS
+========================================= */
+
+app.get("/api/search-suggestions/:search", async (req, res) => {
+
+  try {
+
+    const search = req.params.search.trim();
+
+    const leads = await Lead.find({
+
+      name: {
+        $regex: search,
+        $options: "i"
+      }
+
+    })
+    .select("name phone")
+    .limit(10);
+
+    res.json(leads);
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Error"
+    });
+
+  }
+
+});
+
 /* =========================================
    SEARCH CLIENT BY NAME OR MOBILE
 ========================================= */
