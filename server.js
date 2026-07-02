@@ -1686,16 +1686,32 @@ assigned_to_email:
 ========================================= */
 
 app.get(
-  "/api/search-client/:phone",
+  "/api/search-client/:search",
 
   async (req, res) => {
 
     try {
 
-     const lead = await Lead.findOne({
-     phone: normalizePhone(req.params.phone)
-      });
+      const search = req.params.search.trim();
 
+      const lead = await Lead.findOne({
+
+        $or: [
+
+          {
+            phone: normalizePhone(search)
+          },
+
+          {
+            name: {
+              $regex: search,
+              $options: "i"
+            }
+          }
+
+        ]
+
+      });
 
       if (!lead) {
 
