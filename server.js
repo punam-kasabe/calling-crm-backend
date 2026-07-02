@@ -1825,6 +1825,77 @@ app.get(
 
 );
 /* =========================================
+   SEARCH LEAD BY NAME OR MOBILE
+========================================= */
+
+app.get("/api/search-lead/:search", async (req, res) => {
+
+  try {
+
+    const search = req.params.search.trim();
+
+    const leads = await Lead.find({
+
+      $or: [
+
+        {
+          name: {
+            $regex: search,
+            $options: "i"
+          }
+        },
+
+        {
+          phone: normalizePhone(search)
+        }
+
+      ]
+
+    });
+
+    const result = leads.map((lead) => ({
+
+      _id: lead._id,
+
+      clientName: lead.name,
+      mobile: lead.phone,
+
+      project: lead.project || "-",
+
+      clientType: "Old",
+
+      visitStatus: lead.status || "-",
+
+      bookingStatus: "PENDING",
+
+      attendedManager: {
+        name: lead.assignedTo || "-"
+      },
+
+      calling_by: lead.assignedTo || "-",
+
+      remark: lead.remark || "-",
+
+      createdAt: lead.createdAt
+
+    }));
+
+    res.json(result);
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Search Error"
+    });
+
+  }
+
+});
+/* =========================================
    SEARCH CLIENT BY NAME OR MOBILE
 ========================================= */
 
