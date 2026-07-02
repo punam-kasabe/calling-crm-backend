@@ -1851,34 +1851,39 @@ app.get("/api/search-lead/:search", async (req, res) => {
 
   });
 
-  const data = leads.map((lead) => ({
+ const result = leads.map((lead) => ({
 
-    _id: lead._id,
+  _id: lead._id,
 
-    clientName: lead.name,
+  clientName: lead.name,
 
-    mobile: lead.phone,
+  mobile: lead.phone,
 
-    project: lead.project || "-",
+  project: lead.project || "-",
 
-    clientType: "Old",
+  clientType: "Old",
 
-    visitStatus: lead.status || "-",
+  visitStatus: lead.status || "-",
 
-    bookingStatus: "PENDING",
+  bookingStatus: lead.bookingStatus || "PENDING",
 
-    attendedManager: {
-      name: lead.assignedTo || "-"
-    },
+  attendedManager: {
+    name:
+      lead.assigned_manager ||
+      lead.assignedTo ||
+      "-"
+  },
 
-    calling_by: lead.assignedTo || "-",
+  calling_by:
+    lead.assignedTo ||
+    lead.assigned_manager ||
+    "-",
 
-    remark: lead.remark || "-",
+  remark: lead.remark || "-",
 
-    createdAt: lead.createdAt
+  createdAt: lead.createdAt
 
-  }));
-
+}));
   res.json(data);
 
 });
