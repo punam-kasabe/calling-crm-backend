@@ -1770,6 +1770,7 @@ app.get("/api/search-visit/:search", async (req, res) => {
 
   }
 });
+
 /* =========================================
    SEARCH CLIENT BY NAME
 ========================================= */
@@ -1823,6 +1824,67 @@ app.get(
   }
 
 );
+/* =========================================
+   SEARCH CLIENT BY NAME OR MOBILE
+========================================= */
+
+app.get("/api/search-client-details/:search", async (req, res) => {
+  try {
+
+    const search = req.params.search.trim();
+
+    const lead = await Lead.findOne({
+      $or: [
+        {
+          phone: normalizePhone(search)
+        },
+        {
+          name: {
+            $regex: search,
+            $options: "i"
+          }
+        }
+      ]
+    });
+
+    if (!lead) {
+      return res.status(404).json({
+        message: "Client not found"
+      });
+    }
+
+    res.json({
+      _id: lead._id,
+      clientName: lead.name,
+      mobile: lead.phone,
+      project: lead.project,
+      clientType: lead.visit_created ? "Old" : "New",
+      visitStatus: lead.visit_status || "-",
+      bookingStatus:
+        lead.visit_status === "BOOKED"
+          ? "BOOKED"
+          : "PENDING",
+      attendedManager: {
+        name: lead.assignedTo || "-"
+      },
+      calling_by: lead.assignedTo || "-",
+      remark:
+        lead.executive_remark ||
+        lead.remark ||
+        "-",
+      createdAt: lead.created_date
+    });
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Search Error"
+    });
+
+  }
+});
 /* =========================================
    CREATE VISIT
 ========================================= */
