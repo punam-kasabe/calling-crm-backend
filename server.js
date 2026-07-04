@@ -1890,52 +1890,26 @@ app.get("/api/search-lead/:search", async (req, res) => {
 ========================================= */
 
 app.get("/api/search-suggestions/:search", async (req, res) => {
-
   try {
 
     const search = req.params.search.trim();
 
-    const phone = normalizePhone(search);
-
     const leads = await Lead.find({
-
-      $or: [
-
-        {
-          name: {
-            $regex: search,
-            $options: "i"
-          }
-        },
-
-        {
-          phone: {
-            $regex: phone
-          }
-        }
-
-      ]
-
+      name: {
+        $regex: search,
+        $options: "i"
+      }
     })
     .select("name phone")
     .limit(20);
 
     res.json(leads);
 
-  }
-
-  catch (err) {
-
+  } catch (err) {
     console.log(err);
-
-    res.status(500).json({
-      message: "Error"
-    });
-
+    res.status(500).json({ message: "Error" });
   }
-
 });
-
 /* =========================================
    SEARCH CLIENT BY NAME OR MOBILE
 ========================================= */
