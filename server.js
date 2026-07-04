@@ -1895,20 +1895,36 @@ app.get("/api/search-suggestions/:search", async (req, res) => {
 
     const search = req.params.search.trim();
 
+    const phone = normalizePhone(search);
+
     const leads = await Lead.find({
 
-      name: {
-        $regex: search,
-        $options: "i"
-      }
+      $or: [
+
+        {
+          name: {
+            $regex: search,
+            $options: "i"
+          }
+        },
+
+        {
+          phone: {
+            $regex: phone
+          }
+        }
+
+      ]
 
     })
     .select("name phone")
-    .limit(10);
+    .limit(20);
 
     res.json(leads);
 
-  } catch (err) {
+  }
+
+  catch (err) {
 
     console.log(err);
 
@@ -1929,19 +1945,20 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     const search = req.params.search.trim();
 
-    const lead = await Lead.findOne({
-      $or: [
-        {
-          phone: normalizePhone(search)
-        },
-        {
-          name: {
-            $regex: search,
-            $options: "i"
-          }
-        }
-      ]
-    });
+    const phone = normalizePhone(search);
+
+let lead = await Lead.findOne({
+  phone: phone
+});
+
+if (!lead) {
+  lead = await Lead.findOne({
+    name: {
+      $regex: `^${search}$`,
+      $options: "i"
+    }
+  });
+}
 
     if (!lead) {
       return res.status(404).json({
