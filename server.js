@@ -1941,32 +1941,40 @@ app.get("/api/search-suggestions/:search", async (req, res) => {
 ========================================= */
 
 app.get("/api/search-client-details/:search", async (req, res) => {
+
   try {
 
     const search = req.params.search.trim();
 
     const phone = normalizePhone(search);
 
-let lead = await Lead.findOne({
-  phone: phone
-});
-
-if (!lead) {
-  lead = await Lead.findOne({
-    name: {
-      $regex: `^${search}$`,
-      $options: "i"
-    }
-  });
-}
+    let lead = await Lead.findOne({
+      phone: phone
+    });
 
     if (!lead) {
+
+      lead = await Lead.findOne({
+
+        name: {
+          $regex: search,
+          $options: "i"
+        }
+
+      });
+
+    }
+
+    if (!lead) {
+
       return res.status(404).json({
         message: "Client not found"
       });
+
     }
 
     res.json({
+
       _id: lead._id,
       clientName: lead.name,
       mobile: lead.phone,
@@ -1977,18 +1985,25 @@ if (!lead) {
         lead.visit_status === "BOOKED"
           ? "BOOKED"
           : "PENDING",
+
       attendedManager: {
         name: lead.assignedTo || "-"
       },
+
       calling_by: lead.assignedTo || "-",
+
       remark:
         lead.executive_remark ||
         lead.remark ||
         "-",
+
       createdAt: lead.created_date
+
     });
 
-  } catch (err) {
+  }
+
+  catch (err) {
 
     console.log(err);
 
@@ -1997,6 +2012,7 @@ if (!lead) {
     });
 
   }
+
 });
 /* =========================================
    CREATE VISIT
