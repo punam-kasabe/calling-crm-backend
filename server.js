@@ -594,6 +594,7 @@ const projectSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
 /* =========================================
    MODELS
 ========================================= */
@@ -1885,6 +1886,7 @@ app.get("/api/search-lead/:search", async (req, res) => {
 
 });
 
+
 /* =========================================
    SEARCH SUGGESTIONS
 ========================================= */
@@ -1894,11 +1896,16 @@ app.get("/api/search-lead/:search", async (req, res) => {
 ========================================= */
 
 app.get("/api/search-suggestions/:search", async (req, res) => {
+
   try {
 
     const search = req.params.search.trim();
 
     const phone = normalizePhone(search);
+
+    console.log("========== SEARCH SUGGESTIONS ==========");
+    console.log("Search :", search);
+    console.log("Phone  :", phone);
 
     const leads = await Lead.find({
 
@@ -1920,21 +1927,41 @@ app.get("/api/search-suggestions/:search", async (req, res) => {
       ]
 
     })
-      .select("name phone")
+      .select("_id name phone")
       .sort({ name: 1 })
-      .limit(20);
+      .limit(20)
+      .lean();
 
-    res.json(leads);
+    // Remove duplicate phone numbers
+    const unique = [];
+    const phones = new Set();
+
+    for (const lead of leads) {
+
+      if (!phones.has(lead.phone)) {
+
+        phones.add(lead.phone);
+        unique.push(lead);
+
+      }
+
+    }
+
+    console.log("Total Results :", unique.length);
+    console.log(unique);
+
+    res.json(unique);
 
   } catch (err) {
 
-    console.log(err);
+    console.log("SEARCH ERROR :", err);
 
     res.status(500).json({
-      message: "Error"
+      message: "Search Error"
     });
 
   }
+
 });
 /* =========================================
    SEARCH CLIENT BY NAME OR MOBILE
@@ -2067,6 +2094,7 @@ app.get("/api/search-client-details/:search", async (req, res) => {
   }
 
 });
+
 /* =========================================
    CREATE VISIT
 ========================================= */
