@@ -1889,25 +1889,51 @@ app.get("/api/search-lead/:search", async (req, res) => {
    SEARCH SUGGESTIONS
 ========================================= */
 
+/* =========================================
+   SEARCH SUGGESTIONS
+========================================= */
+
 app.get("/api/search-suggestions/:search", async (req, res) => {
   try {
 
     const search = req.params.search.trim();
 
+    const phone = normalizePhone(search);
+
     const leads = await Lead.find({
-      name: {
-        $regex: search,
-        $options: "i"
-      }
+
+      $or: [
+
+        {
+          name: {
+            $regex: search,
+            $options: "i"
+          }
+        },
+
+        {
+          phone: {
+            $regex: phone
+          }
+        }
+
+      ]
+
     })
-    .select("name phone")
-    .limit(20);
+      .select("name phone")
+      .sort({ name: 1 })
+      .limit(20);
 
     res.json(leads);
 
   } catch (err) {
+
     console.log(err);
-    res.status(500).json({ message: "Error" });
+
+    res.status(500).json({
+      message: "Error"
+    });
+
   }
 });
 /* =========================================
@@ -1922,9 +1948,34 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     const phone = normalizePhone(search);
 
-    let lead = await Lead.findOne({
-      phone: phone
-    });
+    let lead = null;
+
+    /* ---------- Mobile Search ---------- */
+
+    if (phone) {
+
+      lead = await Lead.findOne({
+        phone: phone
+      });
+
+    }
+
+    /* ---------- Exact Name ---------- */
+
+    if (!lead) {
+
+      lead = await Lead.findOne({
+
+        name: {
+          $regex: `^${search}$`,
+          $options: "i"
+        }
+
+      });
+
+    }
+
+    /* ---------- Partial Name ---------- */
 
     if (!lead) {
 
@@ -1939,6 +1990,8 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     }
 
+    /* ---------- Not Found ---------- */
+
     if (!lead) {
 
       return res.status(404).json({
@@ -1947,31 +2000,55 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     }
 
+    /* ---------- Response ---------- */
+
     res.json({
 
       _id: lead._id,
-      clientName: lead.name,
-      mobile: lead.phone,
-      project: lead.project,
-      clientType: lead.visit_created ? "Old" : "New",
-      visitStatus: lead.visit_status || "-",
+
+      clientName: lead.name || "-",
+
+      mobile: lead.phone || "-",
+
+      project: lead.project || "-",
+
+      clientType:
+        lead.visit_created
+          ? "Old"
+          : "New",
+
+      visitStatus:
+        lead.visit_status || "-",
+
       bookingStatus:
         lead.visit_status === "BOOKED"
           ? "BOOKED"
           : "PENDING",
 
       attendedManager: {
-        name: lead.assignedTo || "-"
+
+        _id: lead.assigned_to || "",
+
+        name:
+          lead.assignedTo ||
+          lead.assigned_manager ||
+          "-"
+
       },
 
-      calling_by: lead.assignedTo || "-",
+      calling_by:
+        lead.calling_by ||
+        lead.assignedTo ||
+        "-",
 
       remark:
         lead.executive_remark ||
         lead.remark ||
         "-",
 
-      createdAt: lead.created_date
+      createdAt:
+        lead.created_date ||
+        lead.createdAt
 
     });
 
@@ -1982,7 +2059,9 @@ app.get("/api/search-client-details/:search", async (req, res) => {
     console.log(err);
 
     res.status(500).json({
+
       message: "Search Error"
+
     });
 
   }
