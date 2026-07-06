@@ -1891,78 +1891,53 @@ app.get("/api/search-lead/:search", async (req, res) => {
    SEARCH SUGGESTIONS
 ========================================= */
 
-/* =========================================
-   SEARCH SUGGESTIONS
-========================================= */
-
 app.get("/api/search-suggestions/:search", async (req, res) => {
-
   try {
 
     const search = req.params.search.trim();
+    const phone = search.replace(/\D/g, "");
 
-    const phone = normalizePhone(search);
+    let query = {};
 
-    console.log("========== SEARCH SUGGESTIONS ==========");
-    console.log("Search :", search);
-    console.log("Phone  :", phone);
+    // जर number search असेल
+    if (phone.length > 0) {
 
-    const leads = await Lead.find({
-
-      $or: [
-
-        {
-          name: {
-            $regex: search,
-            $options: "i"
-          }
-        },
-
-        {
-          phone: {
-            $regex: phone
-          }
+      query = {
+        phone: {
+          $regex: phone
         }
+      };
 
-      ]
+    } else {
 
-    })
-      .select("_id name phone")
-      .sort({ name: 1 })
-      .limit(20)
-      .lean();
-
-    // Remove duplicate phone numbers
-    const unique = [];
-    const phones = new Set();
-
-    for (const lead of leads) {
-
-      if (!phones.has(lead.phone)) {
-
-        phones.add(lead.phone);
-        unique.push(lead);
-
-      }
+      // Name search
+      query = {
+        name: {
+          $regex: search,
+          $options: "i"
+        }
+      };
 
     }
 
-    console.log("Total Results :", unique.length);
-    console.log(unique);
+    const leads = await Lead.find(query)
+      .select("_id name phone")
+      .sort({ name: 1 })
+      .limit(10);
 
-    res.json(unique);
+    res.json(leads);
 
   } catch (err) {
 
-    console.log("SEARCH ERROR :", err);
+    console.log(err);
 
     res.status(500).json({
-      message: "Search Error"
+      message: "Error"
     });
 
   }
-
 });
+
 /* =========================================
    SEARCH CLIENT BY NAME OR MOBILE
 ========================================= */
@@ -1973,13 +1948,12 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     const search = req.params.search.trim();
 
-    const phone = normalizePhone(search);
+    const phone = search.replace(/\D/g, "");
 
     let lead = null;
 
-    /* ---------- Mobile Search ---------- */
-
-    if (phone) {
+    // Mobile Search
+    if (phone.length > 0) {
 
       lead = await Lead.findOne({
         phone: phone
@@ -1987,8 +1961,7 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     }
 
-    /* ---------- Exact Name ---------- */
-
+    // Name Search (Exact)
     if (!lead) {
 
       lead = await Lead.findOne({
@@ -2002,8 +1975,7 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     }
 
-    /* ---------- Partial Name ---------- */
-
+    // Name Search (Partial)
     if (!lead) {
 
       lead = await Lead.findOne({
@@ -2017,8 +1989,6 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     }
 
-    /* ---------- Not Found ---------- */
-
     if (!lead) {
 
       return res.status(404).json({
@@ -2026,8 +1996,6 @@ app.get("/api/search-client-details/:search", async (req, res) => {
       });
 
     }
-
-    /* ---------- Response ---------- */
 
     res.json({
 
@@ -2039,13 +2007,9 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
       project: lead.project || "-",
 
-      clientType:
-        lead.visit_created
-          ? "Old"
-          : "New",
+      clientType: lead.visit_created ? "Old" : "New",
 
-      visitStatus:
-        lead.visit_status || "-",
+      visitStatus: lead.visit_status || "-",
 
       bookingStatus:
         lead.visit_status === "BOOKED"
@@ -2064,7 +2028,6 @@ app.get("/api/search-client-details/:search", async (req, res) => {
       },
 
       calling_by:
-        lead.calling_by ||
         lead.assignedTo ||
         "-",
 
@@ -2086,15 +2049,12 @@ app.get("/api/search-client-details/:search", async (req, res) => {
     console.log(err);
 
     res.status(500).json({
-
       message: "Search Error"
-
     });
 
   }
 
 });
-
 /* =========================================
    CREATE VISIT
 ========================================= */
