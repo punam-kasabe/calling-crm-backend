@@ -1474,6 +1474,7 @@ app.get("/api/attending-officers", async (req, res) => {
   }
 
 });
+
 /* =========================================
    GET MANAGERS
 ========================================= */
@@ -1482,20 +1483,38 @@ app.get("/api/managers", async (req, res) => {
 
   try {
 
-    const managers = await User.find({
-      role: /manager/i
-    }).select("name email");
+    const users = await User.find({
 
-    res.json(managers);
+      $or: [
 
-  }
+        { role: "manager" },
 
-  catch (err) {
+        { role: "executive" },
+
+        {
+          name: {
+            $in: [
+              "Aasma Ma'am",
+              "Nilesh Sir"
+            ]
+          }
+
+        }
+
+      ]
+
+    })
+      .select("_id name email role")
+      .sort({ name: 1 });
+
+    res.json(users);
+
+  } catch (err) {
 
     console.log(err);
 
     res.status(500).json({
-      message: "Managers fetch error ❌"
+      message: "Error"
     });
 
   }
