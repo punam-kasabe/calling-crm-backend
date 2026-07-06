@@ -1941,7 +1941,6 @@ app.get("/api/search-suggestions/:search", async (req, res) => {
 /* =========================================
    SEARCH CLIENT BY NAME OR MOBILE
 ========================================= */
-
 app.get("/api/search-client-details/:search", async (req, res) => {
 
   try {
