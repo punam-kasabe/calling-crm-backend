@@ -381,11 +381,19 @@ const visitSchema = new mongoose.Schema(
     visitStatus: {
       type: String,
       enum: [
-        "IN_OFFICE",
-        "VISIT_DONE",
-        "BOOKED",
-        "NOT_BOOKED",
-        "FOLLOWUP"
+         "IN_OFFICE",
+    "VISIT_PENDING",
+    "VISIT_DONE",
+    "FOLLOWUP",
+    "DECISION_PENDING",
+    "NEGOTIATION",
+    "BOOKED",
+    "TOKEN_RECEIVED",
+    "LOAN_PROCESS",
+    "REGISTRATION_PENDING",
+    "REGISTERED",
+    "NOT_BOOKED",
+    "CANCELLED"
       ],
       default: "IN_OFFICE",
     },
@@ -395,8 +403,15 @@ const visitSchema = new mongoose.Schema(
       type: String,
       enum: [
         "PENDING",
-        "BOOKED",
-        "NOT_BOOKED"
+    "DECISION_PENDING",
+    "NEGOTIATION",
+    "BOOKED",
+    "TOKEN_RECEIVED",
+    "LOAN_PROCESS",
+    "REGISTRATION_PENDING",
+    "REGISTERED",
+    "NOT_BOOKED",
+    "CANCELLED"
       ],
       default: "PENDING",
     },
@@ -1887,9 +1902,6 @@ app.get("/api/search-lead/:search", async (req, res) => {
 });
 
 
-/* =========================================
-   SEARCH SUGGESTIONS
-========================================= */
 
 /* =========================================
    SEARCH SUGGESTIONS
