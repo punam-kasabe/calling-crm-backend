@@ -1474,7 +1474,6 @@ app.get("/api/attending-officers", async (req, res) => {
   }
 
 });
-
 /* =========================================
    GET MANAGERS
 ========================================= */
@@ -1483,38 +1482,20 @@ app.get("/api/managers", async (req, res) => {
 
   try {
 
-    const users = await User.find({
+    const managers = await User.find({
+      role: /manager/i
+    }).select("name email");
 
-      $or: [
+    res.json(managers);
 
-        { role: "manager" },
+  }
 
-        { role: "executive" },
-
-        {
-          name: {
-            $in: [
-              "Aasma Ma'am",
-              "Nilesh Sir"
-            ]
-          }
-
-        }
-
-      ]
-
-    })
-      .select("_id name email role")
-      .sort({ name: 1 });
-
-    res.json(users);
-
-  } catch (err) {
+  catch (err) {
 
     console.log(err);
 
     res.status(500).json({
-      message: "Error"
+      message: "Managers fetch error ❌"
     });
 
   }
@@ -1910,68 +1891,95 @@ app.get("/api/search-lead/:search", async (req, res) => {
    SEARCH SUGGESTIONS
 ========================================= */
 
+/* =========================================
+   SEARCH SUGGESTIONS
+========================================= */
+
 app.get("/api/search-suggestions/:search", async (req, res) => {
+
   try {
 
     const search = req.params.search.trim();
-    const phone = search.replace(/\D/g, "");
 
-    let query = {};
+    const phone = normalizePhone(search);
 
-    // जर number search असेल
-    if (phone.length > 0) {
+    console.log("========== SEARCH SUGGESTIONS ==========");
+    console.log("Search :", search);
+    console.log("Phone  :", phone);
 
-      query = {
-        phone: {
-          $regex: phone
+    const leads = await Lead.find({
+
+      $or: [
+
+        {
+          name: {
+            $regex: search,
+            $options: "i"
+          }
+        },
+
+        {
+          phone: {
+            $regex: phone
+          }
         }
-      };
 
-    } else {
+      ]
 
-      // Name search
-      query = {
-        name: {
-          $regex: search,
-          $options: "i"
-        }
-      };
+    })
+      .select("_id name phone")
+      .sort({ name: 1 })
+      .limit(20)
+      .lean();
+
+    // Remove duplicate phone numbers
+    const unique = [];
+    const phones = new Set();
+
+    for (const lead of leads) {
+
+      if (!phones.has(lead.phone)) {
+
+        phones.add(lead.phone);
+        unique.push(lead);
+
+      }
 
     }
 
-    const leads = await Lead.find(query)
-      .select("_id name phone")
-      .sort({ name: 1 })
-      .limit(10);
+    console.log("Total Results :", unique.length);
+    console.log(unique);
 
-    res.json(leads);
+    res.json(unique);
 
   } catch (err) {
 
-    console.log(err);
+    console.log("SEARCH ERROR :", err);
 
     res.status(500).json({
-      message: "Error"
+      message: "Search Error"
     });
 
   }
-});
 
+});
 /* =========================================
    SEARCH CLIENT BY NAME OR MOBILE
 ========================================= */
+
 app.get("/api/search-client-details/:search", async (req, res) => {
 
   try {
 
     const search = req.params.search.trim();
 
-    const phone = search.replace(/\D/g, "");
+    const phone = normalizePhone(search);
 
     let lead = null;
 
-    // Mobile Search
-    if (phone.length > 0) {
+    /* ---------- Mobile Search ---------- */
+
+    if (phone) {
 
       lead = await Lead.findOne({
         phone: phone
@@ -1979,7 +1987,8 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     }
 
-    // Name Search (Exact)
+    /* ---------- Exact Name ---------- */
+
     if (!lead) {
 
       lead = await Lead.findOne({
@@ -1993,7 +2002,8 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     }
 
-    // Name Search (Partial)
+    /* ---------- Partial Name ---------- */
+
     if (!lead) {
 
       lead = await Lead.findOne({
@@ -2007,6 +2017,8 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     }
 
+    /* ---------- Not Found ---------- */
+
     if (!lead) {
 
       return res.status(404).json({
@@ -2014,6 +2026,8 @@ app.get("/api/search-client-details/:search", async (req, res) => {
       });
 
     }
+
+    /* ---------- Response ---------- */
 
     res.json({
 
@@ -2025,9 +2039,13 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
       project: lead.project || "-",
 
-      clientType: lead.visit_created ? "Old" : "New",
+      clientType:
+        lead.visit_created
+          ? "Old"
+          : "New",
 
-      visitStatus: lead.visit_status || "-",
+      visitStatus:
+        lead.visit_status || "-",
 
       bookingStatus:
         lead.visit_status === "BOOKED"
@@ -2046,6 +2064,7 @@ app.get("/api/search-client-details/:search", async (req, res) => {
       },
 
       calling_by:
+        lead.calling_by ||
         lead.assignedTo ||
         "-",
 
@@ -2067,12 +2086,15 @@ app.get("/api/search-client-details/:search", async (req, res) => {
     console.log(err);
 
     res.status(500).json({
+
       message: "Search Error"
+
     });
 
   }
 
 });
+
 /* =========================================
    CREATE VISIT
 ========================================= */
