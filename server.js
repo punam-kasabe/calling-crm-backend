@@ -427,6 +427,12 @@ const visitSchema = new mongoose.Schema(
         type: String
       }
     ],
+     
+    attended_by: [
+  {
+    type: String
+  }
+],
 
     remark: {
       type: String,
@@ -447,6 +453,7 @@ assigned_to: {
   type: String,
   default: ""
 },
+
 
 status: {
   type: String,
@@ -2199,6 +2206,7 @@ app.get("/api/search-client-details/:search", async (req, res) => {
   }
 
 });
+
 /* =========================================
    CREATE VISIT
 ========================================= */
@@ -2241,6 +2249,7 @@ app.post(
   visitStatus,
   bookingStatus,
   calling_by,
+  attended_by: attended_by || [],   // NEW
   remark,
   assigned_manager,
   department,
@@ -2289,9 +2298,9 @@ app.post(
 
         existingLead.status = status || "New";
         existingLead.department = department;
-existingLead.source = source;
-existingLead.assigned_to = assigned_to;
-existingLead.status = status;
+        existingLead.source = source;
+        existingLead.assigned_to = assigned_to;
+       existingLead.attended_by = attended_by || [];
         await existingLead.save();
 
       }
@@ -2302,23 +2311,24 @@ existingLead.status = status;
 
       else {
 
-        await Lead.create({
+       await Lead.create({
 
-          name: clientName,
-          phone: normalizePhone(mobile),
-          project: project,
-          source: "Visit",
-          status: status || "New",
-          assigned_manager:
-            manager?.email || "",
-          visit_created: true,
-          visit_status: visitStatus,
-          created_by: "Reception",
-          department,
-          source,
-          assigned_to,
-          assigned_to_email: assigned_to
-        });
+  name: clientName,
+  phone: normalizePhone(mobile),
+  project: project,
+  source: "Visit",
+  status: status || "New",
+  assigned_manager: manager?.email || "",
+  visit_created: true,
+  visit_status: visitStatus,
+  created_by: "Reception",
+  department,
+  source,
+  assigned_to,
+  assigned_to_email: assigned_to,
+  attended_by: attended_by || []   // NEW
+
+});
 
       }
 
