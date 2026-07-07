@@ -1938,66 +1938,66 @@ app.get("/api/search-suggestions/:search", async (req, res) => {
 
     const phone = normalizePhone(search);
 
-    console.log("========== SEARCH SUGGESTIONS ==========");
-    console.log("Search :", search);
-    console.log("Phone  :", phone);
+    let query = {};
 
-    const leads = await Lead.find({
+    /* ---------- Mobile Search ---------- */
 
-      $or: [
+    if (phone) {
 
-        {
-          name: {
-            $regex: search,
-            $options: "i"
-          }
-        },
+      query.phone = {
 
-        {
-          phone: {
-            $regex: phone
-          }
-        }
+        $regex: phone,
+        $options: "i"
 
-      ]
-
-    })
-      .select("_id name phone")
-      .sort({ name: 1 })
-      .limit(20)
-      .lean();
-
-    // Remove duplicate phone numbers
-    const unique = [];
-    const phones = new Set();
-
-    for (const lead of leads) {
-
-      if (!phones.has(lead.phone)) {
-
-        phones.add(lead.phone);
-        unique.push(lead);
-
-      }
+      };
 
     }
 
-    console.log("Total Results :", unique.length);
-    console.log(unique);
+    /* ---------- Name Search ---------- */
 
-    res.json(unique);
+    else {
 
-  } catch (err) {
+      query.name = {
 
-    console.log("SEARCH ERROR :", err);
+        $regex: search,
+        $options: "i"
 
-    res.status(500).json({
-      message: "Search Error"
-    });
+      };
+
+    }
+
+    const leads = await Lead.find(query)
+
+      .select("name phone")
+
+      .limit(10);
+
+    res.json(
+
+      leads.map((lead) => ({
+
+        _id: lead._id,
+
+        name: lead.name,
+
+        phone: lead.phone
+
+      }))
+
+    );
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json([]);
 
   }
 
 });
+
 /* =========================================
    SEARCH CLIENT BY NAME OR MOBILE
 ========================================= */
@@ -2012,7 +2012,7 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     let lead = null;
 
-    /* ---------- Mobile Search ---------- */
+    /* ---------- Find Lead ---------- */
 
     if (phone) {
 
@@ -2022,37 +2022,27 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     }
 
-    /* ---------- Exact Name ---------- */
-
     if (!lead) {
 
       lead = await Lead.findOne({
-
         name: {
           $regex: `^${search}$`,
           $options: "i"
         }
-
       });
 
     }
-
-    /* ---------- Partial Name ---------- */
 
     if (!lead) {
 
       lead = await Lead.findOne({
-
         name: {
           $regex: search,
           $options: "i"
         }
-
       });
 
     }
-
-    /* ---------- Not Found ---------- */
 
     if (!lead) {
 
@@ -2062,46 +2052,126 @@ app.get("/api/search-client-details/:search", async (req, res) => {
 
     }
 
-    /* ---------- Response ---------- */
+    /* ---------- Find Visit ---------- */
 
-    res.json({
+    const visit = await Visit.findOne({
+
+      $or: [
+
+        {
+          mobile: lead.phone
+        },
+
+        {
+          clientName: {
+            $regex: `^${lead.name}$`,
+            $options: "i"
+          }
+        }
+
+      ]
+
+    }).populate("attendedManager", "name");
+
+    /* ---------- Visit Found ---------- */
+
+    if (visit) {
+
+      return res.json({
+
+        _id: visit._id,
+
+        clientName: visit.clientName,
+
+        mobile: visit.mobile,
+
+        project: visit.project,
+
+        clientType: visit.clientType,
+
+        visitStatus: visit.visitStatus,
+
+        bookingStatus: visit.bookingStatus,
+
+        attendedManager: visit.attendedManager,
+
+        assigned_manager: visit.assigned_manager,
+
+        assigned_to: visit.assigned_to,
+
+        assignedTo: visit.assignedTo,
+
+        calling_by: visit.calling_by,
+
+        department: visit.department,
+
+        source: visit.source,
+
+        status: visit.status,
+
+        remark: visit.remark,
+
+        createdAt: visit.createdAt
+
+      });
+
+    }
+
+    /* ---------- Visit Not Found ---------- */
+
+    return res.json({
 
       _id: lead._id,
 
-      clientName: lead.name || "-",
+      clientName: lead.name,
 
-      mobile: lead.phone || "-",
+      mobile: lead.phone,
 
-      project: lead.project || "-",
+      project: lead.project,
 
-      clientType:
-        lead.visit_created
-          ? "Old"
-          : "New",
+      clientType: lead.visit_created ? "Old" : "New",
 
-      visitStatus:
-        lead.visit_status || "-",
+      visitStatus: lead.visit_status || "-",
 
       bookingStatus:
-        lead.visit_status === "BOOKED"
+        lead.booking_status ||
+        (lead.visit_status === "BOOKED"
           ? "BOOKED"
-          : "PENDING",
+          : "PENDING"),
 
       attendedManager: {
 
         _id: lead.assigned_to || "",
 
         name:
-          lead.assignedTo ||
           lead.assigned_manager ||
+          lead.assignedTo ||
           "-"
 
       },
+
+      assigned_manager:
+        lead.assigned_manager || "",
+
+      assigned_to:
+        lead.assigned_to || "",
+
+      assignedTo:
+        lead.assignedTo || "",
 
       calling_by:
         lead.calling_by ||
         lead.assignedTo ||
         "-",
+
+      department:
+        lead.department || "",
+
+      source:
+        lead.source || "",
+
+      status:
+        lead.status || "New",
 
       remark:
         lead.executive_remark ||
@@ -2129,7 +2199,6 @@ app.get("/api/search-client-details/:search", async (req, res) => {
   }
 
 });
-
 /* =========================================
    CREATE VISIT
 ========================================= */
