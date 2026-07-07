@@ -415,6 +415,8 @@ const visitSchema = new mongoose.Schema(
       ],
       default: "PENDING",
     },
+
+
     assigned_manager: {
       type: String,
       default: ""
@@ -430,11 +432,32 @@ const visitSchema = new mongoose.Schema(
       type: String,
       default: ""
     },
-clientType: {
+    
+    department: {
+  type: String,
+  default: ""
+},
+
+source: {
+  type: String,
+  default: ""
+},
+
+assigned_to: {
+  type: String,
+  default: ""
+},
+
+status: {
+  type: String,
+  default: "New"
+},
+
+  clientType: {
   type: String,
   enum: ["New", "Old"],
   default: "New"
-},
+  },
     visitDate: {
       type: Date,
       default: Date.now,
@@ -2151,7 +2174,6 @@ app.post(
   calling_by,
   remark,
   assigned_manager,
-
   department,
   source,
   assigned_to,
@@ -2303,7 +2325,7 @@ app.get(
 );
 
 /* =========================================
-   UPDATE VISIT STATUS
+   UPDATE VISIT
 ========================================= */
 
 app.put(
@@ -2313,42 +2335,80 @@ app.put(
 
     try {
 
-    const {
-  clientName,
-  mobile,
-  project,
-  visitStatus,
-  bookingStatus,
-  remark,
-  attendedManager
-} = req.body;
+      const {
 
-      const updated =
-        await Visit.findByIdAndUpdate(
+        clientName,
+        mobile,
+        project,
+        clientType,
+        department,
+        source,
+        assigned_to,
+        status,
+        visitStatus,
+        bookingStatus,
+        remark,
+        attendedManager
 
-          req.params.id,
+      } = req.body;
 
-          {
+      /* =========================
+         UPDATE VISIT
+      ========================= */
 
-  clientName,
+      const updated = await Visit.findByIdAndUpdate(
 
-  mobile,
+        req.params.id,
 
-  project,
+        {
 
-  visitStatus,
+          clientName,
+          mobile,
+          project,
+          clientType,
+          department,
+          source,
+          assigned_to,
+          status,
+          visitStatus,
+          bookingStatus,
+          remark,
+          attendedManager
 
-  bookingStatus,
+        },
 
-  attendedManager
+        {
+          new: true
+        }
 
-},
+      );
 
-          {
-            new: true
-          }
+      /* =========================
+         UPDATE LEAD ALSO
+      ========================= */
 
-        );
+      await Lead.findOneAndUpdate(
+
+        {
+          phone: normalizePhone(mobile)
+        },
+
+        {
+
+          name: clientName,
+          project,
+          department,
+          source,
+          assigned_to,
+          assigned_to_email: assigned_to,
+          status,
+          visit_status: visitStatus,
+          remark,
+          visit_created: true
+
+        }
+
+      );
 
       res.json({
 
@@ -2365,7 +2425,9 @@ app.put(
       console.log(err);
 
       res.status(500).json({
-        message: "Visit update failed"
+
+        message: "Visit update failed ❌"
+
       });
 
     }
