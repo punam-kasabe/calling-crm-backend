@@ -188,23 +188,25 @@ const leadSchema = new mongoose.Schema({
   project: String,
 
   status: {
-    type: String,
-    default: "New",
-    enum: [
-      "New",
-      "Interested",
-      "Not Interested",
-      "Followup",
-      "Booked",
-      "Call Cut",
-      "Call Back",
-      "Ringing",
-      "Busy",
-      "Switch Off",
-      "Out of Service",
-      "Wrong Number"
-    ]
-  },
+  type: String,
+  default: "New",
+  enum: [
+    "New",
+    "Fresh",
+    "Interested",
+    "Followup",
+    "Visit Done",
+    "Booked",
+    "Not Interested",
+    "Call Cut",
+    "Call Back",
+    "Ringing",
+    "Busy",
+    "Switch Off",
+    "Out of Service",
+    "Wrong Number"
+  ]
+},
 
   description: {
     type: String,
@@ -225,6 +227,7 @@ const leadSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+
   executive_remark: {
   type: String,
   default: ""
@@ -277,6 +280,12 @@ attending_remark: {
     default: ""
   },
 
+  attended_by: [
+  {
+    type: String
+  }
+],
+
   visit_created: {
     type: Boolean,
     default: false
@@ -287,11 +296,19 @@ attending_remark: {
     default: "",
     enum: [
       "",
-      "IN_OFFICE",
-      "VISIT_DONE",
-      "BOOKED",
-      "NOT_BOOKED",
-      "FOLLOWUP"
+     "IN_OFFICE",
+    "VISIT_PENDING",
+    "VISIT_DONE",
+    "FOLLOWUP",
+    "DECISION_PENDING",
+    "NEGOTIATION",
+    "BOOKED",
+    "TOKEN_RECEIVED",
+    "LOAN_PROCESS",
+    "REGISTRATION_PENDING",
+    "REGISTERED",
+    "NOT_BOOKED",
+    "CANCELLED"
     ]
   },
 
