@@ -415,7 +415,6 @@ const visitSchema = new mongoose.Schema(
       default: "IN_OFFICE",
     },
 
-
     bookingStatus: {
       type: String,
       enum: [
@@ -2246,13 +2245,13 @@ app.post(
   visitStatus,
   bookingStatus,
   calling_by,
+  attended_by,     // ✅ ADD THIS
   remark,
   assigned_manager,
   department,
   source,
   assigned_to,
   status
-
 } = req.body;
 
  const visit = await Visit.create({
