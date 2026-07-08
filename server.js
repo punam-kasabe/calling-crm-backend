@@ -2284,14 +2284,14 @@ app.post(
 
 
       /* ===============================
-         GET MANAGER EMAIL
-      =============================== */
+   GET MANAGER EMAIL (OPTIONAL)
+=============================== */
 
-      const manager =
-        await User.findById(
-          attendedManager
-        );
+let manager = null;
 
+if (attendedManager) {
+  manager = await User.findById(attendedManager);
+}
       /* ===============================
          FIND LEAD USING MOBILE
       =============================== */
