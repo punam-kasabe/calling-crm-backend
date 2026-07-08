@@ -2270,18 +2270,14 @@ const visit = await Visit.create({
   project,
   visitDate,
   clientType,
-
   attendedManager: attendedManager || null,
-
   receptionUser,
   visitStatus,
   bookingStatus,
   calling_by,
   attended_by: attended_by || [],
   remark,
-
   assigned_manager: manager?.email || "",
-
   department,
   source,
   assigned_to,
@@ -2437,21 +2433,20 @@ app.put(
     try {
 
       const {
-
-        clientName,
-        mobile,
-        project,
-        clientType,
-        department,
-        source,
-        assigned_to,
-        status,
-        visitStatus,
-        bookingStatus,
-        remark,
-        attendedManager
-
-      } = req.body;
+  clientName,
+  mobile,
+  project,
+  visitDate,          // <-- Add this
+  clientType,
+  department,
+  source,
+  assigned_to,
+  status,
+  visitStatus,
+  bookingStatus,
+  remark,
+  attendedManager
+} = req.body;
 
       /* =========================
          UPDATE VISIT
@@ -2461,22 +2456,21 @@ app.put(
 
         req.params.id,
 
-        {
-
-          clientName,
-          mobile,
-          project,
-          clientType,
-          department,
-          source,
-          assigned_to,
-          status,
-          visitStatus,
-          bookingStatus,
-          remark,
-          attendedManager
-
-        },
+       {
+  clientName,
+  mobile,
+  project,
+  visitDate,          // <-- Add this
+  clientType,
+  department,
+  source,
+  assigned_to,
+  status,
+  visitStatus,
+  bookingStatus,
+  remark,
+  attendedManager
+},
 
         {
           new: true
@@ -2504,6 +2498,7 @@ app.put(
           assigned_to_email: assigned_to,
           status,
           visit_status: visitStatus,
+          visitDate, 
           remark,
           visit_created: true
 
