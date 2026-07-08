@@ -253,7 +253,7 @@ attending_remark: {
   default: null
   },
   
-  
+
   assignedTo: {
   type: String,
   default: "",
@@ -2257,28 +2257,36 @@ app.post(
   status
 } = req.body;
 
+let manager = null;
 
- const visit = await Visit.create({
+if (attendedManager) {
+  manager = await User.findById(attendedManager);
+}
+
+const visit = await Visit.create({
   leadId,
   clientName,
   mobile,
   project,
   visitDate,
   clientType,
-  attendedManager,
+
+  attendedManager: attendedManager || null,
+
   receptionUser,
   visitStatus,
   bookingStatus,
   calling_by,
-  attended_by: attended_by || [],   // NEW
+  attended_by: attended_by || [],
   remark,
-  assigned_manager,
+
+  assigned_manager: manager?.email || "",
+
   department,
   source,
   assigned_to,
   status
 });
-
 
       /* ===============================
    GET MANAGER EMAIL (OPTIONAL)
