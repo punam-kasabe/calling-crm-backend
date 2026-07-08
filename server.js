@@ -242,7 +242,12 @@ attending_remark: {
     type: Date,
     default: null
   },
-
+ 
+  attended_by: [
+  {
+    type: String
+  }
+],
   visitDate: {
   type: Date,
   default: null
@@ -2239,6 +2244,7 @@ app.post(
   clientName,
   mobile,
   project,
+  visitDate,
   clientType,
   attendedManager,
   receptionUser,
@@ -2253,6 +2259,7 @@ app.post(
   assigned_to,
   status
 } = req.body;
+
 
  const visit = await Visit.create({
   leadId,
@@ -2303,7 +2310,7 @@ app.post(
         existingLead.name = clientName;
 
         existingLead.project = project;
-
+        existingLead.visitDate = visitDate;
         existingLead.assigned_manager =
           manager?.email || "";
 
@@ -2327,8 +2334,7 @@ app.post(
 
       else {
 
-       await Lead.create({
-
+  await Lead.create({
   name: clientName,
   phone: normalizePhone(mobile),
   project: project,
