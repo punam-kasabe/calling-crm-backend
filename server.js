@@ -2288,15 +2288,7 @@ const visit = await Visit.create({
   status
 });
 
-      /* ===============================
-   GET MANAGER EMAIL (OPTIONAL)
-=============================== */
-
-let manager = null;
-
-if (attendedManager) {
-  manager = await User.findById(attendedManager);
-}
+     
       /* ===============================
          FIND LEAD USING MOBILE
       =============================== */
