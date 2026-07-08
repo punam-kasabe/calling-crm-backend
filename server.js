@@ -2266,6 +2266,7 @@ app.post(
   clientName,
   mobile,
   project,
+  visitDate,
   clientType,
   attendedManager,
   receptionUser,
@@ -2338,6 +2339,7 @@ app.post(
   name: clientName,
   phone: normalizePhone(mobile),
   project: project,
+  visitDate,
   source: "Visit",
   status: status || "New",
   assigned_manager: manager?.email || "",
@@ -2380,6 +2382,7 @@ app.post(
   }
 
 );
+
 /* =========================================
    GET ALL VISITS
 ========================================= */
