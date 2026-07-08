@@ -253,6 +253,7 @@ attending_remark: {
   default: null
   },
   
+  
   assignedTo: {
   type: String,
   default: "",
@@ -285,11 +286,7 @@ attending_remark: {
     default: ""
   },
 
-  attended_by: [
-  {
-    type: String
-  }
-],
+
 
   visit_created: {
     type: Boolean,
