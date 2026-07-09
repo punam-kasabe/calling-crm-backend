@@ -2483,7 +2483,6 @@ app.put(
       ========================= */
 
       await Lead.findOneAndUpdate(
-
         {
           phone: normalizePhone(mobile)
         },
@@ -3219,7 +3218,6 @@ app.post(
         (page - 1) * limit;
 
       let query = {};
-
       const userRole =
         role?.toLowerCase();
 
@@ -3288,7 +3286,6 @@ if (filters.createdFrom || filters.createdTo) {
   if (filters.createdFrom) {
 
     query.createdAt.$gte = new Date(filters.createdFrom);
-
   }
 
   if (filters.createdTo) {
@@ -3302,6 +3299,7 @@ if (filters.createdFrom || filters.createdTo) {
   }
 
 }
+
 
       /* SEARCH */
 
