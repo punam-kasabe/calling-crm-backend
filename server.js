@@ -3472,6 +3472,216 @@ app.get("/api/all-leads", async (req, res) => {
 
   }
 });
+
+/* =========================================
+   PROJECTS REPORT (DATE WISE)
+========================================= */
+
+app.post("/api/projects-report", async (req, res) => {
+
+  try {
+
+    const { from, to } = req.body;
+
+    let match = {};
+
+    if (from || to) {
+
+      match.createdAt = {};
+
+      if (from) {
+        match.createdAt.$gte = new Date(from);
+      }
+
+      if (to) {
+
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+
+        match.createdAt.$lte = end;
+
+      }
+
+    }
+
+    const data = await Lead.aggregate([
+
+      {
+        $match: match
+      },
+
+      {
+        $group: {
+
+          _id: "$assigned_to",
+
+          assigned: {
+            $sum: 1
+          },
+
+          total: {
+            $sum: 1
+          },
+
+          interested: {
+
+            $sum: {
+
+              $cond: [
+
+                {
+                  $eq: [
+                    "$status",
+                    "Interested"
+                  ]
+                },
+
+                1,
+
+                0
+
+              ]
+
+            }
+
+          },
+
+          booked: {
+
+            $sum: {
+
+              $cond: [
+
+                {
+                  $eq: [
+                    "$status",
+                    "Booked"
+                  ]
+                },
+
+                1,
+
+                0
+
+              ]
+
+            }
+
+          },
+
+          pending: {
+
+            $sum: {
+
+              $cond: [
+
+                {
+                  $in: [
+                    "$status",
+                    [
+                      "New",
+                      "Followup"
+                    ]
+                  ]
+                },
+
+                1,
+
+                0
+
+              ]
+
+            }
+
+          }
+
+        }
+
+      },
+
+      {
+        $lookup: {
+
+          from: "users",
+
+          localField: "_id",
+
+          foreignField: "email",
+
+          as: "user"
+
+        }
+
+      },
+
+      {
+        $unwind: {
+
+          path: "$user",
+
+          preserveNullAndEmptyArrays: true
+
+        }
+
+      },
+
+      {
+        $project: {
+
+          _id: 0,
+
+          name: {
+
+            $ifNull: [
+
+              "$user.name",
+
+              "$_id"
+
+            ]
+
+          },
+
+          assigned: 1,
+
+          total: 1,
+
+          interested: 1,
+
+          booked: 1,
+
+          pending: 1
+
+        }
+
+      },
+
+      {
+        $sort: {
+
+          total: -1
+
+        }
+
+      }
+
+    ]);
+
+    res.json(data);
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: "Server Error"
+    });
+
+  }
+
+});
 /* =========================================
    ADD FOLLOWUP
 ========================================= */
