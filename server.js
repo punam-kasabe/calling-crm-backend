@@ -1425,6 +1425,7 @@ app.get("/api/new-leads", async (req, res) => {
     });
   }
 });
+
 /* =========================================
    GET USERS
 ========================================= */
@@ -4944,6 +4945,7 @@ app.get("/api/followups/:id", async (req, res) => {
   }
 
 });
+
 /* =========================================
    FULL DASHBOARD API
 ========================================= */
@@ -5106,7 +5108,7 @@ app.get("/api/dashboard-full", async (req, res) => {
             _id: 1
           }
         }
-
+  
       ]);
 
     const dayMap = {
@@ -5181,32 +5183,60 @@ app.get("/api/dashboard-full", async (req, res) => {
                       ["New", "Followup"]
                     ]
                   },
+                  
+
+
                   1,
                   0
                 ]
               }
-            }
+            },
+            todayAssigned: {
+  $sum: {
+    $cond: [
+      {
+        $and: [
+          {
+            $gte: [
+              "$createdAt",
+              today
+            ]
+          },
+          {
+            $lt: [
+              "$createdAt",
+              tomorrow
+            ]
+          }
+        ]
+      },
+      1,
+      0
+    ]
+  }
+}
 
           }
 
         },
 
-        {
-          $project: {
+       {
+  $project: {
 
-            name: "$_id",
+    name: "$_id",
 
-            total: 1,
+    total: 1,
 
-            interested: 1,
+    interested: 1,
 
-            booked: 1,
+    booked: 1,
 
-            pending: 1
+    pending: 1,
 
-          }
+    todayAssigned: 1
 
-        }
+  }
+}
 
       ]);
 
