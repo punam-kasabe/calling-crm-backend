@@ -3481,7 +3481,9 @@ app.post("/api/projects-report", async (req, res) => {
 
   try {
 
-    const { from, to } = req.body;
+  const { filters = {} } = req.body;
+
+  const { from, to } = filters;
 
     let match = {};
 
@@ -3504,182 +3506,114 @@ app.post("/api/projects-report", async (req, res) => {
 
     }
 
-    const data = await Lead.aggregate([
+    const assignedData = await Lead.aggregate([
+  {
+    $match: match   // selected date / period
+  },
+  {
+    $group: {
+      _id: "$assigned_to",
+      assigned: { $sum: 1 }
+    }
+  }
+]);
 
-      {
-        $match: match
+const totalData = await Lead.aggregate([
+  {
+    $group: {
+      _id: "$assigned_to",
+
+      total: { $sum: 1 },
+
+      interested: {
+        $sum: {
+          $cond: [
+            { $eq: ["$status", "Interested"] },
+            1,
+            0
+          ]
+        }
       },
 
-      {
-        $group: {
+      booked: {
+        $sum: {
+          $cond: [
+            { $eq: ["$status", "Booked"] },
+            1,
+            0
+          ]
+        }
+      },
 
-          _id: "$assigned_to",
-
-          assigned: {
-            $sum: 1
-          },
-
-          total: {
-            $sum: 1
-          },
-
-          interested: {
-
-            $sum: {
-
-              $cond: [
-
-                {
-                  $eq: [
-                    "$status",
-                    "Interested"
-                  ]
-                },
-
-                1,
-
-                0
-
+      pending: {
+        $sum: {
+          $cond: [
+            {
+              $in: [
+                "$status",
+                ["New", "Followup"]
               ]
-
-            }
-
-          },
-
-          booked: {
-
-            $sum: {
-
-              $cond: [
-
-                {
-                  $eq: [
-                    "$status",
-                    "Booked"
-                  ]
-                },
-
-                1,
-
-                0
-
-              ]
-
-            }
-
-          },
-
-          pending: {
-
-            $sum: {
-
-              $cond: [
-
-                {
-                  $in: [
-                    "$status",
-                    [
-                      "New",
-                      "Followup"
-                    ]
-                  ]
-                },
-
-                1,
-
-                0
-
-              ]
-
-            }
-
-          }
-
+            },
+            1,
+            0
+          ]
         }
-
-      },
-
-      {
-        $lookup: {
-
-          from: "users",
-
-          localField: "_id",
-
-          foreignField: "email",
-
-          as: "user"
-
-        }
-
-      },
-
-      {
-        $unwind: {
-
-          path: "$user",
-
-          preserveNullAndEmptyArrays: true
-
-        }
-
-      },
-
-      {
-        $project: {
-
-          _id: 0,
-
-          name: {
-
-            $ifNull: [
-
-              "$user.name",
-
-              "$_id"
-
-            ]
-
-          },
-
-          assigned: 1,
-
-          total: 1,
-
-          interested: 1,
-
-          booked: 1,
-
-          pending: 1
-
-        }
-
-      },
-
-      {
-        $sort: {
-
-          total: -1
-
-        }
-
       }
 
-    ]);
-
-    res.json(data);
-
+    }
   }
+]);
 
-  catch (err) {
 
-    console.log(err);
 
-    res.status(500).json({
-      message: "Server Error"
-    });
+    const users = await User.find({}, {
+  email: 1,
+  name: 1
+});
 
-  }
+const data = totalData.map((item) => {
+
+  const assignedRow = assignedData.find(
+    (a) => a._id === item._id
+  );
+
+  const user = users.find(
+    (u) => u.email === item._id
+  );
+
+  return {
+
+    name: user?.name || item._id,
+
+    assigned: assignedRow
+      ? assignedRow.assigned
+      : 0,
+
+    total: item.total,
+
+    interested: item.interested,
+
+    booked: item.booked,
+
+    pending: item.pending
+
+  };
+
+});
+
+data.sort((a, b) => b.total - a.total);
+
+data.sort((a, b) => b.total - a.total);
+
+res.json(data);
+
+} catch (err) {
+
+  console.log(err);
+
+  res.status(500).json([]);
+
+}
 
 });
 /* =========================================
@@ -4224,6 +4158,7 @@ message:"Failed"
 }
 
 });
+
 /* =========================================
    TODAY FOLLOWUPS
 ========================================= */
@@ -5941,14 +5876,12 @@ app.post("/api/daily-report", async (req, res) => {
 
       executive_email,
       executive_name,
-
       totalCalls,
       connectedCalls,
       interested,
       followups,
       siteVisits,
       bookings,
-
       pendingWork,
       tomorrowPlan,
       summary
