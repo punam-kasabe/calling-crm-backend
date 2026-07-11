@@ -3744,6 +3744,73 @@ app.post("/api/team-performance", async (req, res) => {
   }
 
 ]);
+
+
+
+let activityMatch = {};
+
+if (filters.period === "today") {
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate()+1);
+
+  activityMatch.last_activity_date = {
+    $gte: today,
+    $lt: tomorrow
+  };
+
+}
+else if(filters.from || filters.to){
+
+  activityMatch.last_activity_date = {};
+
+  if(filters.from){
+
+    activityMatch.last_activity_date.$gte =
+      new Date(filters.from);
+
+  }
+
+  if(filters.to){
+
+    const end =
+      new Date(filters.to);
+
+    end.setHours(23,59,59,999);
+
+    activityMatch.last_activity_date.$lte =
+      end;
+
+  }
+
+}
+
+const completedData =
+await Lead.aggregate([
+
+{
+$match:activityMatch
+},
+
+{
+$group:{
+
+_id:"$last_activity_by",
+
+completedToday:{
+$sum:1
+}
+
+}
+
+}
+
+]);
+
+
     /* ===================================
        TOTAL PERFORMANCE
     =================================== */
@@ -3919,6 +3986,7 @@ app.post("/api/team-performance", async (req, res) => {
        const finalData =
        users.map((user)=>{
 
+        
         const perf =
           performance.find(
             p=>p._id===user.email
@@ -3979,7 +4047,7 @@ app.post("/api/team-performance", async (req, res) => {
           visitDone:
             perf?.visitDone || 0,
 
-          pending:
+           pending:
             perf?.pending || 0,
 
             completed:
@@ -4254,8 +4322,14 @@ app.put("/api/update-lead/:id", async (req, res) => {
         data.assigned_to = officer.email;        // Email
         data.assigned_to_email = officer.email; 
         data.assignedDate = new Date(); // Email
+        data.last_activity_by =
+        req.body.executive_email;
+
+        data.last_activity_date =
+        new Date();
       }
     }
+
 
     const updated = await Lead.findByIdAndUpdate(
       req.params.id,
