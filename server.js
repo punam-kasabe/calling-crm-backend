@@ -3673,29 +3673,24 @@ app.post("/api/team-performance", async (req, res) => {
 
     }
 
-    else if (filters.from || filters.to) {
+  else if (filters.from || filters.to) {
 
-      assignedMatch.createdAt = {};
+  assignedMatch.createdAt = {};
+  completedMatch.last_activity_date = {};
 
-      if (filters.from) {
+  if (filters.from) {
+    assignedMatch.createdAt.$gte = new Date(filters.from);
+    completedMatch.last_activity_date.$gte = new Date(filters.from);
+  }
 
-        assignedMatch.createdAt.$gte =
-          new Date(filters.from);
+  if (filters.to) {
+    const end = new Date(filters.to);
+    end.setHours(23,59,59,999);
 
-      completedMatch.last_activity_date.$gte =
-        new Date(filters.from);
-      }
-
-      if (filters.to) {
-
-        const end = new Date(filters.to);
-        end.setHours(23,59,59,999);
-
-        assignedMatch.createdAt.$lte = end;
-        completedMatch.last_activity_date.$lte = end;
-      }
-
-    }
+    assignedMatch.createdAt.$lte = end;
+    completedMatch.last_activity_date.$lte = end;
+  }
+}
 
     /* ===================================
        ASSIGNED TODAY
@@ -3744,72 +3739,6 @@ app.post("/api/team-performance", async (req, res) => {
   }
 
 ]);
-
-
-
-let activityMatch = {};
-
-if (filters.period === "today") {
-
-  const today = new Date();
-  today.setHours(0,0,0,0);
-
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate()+1);
-
-  activityMatch.last_activity_date = {
-    $gte: today,
-    $lt: tomorrow
-  };
-
-}
-else if(filters.from || filters.to){
-
-  activityMatch.last_activity_date = {};
-
-  if(filters.from){
-
-    activityMatch.last_activity_date.$gte =
-      new Date(filters.from);
-
-  }
-
-  if(filters.to){
-
-    const end =
-      new Date(filters.to);
-
-    end.setHours(23,59,59,999);
-
-    activityMatch.last_activity_date.$lte =
-      end;
-
-  }
-
-}
-
-const completedData =
-await Lead.aggregate([
-
-{
-$match:activityMatch
-},
-
-{
-$group:{
-
-_id:"$last_activity_by",
-
-completedToday:{
-$sum:1
-}
-
-}
-
-}
-
-]);
-
 
     /* ===================================
        TOTAL PERFORMANCE
@@ -3986,13 +3915,13 @@ $sum:1
        const finalData =
        users.map((user)=>{
 
-        
+
         const perf =
           performance.find(
             p=>p._id===user.email
           );
 
-        const assign =
+         const assign =
           assignedData.find(
             a=>a._id===user.email
           );
