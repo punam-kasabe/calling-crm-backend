@@ -331,12 +331,12 @@ assignedDate: {
   default: Date.now
   },
 
-
+ 
   next_call_date: {
     type: Date,
     default: null
   },
-
+  
   upload_batch: {
     type: Number,
     default: 0
@@ -346,7 +346,15 @@ assignedDate: {
   type: Number,
   default: 0
   },
+last_activity_by: {
+  type: String,
+  default: ""
+},
 
+last_activity_date: {
+  type: Date,
+  default: null
+},
   followups: [
     {
       note: String,
@@ -3140,6 +3148,7 @@ app.get("/api/manager-clients", async (req, res) => {
 
 });
 
+
 /* =========================================
    UPDATE STATUS
 ========================================= */
@@ -3153,14 +3162,14 @@ app.put(
 
       const {
 
-  status,
-  remark,
-  followup_date,
-  visitDate,
-  visit_created
+status,
+remark,
+followup_date,
+visitDate,
+visit_created,
+executive_email
 
 } = req.body;
-
       const updated =
         await Lead.findByIdAndUpdate(
 
@@ -3168,13 +3177,17 @@ app.put(
 
           {
 
-            status,
-    remark,
-    followup_date,
-    visitDate,
-    visit_created
+status,
+remark,
+followup_date,
+visitDate,
+visit_created,
 
-          },
+last_activity_by: executive_email,
+
+last_activity_date: new Date()
+
+},
 
           {
 
@@ -3635,6 +3648,7 @@ app.post("/api/team-performance", async (req, res) => {
 
     let assignedMatch = {};
     let totalMatch = {};
+    let completedMatch = {};
 
     /* ============================
        DATE FILTER
@@ -3652,6 +3666,10 @@ app.post("/api/team-performance", async (req, res) => {
         $gte: today,
         $lt: tomorrow
       };
+      completedMatch.last_activity_date = {
+      $gte: today,
+       $lt: tomorrow
+      };
 
     }
 
@@ -3664,6 +3682,8 @@ app.post("/api/team-performance", async (req, res) => {
         assignedMatch.createdAt.$gte =
           new Date(filters.from);
 
+      completedMatch.last_activity_date.$gte =
+        new Date(filters.from);
       }
 
       if (filters.to) {
@@ -3672,7 +3692,7 @@ app.post("/api/team-performance", async (req, res) => {
         end.setHours(23,59,59,999);
 
         assignedMatch.createdAt.$lte = end;
-
+        completedMatch.last_activity_date.$lte = end;
       }
 
     }
@@ -3703,6 +3723,27 @@ app.post("/api/team-performance", async (req, res) => {
 
       ]);
 
+       const completedData =
+   await Lead.aggregate([
+
+  {
+    $match: completedMatch
+  },
+
+  {
+    $group: {
+
+      _id: "$last_activity_by",
+
+      completed: {
+        $sum: 1
+      }
+
+    }
+
+  }
+
+]);
     /* ===================================
        TOTAL PERFORMANCE
     =================================== */
@@ -3873,10 +3914,10 @@ app.post("/api/team-performance", async (req, res) => {
           name:1,
           email:1
         }
-      );
+       );
 
-    const finalData =
-      users.map((user)=>{
+       const finalData =
+       users.map((user)=>{
 
         const perf =
           performance.find(
@@ -3887,6 +3928,11 @@ app.post("/api/team-performance", async (req, res) => {
           assignedData.find(
             a=>a._id===user.email
           );
+
+          const completed =
+          completedData.find(
+          c => c._id === user.email
+           );
 
         return{
 
@@ -3934,7 +3980,10 @@ app.post("/api/team-performance", async (req, res) => {
             perf?.visitDone || 0,
 
           pending:
-            perf?.pending || 0
+            perf?.pending || 0,
+
+            completed:
+           completed ? completed.completed : 0,
 
         };
 
