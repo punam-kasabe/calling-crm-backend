@@ -164,6 +164,7 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+
 /* =========================================
    LEAD SCHEMA
 ========================================= */
@@ -272,10 +273,13 @@ attending_remark: {
   trim: true,
   default: ""
 },
+
+
 assignedDate: {
   type: Date,
   default: null
 },
+
   executive_email: {
   type: String,
   lowercase: true,
@@ -2692,17 +2696,11 @@ duplicates.push({
   continue;
 }
   await Lead.create({
-
   name: row["name"] || "",
-
   phone: normalizePhone(rawPhone),
-
   email: row["Email"] || "",
-
   source: row["Lead Source"] || "",
-
   subSource: row["Sub Source"] || "",
-
   project:
     row["Enquiry"] ||
     row["Project"] ||
@@ -2715,7 +2713,7 @@ duplicates.push({
     row["assigned_to"]
       ?.toLowerCase()
       ?.trim() || "",
-      
+
    assignedDate: new Date(),
 
   closingExecutive:
@@ -3624,6 +3622,340 @@ res.json(data);
 }
 
 });
+
+/* =========================================
+   TEAM PERFORMANCE REPORT
+========================================= */
+
+app.post("/api/team-performance", async (req, res) => {
+
+  try {
+
+    const { filters = {} } = req.body;
+
+    let assignedMatch = {};
+    let totalMatch = {};
+
+    /* ============================
+       DATE FILTER
+    ============================ */
+
+    if (filters.period === "today") {
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      assignedMatch.createdAt = {
+        $gte: today,
+        $lt: tomorrow
+      };
+
+    }
+
+    else if (filters.from || filters.to) {
+
+      assignedMatch.createdAt = {};
+
+      if (filters.from) {
+
+        assignedMatch.createdAt.$gte =
+          new Date(filters.from);
+
+      }
+
+      if (filters.to) {
+
+        const end = new Date(filters.to);
+        end.setHours(23,59,59,999);
+
+        assignedMatch.createdAt.$lte = end;
+
+      }
+
+    }
+
+    /* ===================================
+       ASSIGNED TODAY
+    =================================== */
+
+    const assignedData =
+      await Lead.aggregate([
+
+        {
+          $match: assignedMatch
+        },
+
+        {
+          $group: {
+
+            _id: "$assigned_to",
+
+            assigned: {
+              $sum: 1
+            }
+
+          }
+
+        }
+
+      ]);
+
+    /* ===================================
+       TOTAL PERFORMANCE
+    =================================== */
+
+    const performance =
+      await Lead.aggregate([
+
+        {
+          $match: totalMatch
+        },
+
+        {
+          $group: {
+
+            _id: "$assigned_to",
+
+            total: {
+              $sum: 1
+            },
+
+            newLead: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$status","New"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            interested: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Interested"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            followup: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Followup"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            booked: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Booked"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            notInterested: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Not Interested"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            ringing: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Ringing"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            callBack: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Call Back"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            callCut: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Call Cut"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            busy: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Busy"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            switchOff: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Switch Off"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            visitDone: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Visit Done"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            pending: {
+              $sum: {
+                $cond: [
+                  {
+                    $in:[
+                      "$status",
+                      [
+                        "New",
+                        "Followup",
+                        "Ringing",
+                        "Call Back",
+                        "Busy",
+                        "Switch Off",
+                        "Call Cut"
+                      ]
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            }
+
+          }
+
+        }
+
+      ]);
+
+    /* ===================================
+       USER NAMES
+    =================================== */
+
+    const users =
+      await User.find(
+        { role: /executive/i },
+        {
+          name:1,
+          email:1
+        }
+      );
+
+    const finalData =
+      users.map((user)=>{
+
+        const perf =
+          performance.find(
+            p=>p._id===user.email
+          );
+
+        const assign =
+          assignedData.find(
+            a=>a._id===user.email
+          );
+
+        return{
+
+          name:user.name,
+
+          email:user.email,
+
+          assigned:
+            assign?.assigned || 0,
+
+          total:
+            perf?.total || 0,
+
+          newLead:
+            perf?.newLead || 0,
+
+          interested:
+            perf?.interested || 0,
+
+          followup:
+            perf?.followup || 0,
+
+          booked:
+            perf?.booked || 0,
+
+          notInterested:
+            perf?.notInterested || 0,
+
+          ringing:
+            perf?.ringing || 0,
+
+          callBack:
+            perf?.callBack || 0,
+
+          callCut:
+            perf?.callCut || 0,
+
+          busy:
+            perf?.busy || 0,
+
+          switchOff:
+            perf?.switchOff || 0,
+
+          visitDone:
+            perf?.visitDone || 0,
+
+          pending:
+            perf?.pending || 0
+
+        };
+
+      });
+
+    res.json(finalData);
+
+  }
+
+  catch(err){
+
+    console.log(err);
+
+    res.status(500).json({
+      message:"Server Error"
+    });
+
+  }
+
+});
+
 /* =========================================
    ADD FOLLOWUP
 ========================================= */
