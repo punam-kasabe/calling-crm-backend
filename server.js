@@ -272,7 +272,10 @@ attending_remark: {
   trim: true,
   default: ""
 },
-
+assignedDate: {
+  type: Date,
+  default: null
+},
   executive_email: {
   type: String,
   lowercase: true,
@@ -2569,6 +2572,7 @@ app.get(
   }
 
 );
+
 /* =========================================
    BULK UPDATE
 ========================================= */
@@ -2711,6 +2715,8 @@ duplicates.push({
     row["assigned_to"]
       ?.toLowerCase()
       ?.trim() || "",
+      
+   assignedDate: new Date(),
 
   closingExecutive:
     row["Closing Executive"] || "",
@@ -2719,6 +2725,8 @@ duplicates.push({
     row["Description"] || ""
 
          });
+
+
 
         updated++;
 
@@ -3863,7 +3871,8 @@ app.put("/api/update-lead/:id", async (req, res) => {
       if (officer) {
         data.assignedTo = officer.name;          // Display Name
         data.assigned_to = officer.email;        // Email
-        data.assigned_to_email = officer.email;  // Email
+        data.assigned_to_email = officer.email; 
+        data.assignedDate = new Date(); // Email
       }
     }
 
