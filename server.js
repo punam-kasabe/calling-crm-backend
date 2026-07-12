@@ -3889,6 +3889,131 @@ app.post("/api/team-performance", async (req, res) => {
 
       ]);
 
+      app.post("/api/team-performance-details", async (req, res) => {
+  try {
+
+    const {
+      executive,
+      type,
+      filters = {}
+    } = req.body;
+
+    let query = {
+      assigned_to: executive
+    };
+
+    if (filters.date) {
+
+      const start = new Date(filters.date);
+      start.setHours(0,0,0,0);
+
+      const end = new Date(filters.date);
+      end.setHours(23,59,59,999);
+
+      if (type === "assigned") {
+        query.createdAt = {
+          $gte: start,
+          $lte: end
+        };
+      }
+
+      else if (type === "completed") {
+
+        query.last_activity_date = {
+          $gte: start,
+          $lte: end
+        };
+
+        query.last_activity_by = executive;
+      }
+
+      else {
+
+        query.createdAt = {
+          $gte: start,
+          $lte: end
+        };
+
+      }
+
+    }
+
+    switch(type){
+
+      case "interested":
+        query.status="Interested";
+        break;
+
+      case "followup":
+        query.status="Followup";
+        break;
+
+      case "booked":
+        query.status="Booked";
+        break;
+
+      case "notInterested":
+        query.status="Not Interested";
+        break;
+
+      case "ringing":
+        query.status="Ringing";
+        break;
+
+      case "callBack":
+        query.status="Call Back";
+        break;
+
+      case "callCut":
+        query.status="Call Cut";
+        break;
+
+      case "busy":
+        query.status="Busy";
+        break;
+
+      case "switchOff":
+        query.status="Switch Off";
+        break;
+
+      case "visitDone":
+        query.status="Visit Done";
+        break;
+
+      case "pending":
+        query.status={
+          $in:[
+            "New",
+            "Followup",
+            "Ringing",
+            "Call Back",
+            "Busy",
+            "Switch Off",
+            "Call Cut"
+          ]
+        };
+        break;
+
+      default:
+        break;
+    }
+
+    const leads = await Lead.find(query).sort({
+      createdAt:-1
+    });
+
+    res.json(leads);
+
+  } catch(err){
+
+    console.log(err);
+
+    res.status(500).json({
+      message:"Server Error"
+    });
+
+  }
+});
     /* ===================================
        USER NAMES
     =================================== */
