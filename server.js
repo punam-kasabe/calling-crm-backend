@@ -3648,7 +3648,6 @@ app.post("/api/team-performance", async (req, res) => {
 
     let assignedMatch = {};
     let totalMatch = {};
-    let totalMatch = {};
     let completedMatch = {};
 
     /* ============================
