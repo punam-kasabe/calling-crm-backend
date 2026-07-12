@@ -3652,55 +3652,33 @@ app.post("/api/team-performance", async (req, res) => {
     let completedMatch = {};
 
     /* ============================
-       DATE FILTER
+   DATE FILTER
     ============================ */
 
-    if (filters.period === "today") {
+    if (filters.date) {
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+  const start = new Date(filters.date);
+  start.setHours(0, 0, 0, 0);
 
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+  const end = new Date(filters.date);
+  end.setHours(23, 59, 59, 999);
 
-      assignedMatch.createdAt = {
-        $gte: today,
-        $lt: tomorrow
-      };
-      completedMatch.last_activity_date = {
-      $gte: today,
-       $lt: tomorrow
-      };
-      totalMatch.createdAt = {
-   $gte: today,
-   $lt: tomorrow
-};
+  assignedMatch.createdAt = {
+    $gte: start,
+    $lte: end
+  };
+
+  totalMatch.createdAt = {
+    $gte: start,
+    $lte: end
+  };
+
+  completedMatch.last_activity_date = {
+    $gte: start,
+    $lte: end
+  };
 
     }
-
-  else if (filters.from || filters.to) {
-
-  assignedMatch.createdAt = {};
-  completedMatch.last_activity_date = {};
-  totalMatch.createdAt = {};
-
-  if (filters.from) {
-    assignedMatch.createdAt.$gte = new Date(filters.from);
-    completedMatch.last_activity_date.$gte = new Date(filters.from);
-    totalMatch.createdAt.$gte =
-    new Date(filters.from);
-  }
-
-  if (filters.to) {
-    const end = new Date(filters.to);
-    end.setHours(23,59,59,999);
-
-    assignedMatch.createdAt.$lte = end;
-    completedMatch.last_activity_date.$lte = end;
-    totalMatch.createdAt.$lte = end;
-  }
-}
-
     /* ===================================
        ASSIGNED TODAY
     =================================== */
