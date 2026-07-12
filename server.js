@@ -3648,6 +3648,7 @@ app.post("/api/team-performance", async (req, res) => {
 
     let assignedMatch = {};
     let totalMatch = {};
+    let totalMatch = {};
     let completedMatch = {};
 
     /* ============================
@@ -3670,6 +3671,10 @@ app.post("/api/team-performance", async (req, res) => {
       $gte: today,
        $lt: tomorrow
       };
+      totalMatch.createdAt = {
+   $gte: today,
+   $lt: tomorrow
+};
 
     }
 
@@ -3677,10 +3682,13 @@ app.post("/api/team-performance", async (req, res) => {
 
   assignedMatch.createdAt = {};
   completedMatch.last_activity_date = {};
+  totalMatch.createdAt = {};
 
   if (filters.from) {
     assignedMatch.createdAt.$gte = new Date(filters.from);
     completedMatch.last_activity_date.$gte = new Date(filters.from);
+    totalMatch.createdAt.$gte =
+    new Date(filters.from);
   }
 
   if (filters.to) {
@@ -3689,6 +3697,7 @@ app.post("/api/team-performance", async (req, res) => {
 
     assignedMatch.createdAt.$lte = end;
     completedMatch.last_activity_date.$lte = end;
+    totalMatch.createdAt.$lte = end;
   }
 }
 
