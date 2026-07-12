@@ -3654,30 +3654,34 @@ app.post("/api/team-performance", async (req, res) => {
    DATE FILTER
     ============================ */
 
-    if (filters.date) {
+   if (filters.date) {
 
   const start = new Date(filters.date);
-  start.setHours(0, 0, 0, 0);
+  start.setHours(0,0,0,0);
 
   const end = new Date(filters.date);
-  end.setHours(23, 59, 59, 999);
+  end.setHours(23,59,59,999);
 
+  // Assigned Leads
   assignedMatch.createdAt = {
     $gte: start,
     $lte: end
   };
 
-  totalMatch.createdAt = {
+  // Updated Leads
+  totalMatch.last_activity_date = {
     $gte: start,
     $lte: end
   };
 
+  // Completed
   completedMatch.last_activity_date = {
     $gte: start,
     $lte: end
   };
 
-    }
+}
+
     /* ===================================
        ASSIGNED TODAY
     =================================== */
