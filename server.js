@@ -3464,7 +3464,26 @@ if (search && search.trim()) {
 
 }
 
+/* ===========================
+   CURRENT MONTH FILTER
+=========================== */
 
+const startOfMonth = new Date();
+startOfMonth.setDate(1);
+startOfMonth.setHours(0, 0, 0, 0);
+
+const endOfMonth = new Date(
+  startOfMonth.getFullYear(),
+  startOfMonth.getMonth() + 1,
+  0
+);
+
+endOfMonth.setHours(23, 59, 59, 999);
+
+query.createdAt = {
+  $gte: startOfMonth,
+  $lte: endOfMonth
+};
       const total =
         await Lead.countDocuments(
           query
@@ -3585,6 +3604,7 @@ app.get("/api/all-leads", async (req, res) => {
 
   }
 });
+
 
 /* =========================================
    PROJECTS REPORT (DATE WISE)
