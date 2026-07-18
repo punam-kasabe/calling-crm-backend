@@ -1441,7 +1441,98 @@ app.get("/api/new-leads", async (req, res) => {
   }
 });
 
+/* =========================================
+   EXPORT LEADS
+========================================= */
 
+app.post("/api/export-leads", async (req, res) => {
+  try {
+    const {
+      email,
+      role,
+      filters = {},
+      search = "",
+    } = req.body;
+
+    let query = {};
+
+    const userRole = role?.toLowerCase();
+
+    if (userRole === "executive") {
+      query.assigned_to = email.toLowerCase().trim();
+    }
+
+    if (userRole === "manager") {
+      query.assigned_manager = email.toLowerCase().trim();
+    }
+
+    // Status
+    if (filters.status && filters.status.length > 0) {
+      query.status = {
+        $in: filters.status.map((s) => s.value),
+      };
+    }
+
+    // Assigned
+    if (filters.assigned) {
+      query.assigned_to = filters.assigned.toLowerCase().trim();
+    }
+
+    // Closing Executive
+    if (filters.closingExecutive) {
+      query.assigned_manager = new RegExp(
+        filters.closingExecutive,
+        "i"
+      );
+    }
+
+    // Project
+    if (filters.project) {
+      query.project = new RegExp(
+        filters.project,
+        "i"
+      );
+    }
+
+    // Created Date
+    if (filters.createdFrom || filters.createdTo) {
+      query.createdAt = {};
+
+      if (filters.createdFrom) {
+        query.createdAt.$gte = new Date(filters.createdFrom);
+      }
+
+      if (filters.createdTo) {
+        const end = new Date(filters.createdTo);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
+
+    // Search
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+        { project: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // ✅ NO LIMIT, NO SKIP
+    const leads = await Lead.find(query).sort({
+      createdAt: -1,
+    });
+
+    res.json(leads);
+
+  } catch (err) {
+    console.log(err);
+
+    res.status(500).json({
+      message: "Export Failed",
+    });
+  }
+});
 /* =========================================
    GET USERS
 ========================================= */
@@ -3233,9 +3324,11 @@ app.post(
   search = ""
 } = req.body;
 
-    
+const limit = 10;
+const skip = (page - 1) * limit;
 
-      let query = {};
+let query = {};
+
       const userRole =
         role?.toLowerCase();
 
@@ -3456,15 +3549,18 @@ await Lead.countDocuments({
   todayFollowups,
   backlog
 });
-    }
-
-    catch {
-
-      res.status(500).json({
-        message: "Filter error ❌"
-      });
 
     }
+
+    catch (err) {
+
+  console.log("FILTER ERROR =", err);
+
+  res.status(500).json({
+    message: err.message
+  });
+
+}
 
   }
 
