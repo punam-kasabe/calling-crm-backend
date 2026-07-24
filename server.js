@@ -1399,7 +1399,6 @@ app.get("/api/all-leads", async (req, res) => {
 });
 
 
-
 app.get("/api/new-leads", async (req, res) => {
   try {
     const page =
@@ -3464,26 +3463,7 @@ if (search && search.trim()) {
 
 }
 
-/* ===========================
-   CURRENT MONTH FILTER
-=========================== */
 
-const startOfMonth = new Date();
-startOfMonth.setDate(1);
-startOfMonth.setHours(0, 0, 0, 0);
-
-const endOfMonth = new Date(
-  startOfMonth.getFullYear(),
-  startOfMonth.getMonth() + 1,
-  0
-);
-
-endOfMonth.setHours(23, 59, 59, 999);
-
-query.createdAt = {
-  $gte: startOfMonth,
-  $lte: endOfMonth
-};
       const total =
         await Lead.countDocuments(
           query
@@ -5208,6 +5188,7 @@ app.get(
 
         });
 
+
       /* BOOKED */
 
       const booked =
@@ -5312,19 +5293,23 @@ app.get("/api/dashboard", async (req, res) => {
 
 }
 
-    if (role === "manager") {
+  if (role === "executive") {
 
-  const user = await User.findOne({
-    email
-  });
+  const user = await User.findOne({ email });
 
   match = {
     $or: [
       {
+        executive_email: email
+      },
+      {
+        assigned_to: email
+      },
+      {
         assigned_to_email: email
       },
       {
-        assignedTo: user?.name
+        closingExecutive: user?.name
       }
     ]
   };
@@ -5462,6 +5447,7 @@ const todaySiteVisits = await Lead.find({
     $lt: tomorrow
   }
 }).select("name phone project");
+
 
 /* RECENT LEADS */
 
@@ -5794,6 +5780,7 @@ app.get("/api/dashboard-full", async (req, res) => {
     status: "Interested"
 
   });
+
     const notInterested =
       await Lead.countDocuments({
 
@@ -5818,6 +5805,7 @@ app.get("/api/dashboard-full", async (req, res) => {
   await Lead.countDocuments({
     status: { $regex: /^new$/i }
   });
+  
     /* =====================================
        STATUS CHART
     ===================================== */
