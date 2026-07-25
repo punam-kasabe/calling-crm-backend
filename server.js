@@ -2423,6 +2423,7 @@ const visit = await Visit.create({
         existingLead.status = status || "New";
         existingLead.department = department;
         existingLead.source = source;
+        existingLead.created_by = "Reception";
         existingLead.assigned_to = assigned_to;
        existingLead.attended_by = attended_by || [];
         await existingLead.save();
@@ -3328,6 +3329,10 @@ const skip = (page - 1) * limit;
 
 let query = {};
 
+// Hide Reception created leads
+query.created_by = {
+  $ne: "Reception"
+};
       const userRole =
         role?.toLowerCase();
 
