@@ -3748,31 +3748,55 @@ app.post("/api/team-performance", async (req, res) => {
    DATE FILTER
     ============================ */
 
-   if (filters.date) {
+  if (filters.reportType === "daily" && filters.date) {
 
-  const start = new Date(filters.date);
-  start.setHours(0,0,0,0);
+    const start = new Date(filters.date);
+    start.setHours(0,0,0,0);
 
-  const end = new Date(filters.date);
-  end.setHours(23,59,59,999);
+    const end = new Date(filters.date);
+    end.setHours(23,59,59,999);
 
-  // Assigned Leads
-  assignedMatch.createdAt = {
-    $gte: start,
-    $lte: end
-  };
+    assignedMatch.createdAt = {
+        $gte:start,
+        $lte:end
+    };
 
-  // Updated Leads
-  totalMatch.last_activity_date = {
-    $gte: start,
-    $lte: end
-  };
+    totalMatch.last_activity_date = {
+        $gte:start,
+        $lte:end
+    };
 
-  // Completed
-  completedMatch.last_activity_date = {
-    $gte: start,
-    $lte: end
-  };
+    completedMatch.last_activity_date = {
+        $gte:start,
+        $lte:end
+    };
+
+}
+
+if (filters.reportType === "monthly" && filters.month) {
+
+    const [year, month] = filters.month.split("-");
+
+    const start = new Date(year, month - 1, 1);
+
+    const end = new Date(year, month, 0);
+
+    end.setHours(23,59,59,999);
+
+    assignedMatch.createdAt = {
+        $gte:start,
+        $lte:end
+    };
+
+    totalMatch.last_activity_date = {
+        $gte:start,
+        $lte:end
+    };
+
+    completedMatch.last_activity_date = {
+        $gte:start,
+        $lte:end
+    };
 
 }
 
@@ -4438,6 +4462,7 @@ app.get(
 
   }
 );
+
 /* =========================================
    UPDATE LEAD
 ========================================= */
