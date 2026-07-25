@@ -3766,7 +3766,7 @@ app.post("/api/team-performance", async (req, res) => {
         $lte:end
     };
 
-    totalMatch.last_activity_date = {
+   totalMatch.createdAt = {
         $gte:start,
         $lte:end
     };
@@ -3793,7 +3793,7 @@ if (filters.reportType === "monthly" && filters.month) {
         $lte:end
     };
 
-    totalMatch.last_activity_date = {
+    totalMatch.createdAt = {
         $gte:start,
         $lte:end
     };
@@ -3983,29 +3983,17 @@ if (filters.reportType === "monthly" && filters.month) {
               }
             },
 
-            pending: {
-              $sum: {
-                $cond: [
-                  {
-                    $in:[
-                      "$status",
-                      [
-                        "New",
-                        "Followup",
-                        "Ringing",
-                        "Call Back",
-                        "Busy",
-                        "Switch Off",
-                        "Call Cut"
-                      ]
-                    ]
-                  },
-                  1,
-                  0
-                ]
-              }
-            }
-
+           pending:{
+  $sum:{
+    $cond:[
+      {
+        $eq:["$status","New"]
+      },
+      1,
+      0
+    ]
+  }
+}
           }
 
         }
@@ -4103,19 +4091,11 @@ if (filters.reportType === "monthly" && filters.month) {
         query.status="Visit Done";
         break;
 
-      case "pending":
-        query.status={
-          $in:[
-            "New",
-            "Followup",
-            "Ringing",
-            "Call Back",
-            "Busy",
-            "Switch Off",
-            "Call Cut"
-          ]
-        };
-        break;
+     case "pending":
+
+     query.status="New";
+
+     break;
 
       default:
         break;
@@ -4137,6 +4117,7 @@ if (filters.reportType === "monthly" && filters.month) {
 
   }
 });
+
     /* ===================================
        USER NAMES
     =================================== */
