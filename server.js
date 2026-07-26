@@ -5727,7 +5727,8 @@ app.get("/api/dashboard-full", async (req, res) => {
       req.query.role
         ?.toLowerCase()
         .trim();
-    const receptionEntries = await Visit.countDocuments();
+
+        
     let match = {};
 
     /* ROLE FILTER */
@@ -5764,6 +5765,12 @@ app.get("/api/dashboard-full", async (req, res) => {
       tomorrow.getDate() + 1
     );
 
+    const receptionEntries = await Visit.countDocuments({
+  createdAt: {
+    $gte: today,
+    $lt: tomorrow
+  }
+});
     const newLeads =
   await Lead.countDocuments({
 
@@ -6249,39 +6256,23 @@ app.get("/api/dashboard-full", async (req, res) => {
 
 
       total,
-
       new: newLeads,
-
       interested,
-
       booked,
-
       not_interested: notInterested,
-
+      receptionEntries,
       pending,
-
       statusData,
-
       executives,
-
       assignments: assignmentData,
-
       leaderboard,
-
       followups,
-
       missedFollowups,
-
       projects,
-
       sources,
-
       revenue: revenueData,
-
       activities: activityData,
-
       weekly: weeklyData
-
     });
 
   }
