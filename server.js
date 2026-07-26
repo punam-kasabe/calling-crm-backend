@@ -3636,7 +3636,6 @@ app.post("/api/projects-report", async (req, res) => {
   }
 ]);
 
-
 const totalData = await Lead.aggregate([
   {
     $group: {
@@ -5960,63 +5959,6 @@ app.get("/api/dashboard-full", async (req, res) => {
                 ]
               }
             },
- 
-
-            calling: {
-
-    $sum: {
-
-        $cond: [
-
-            {
-
-                $eq: [
-
-                    "$status",
-
-                    "Calling"
-
-                ]
-
-            },
-
-            1,
-
-            0
-
-        ]
-
-    }
-
-},
-
-ringing: {
-
-    $sum: {
-
-        $cond: [
-
-            {
-
-                $eq: [
-
-                    "$status",
-
-                    "Ringing"
-
-                ]
-
-            },
-
-            1,
-
-            0
-
-        ]
-
-    }
-
-},
 
             booked: {
               $sum: {
