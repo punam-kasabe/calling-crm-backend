@@ -3636,6 +3636,7 @@ app.post("/api/projects-report", async (req, res) => {
   }
 ]);
 
+
 const totalData = await Lead.aggregate([
   {
     $group: {
@@ -5727,10 +5728,35 @@ app.get("/api/dashboard-full", async (req, res) => {
       req.query.role
         ?.toLowerCase()
         .trim();
-
+    const month =
+    Number(req.query.month);
         
     let match = {};
 
+
+    if (month) {
+
+    const start = new Date(
+        new Date().getFullYear(),
+        month - 1,
+        1
+    );
+
+    const end = new Date(
+        new Date().getFullYear(),
+        month,
+        1
+    );
+
+    match.createdAt = {
+
+        $gte: start,
+
+        $lt: end
+
+    };
+
+}
     /* ROLE FILTER */
 
     if (role === "executive") {
@@ -5934,6 +5960,63 @@ app.get("/api/dashboard-full", async (req, res) => {
                 ]
               }
             },
+ 
+
+            calling: {
+
+    $sum: {
+
+        $cond: [
+
+            {
+
+                $eq: [
+
+                    "$status",
+
+                    "Calling"
+
+                ]
+
+            },
+
+            1,
+
+            0
+
+        ]
+
+    }
+
+},
+
+ringing: {
+
+    $sum: {
+
+        $cond: [
+
+            {
+
+                $eq: [
+
+                    "$status",
+
+                    "Ringing"
+
+                ]
+
+            },
+
+            1,
+
+            0
+
+        ]
+
+    }
+
+},
 
             booked: {
               $sum: {
@@ -6253,8 +6336,6 @@ app.get("/api/dashboard-full", async (req, res) => {
     ===================================== */
 
     res.json({
-
-
       total,
       new: newLeads,
       interested,
