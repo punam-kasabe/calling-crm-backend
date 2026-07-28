@@ -3561,9 +3561,11 @@ await Lead.countDocuments({
   hotLeads,
   newLeads,
   bookedLeads,
+  inactiveLeads,
   interestedLeads,
   siteVisitDone,
-  todayFollowups
+  todayFollowups,
+  backlog
 });
 
     }
