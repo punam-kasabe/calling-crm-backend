@@ -4000,6 +4000,22 @@ if (filters.reportType === "monthly" && filters.month) {
 
       ]);
 
+const pendingData = await Lead.aggregate([
+  {
+    $match: {
+      status: "New"
+    }
+  },
+  {
+    $group: {
+      _id: "$assigned_to",
+      pending: {
+        $sum: 1
+      }
+    }
+  }
+]);
+
 
 app.post("/api/team-performance-details", async (req, res) => {
   try {
@@ -4189,6 +4205,11 @@ app.post("/api/team-performance-details", async (req, res) => {
           c => c._id === user.email
            );
 
+          const pending =
+          pendingData.find(
+          p => p._id === user.email
+           );
+
         return{
 
           name:user.name,
@@ -4234,8 +4255,8 @@ app.post("/api/team-performance-details", async (req, res) => {
           visitDone:
             perf?.visitDone || 0,
 
-           pending:
-            perf?.pending || 0,
+          pending:
+            pending?.pending || 0,
 
             completed:
            completed ? completed.completed : 0,
