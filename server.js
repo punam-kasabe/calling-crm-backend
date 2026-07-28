@@ -196,7 +196,7 @@ const leadSchema = new mongoose.Schema({
     "Fresh",
     "Interested",
     "Followup",
-    "Visit Done",
+    "Site Visit Done",
     "Booked",
     "Not Interested",
     "Call Cut",
@@ -294,11 +294,11 @@ assignedDate: {
   },
 
 
-
   visit_created: {
     type: Boolean,
     default: false
   },
+
 
   visit_status: {
     type: String,
@@ -3973,15 +3973,15 @@ if (filters.reportType === "monthly" && filters.month) {
               }
             },
 
-            visitDone: {
-              $sum: {
-                $cond: [
-                  { $eq:["$status","Visit Done"] },
-                  1,
-                  0
-                ]
-              }
-            },
+           visitDone: {
+           $sum: {
+           $cond: [
+          { $eq: ["$status", "Site Visit Done"] },
+          1,
+         0
+        ]
+       }
+         },
 
            pending:{
   $sum:{
@@ -4000,7 +4000,8 @@ if (filters.reportType === "monthly" && filters.month) {
 
       ]);
 
-      app.post("/api/team-performance-details", async (req, res) => {
+
+app.post("/api/team-performance-details", async (req, res) => {
   try {
 
     const {
@@ -4013,111 +4014,149 @@ if (filters.reportType === "monthly" && filters.month) {
       assigned_to: executive
     };
 
-    if (filters.date) {
+    /* ==========================
+       DATE FILTER
+    ========================== */
+
+    if (filters.reportType === "daily") {
 
       const start = new Date(filters.date);
-      start.setHours(0,0,0,0);
+      start.setHours(0, 0, 0, 0);
 
-      const end = new Date(filters.date);
-      end.setHours(23,59,59,999);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
 
-      if (type === "assigned") {
-        query.createdAt = {
-          $gte: start,
-          $lte: end
-        };
-      }
-
-      else if (type === "completed") {
+      if (type === "completed") {
 
         query.last_activity_date = {
           $gte: start,
-          $lte: end
+          $lt: end
         };
 
         query.last_activity_by = executive;
-      }
 
-      else {
+      } else {
 
         query.createdAt = {
           $gte: start,
-          $lte: end
+          $lt: end
         };
 
       }
 
     }
 
-    switch(type){
+    else if (filters.reportType === "monthly") {
+
+      const [year, month] = filters.month.split("-");
+
+      const start = new Date(year, month - 1, 1);
+
+      const end = new Date(year, month, 1);
+
+      if (type === "completed") {
+
+        query.last_activity_date = {
+          $gte: start,
+          $lt: end
+        };
+
+        query.last_activity_by = executive;
+
+      } else {
+
+        query.createdAt = {
+          $gte: start,
+          $lt: end
+        };
+
+      }
+
+    }
+
+    /* ==========================
+       STATUS FILTER
+    ========================== */
+
+    switch (type) {
+
+      case "new":
+        query.status = "New";
+        break;
 
       case "interested":
-        query.status="Interested";
+        query.status = "Interested";
         break;
 
       case "followup":
-        query.status="Followup";
+        query.status = "Followup";
         break;
 
       case "booked":
-        query.status="Booked";
+        query.status = "Booked";
         break;
 
       case "notInterested":
-        query.status="Not Interested";
+        query.status = "Not Interested";
         break;
 
       case "ringing":
-        query.status="Ringing";
+        query.status = "Ringing";
         break;
 
       case "callBack":
-        query.status="Call Back";
+        query.status = "Call Back";
         break;
 
       case "callCut":
-        query.status="Call Cut";
+        query.status = "Call Cut";
         break;
 
       case "busy":
-        query.status="Busy";
+        query.status = "Busy";
         break;
 
       case "switchOff":
-        query.status="Switch Off";
+        query.status = "Switch Off";
         break;
 
       case "visitDone":
-        query.status="Visit Done";
+        query.status = "Site Visit Done";   // <-- जर DB मध्ये "Site Visit Done" असेल तर ते नाव टाक.
         break;
 
-     case "pending":
-
-     query.status="New";
-
-     break;
+      case "pending":
+        query.status = "New";
+        break;
 
       default:
         break;
+
     }
 
-    const leads = await Lead.find(query).sort({
-      createdAt:-1
-    });
+    console.log("TYPE =", type);
+    console.log("QUERY =", query);
+
+    const leads = await Lead.find(query)
+      .select("name phone project status")
+      .sort({ createdAt: -1 });
+
+    console.log("FOUND =", leads.length);
 
     res.json(leads);
 
-  } catch(err){
+  }
+
+  catch (err) {
 
     console.log(err);
 
     res.status(500).json({
-      message:"Server Error"
+      message: "Server Error"
     });
 
   }
-});
 
+});
     /* ===================================
        USER NAMES
     =================================== */
