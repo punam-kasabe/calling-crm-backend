@@ -3483,6 +3483,18 @@ const hotLeads =
     status: "Interested"
   });
 
+const interestedLeads =
+  await Lead.countDocuments({
+    ...query,
+    status: "Interested"
+  });
+
+const siteVisitDone =
+  await Lead.countDocuments({
+    ...query,
+    visitStatus: "VISIT_DONE"
+  });
+
 const newLeads =
   await Lead.countDocuments({
     ...query,
@@ -3541,7 +3553,7 @@ await Lead.countDocuments({
 
           .limit(limit);
 
-      res.json({
+  res.json({
   data: leads,
   total,
   totalPages: Math.ceil(total / limit),
@@ -3549,9 +3561,9 @@ await Lead.countDocuments({
   hotLeads,
   newLeads,
   bookedLeads,
-  inactiveLeads,
-  todayFollowups,
-  backlog
+  interestedLeads,
+  siteVisitDone,
+  todayFollowups
 });
 
     }
@@ -5258,6 +5270,7 @@ const recentActivities =
 
         booked,
 
+      
         recentLeads,
         recentActivities
 
