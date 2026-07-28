@@ -3861,7 +3861,7 @@ if (filters.reportType === "monthly" && filters.month) {
       await Lead.aggregate([
 
         {
-          $match: totalMatch
+          $match:  dateMatch
         },
 
         {
@@ -5727,7 +5727,7 @@ app.get("/api/dashboard-full", async (req, res) => {
       req.query.role
         ?.toLowerCase()
         .trim();
-        
+
         
     let match = {};
 
@@ -6253,24 +6253,40 @@ app.get("/api/dashboard-full", async (req, res) => {
     ===================================== */
 
     res.json({
+
+
       total,
+
       new: newLeads,
+
       interested,
       booked,
       not_interested: notInterested,
       receptionEntries,
       pending,
+
       statusData,
+
       executives,
+
       assignments: assignmentData,
+
       leaderboard,
+
       followups,
+
       missedFollowups,
+
       projects,
+
       sources,
+
       revenue: revenueData,
+
       activities: activityData,
+
       weekly: weeklyData
+
     });
 
   }
