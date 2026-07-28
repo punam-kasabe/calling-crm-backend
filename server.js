@@ -1417,6 +1417,7 @@ app.get("/api/new-leads", async (req, res) => {
       .skip(skip)
       .limit(limit);
 
+
     const totalLeads =
       await Lead.countDocuments({
         status: "New"
@@ -3468,7 +3469,6 @@ if (search && search.trim()) {
 
 }
 
-
       const total =
         await Lead.countDocuments(
           query
@@ -3477,54 +3477,38 @@ if (search && search.trim()) {
        const totalLeads =
   await Lead.countDocuments(query);
 
-const hotLeads =
-  await Lead.countDocuments({
-    ...query,
-    status: "Interested"
-  });
+  const hotLeads = await Lead.countDocuments({
+  ...query,
+  status: "Interested"
+});
 
-const interestedLeads =
-  await Lead.countDocuments({
-    ...query,
-    status: "Interested"
-  });
+const newLeads = await Lead.countDocuments({
+  ...query,
+  status: "New"
+});
 
-const siteVisitDone =
-  await Lead.countDocuments({
-    ...query,
-    visitStatus: "VISIT_DONE"
-  });
+const bookedLeads = await Lead.countDocuments({
+  ...query,
+  status: "Booked"
+});
 
-const newLeads =
-  await Lead.countDocuments({
-    ...query,
-    status: "New"
-  });
-
-const bookedLeads =
-  await Lead.countDocuments({
-    ...query,
-    status: "Booked"
-  });
-
-const inactiveLeads =
-  await Lead.countDocuments({
-    ...query,
-    status: "Not Interested"
-  });
+const siteVisitDone = await Lead.countDocuments({
+  ...query,
+  status: "Site Visit Done"
+});
 
 const today = new Date();
-today.setHours(0, 0, 0, 0);
+today.setHours(0,0,0,0);
 
 const tomorrow = new Date(today);
-tomorrow.setDate(tomorrow.getDate() + 1);
+tomorrow.setDate(tomorrow.getDate()+1);
 
 const todayFollowups =
 await Lead.countDocuments({
   ...query,
-  next_call_date: {
-    $gte: today,
-    $lt: tomorrow
+  next_call_date:{
+    $gte:today,
+    $lt:tomorrow
   }
 });
 
@@ -3553,19 +3537,16 @@ await Lead.countDocuments({
 
           .limit(limit);
 
-  res.json({
+ res.json({
   data: leads,
   total,
   totalPages: Math.ceil(total / limit),
   totalLeads,
+  todayFollowups,
   hotLeads,
   newLeads,
   bookedLeads,
-  inactiveLeads,
-  interestedLeads,
-  siteVisitDone,
-  todayFollowups,
-  backlog
+  siteVisitDone
 });
 
     }
