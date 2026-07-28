@@ -196,7 +196,7 @@ const leadSchema = new mongoose.Schema({
     "Fresh",
     "Interested",
     "Followup",
-    "Site Visit Done",
+    "Visit Done",
     "Booked",
     "Not Interested",
     "Call Cut",
@@ -294,11 +294,11 @@ assignedDate: {
   },
 
 
+
   visit_created: {
     type: Boolean,
     default: false
   },
-
 
   visit_status: {
     type: String,
@@ -3857,99 +3857,148 @@ if (filters.reportType === "monthly" && filters.month) {
        TOTAL PERFORMANCE
     =================================== */
 
-    const performance = await Lead.aggregate([
-  {
-    $match: dateMatch
-  },
-  {
-    $group: {
-      _id: "$assigned_to",
+    const performance =
+      await Lead.aggregate([
 
-      total: { $sum: 1 },
+        {
+          $match: totalMatch
+        },
 
-      newLead: {
-        $sum: {
-          $cond: [{ $eq: ["$status", "New"] }, 1, 0]
-        }
-      },
+        {
+          $group: {
 
-      interested: {
-        $sum: {
-          $cond: [{ $eq: ["$status", "Interested"] }, 1, 0]
-        }
-      },
+            _id: "$assigned_to",
 
-      followup: {
-        $sum: {
-          $cond: [{ $eq: ["$status", "Followup"] }, 1, 0]
-        }
-      },
+            total: {
+              $sum: 1
+            },
 
-      booked: {
-        $sum: {
-          $cond: [{ $eq: ["$status", "Booked"] }, 1, 0]
-        }
-      },
+            newLead: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$status","New"] },
+                  1,
+                  0
+                ]
+              }
+            },
 
-      notInterested: {
-        $sum: {
-          $cond: [{ $eq: ["$status", "Not Interested"] }, 1, 0]
-        }
-      },
+            interested: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Interested"] },
+                  1,
+                  0
+                ]
+              }
+            },
 
-      ringing: {
-        $sum: {
-          $cond: [{ $eq: ["$status", "Ringing"] }, 1, 0]
-        }
-      },
+            followup: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Followup"] },
+                  1,
+                  0
+                ]
+              }
+            },
 
-      callBack: {
-        $sum: {
-          $cond: [{ $eq: ["$status", "Call Back"] }, 1, 0]
-        }
-      },
+            booked: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Booked"] },
+                  1,
+                  0
+                ]
+              }
+            },
 
-      callCut: {
-        $sum: {
-          $cond: [{ $eq: ["$status", "Call Cut"] }, 1, 0]
-        }
-      },
+            notInterested: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Not Interested"] },
+                  1,
+                  0
+                ]
+              }
+            },
 
-      busy: {
-        $sum: {
-          $cond: [{ $eq: ["$status", "Busy"] }, 1, 0]
-        }
-      },
+            ringing: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Ringing"] },
+                  1,
+                  0
+                ]
+              }
+            },
 
-      switchOff: {
-        $sum: {
-          $cond: [{ $eq: ["$status", "Switch Off"] }, 1, 0]
-        }
-      },
+            callBack: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Call Back"] },
+                  1,
+                  0
+                ]
+              }
+            },
 
-      visitDone: {
-        $sum: {
-          $cond: [{ $eq: ["$status", "Site Visit Done"] }, 1, 0]
-        }
-      }
-    }
+            callCut: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Call Cut"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            busy: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Busy"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+            switchOff: {
+              $sum: {
+                $cond: [
+                  { $eq:["$status","Switch Off"] },
+                  1,
+                  0
+                ]
+              }
+            },
+
+           visitDone: {
+           $sum: {
+    $cond: [
+      { $eq: ["$status", "Site Visit Done"] },
+      1,
+      0
+    ]
   }
-]);
-const pendingData = await Lead.aggregate([
-  {
-    $match: {
-      status: "New"
-    }
-  },
-  {
-    $group: {
-      _id: "$assigned_to",
-      pending: {
-        $sum: 1
-      }
-    }
+},
+
+           pending:{
+  $sum:{
+    $cond:[
+      {
+        $eq:["$status","New"]
+      },
+      1,
+      0
+    ]
   }
-]);
+}
+          }
+
+        }
+
+      ]);
 
 
 app.post("/api/team-performance-details", async (req, res) => {
@@ -4140,11 +4189,6 @@ app.post("/api/team-performance-details", async (req, res) => {
           c => c._id === user.email
            );
 
-          const pending =
-          pendingData.find(
-          p => p._id === user.email
-           );
-
         return{
 
           name:user.name,
@@ -4190,8 +4234,8 @@ app.post("/api/team-performance-details", async (req, res) => {
           visitDone:
             perf?.visitDone || 0,
 
-          pending:
-            pending?.pending || 0,
+           pending:
+            perf?.pending || 0,
 
             completed:
            completed ? completed.completed : 0,
