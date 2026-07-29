@@ -4013,41 +4013,77 @@ if (filters.reportType === "monthly" && filters.month) {
       assigned_to: executive
     };
 
-    if (filters.date) {
 
-      const start = new Date(filters.date);
-      start.setHours(0,0,0,0);
 
-      const end = new Date(filters.date);
-      end.setHours(23,59,59,999);
 
-      if (type === "assigned") {
-        query.createdAt = {
-          $gte: start,
-          $lte: end
-        };
-      }
 
-      else if (type === "completed") {
+  let start;
+let end;
 
-        query.last_activity_date = {
-          $gte: start,
-          $lte: end
-        };
+if (filters.reportType === "daily") {
 
-        query.last_activity_by = executive;
-      }
+  start = new Date(filters.date);
+  start.setHours(0, 0, 0, 0);
 
-      else {
+  end = new Date(filters.date);
+  end.setHours(23, 59, 59, 999);
 
-        query.createdAt = {
-          $gte: start,
-          $lte: end
-        };
+}
 
-      }
+else if (filters.reportType === "last7") {
 
-    }
+  end = new Date();
+  end.setHours(23,59,59,999);
+
+  start = new Date();
+  start.setDate(start.getDate()-6);
+  start.setHours(0,0,0,0);
+
+}
+
+else if (filters.reportType === "monthly") {
+
+  const [year,month] = filters.month.split("-");
+
+  start = new Date(year,month-1,1);
+
+  end = new Date(year,month,0);
+
+  end.setHours(23,59,59,999);
+
+}
+
+else if (filters.reportType === "custom") {
+
+  start = new Date(filters.from);
+  start.setHours(0,0,0,0);
+
+  end = new Date(filters.to);
+  end.setHours(23,59,59,999);
+
+}
+
+if(type==="assigned" || type==="total"){
+
+  query.createdAt={
+    $gte:start,
+    $lte:end
+  };
+
+}
+
+else if(type!=="pending"){
+
+  query.last_activity_date={
+    $gte:start,
+    $lte:end
+  };
+
+  query.last_activity_by=executive;
+
+}
+
+
 
     switch(type){
 
