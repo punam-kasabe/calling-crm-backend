@@ -3745,28 +3745,65 @@ app.post("/api/team-performance", async (req, res) => {
 
     const { filters = {} } = req.body;
 
-    let assignedMatch = {};
-    let totalMatch = {};
-    let completedMatch = {};
+let assignedMatch = {};
+let totalMatch = {};
+let completedMatch = {};
+let activityMatch = {};
+
 
     /* ============================
    DATE FILTER
     ============================ */
+let start;
+let end;
 
-  if (filters.reportType === "daily" && filters.date) {
 
-    const start = new Date(filters.date);
+if (filters.reportType === "daily" && filters.date) {
+
+    start = new Date(filters.date);
     start.setHours(0,0,0,0);
 
-    const end = new Date(filters.date);
+    end = new Date(filters.date);
     end.setHours(23,59,59,999);
 
-    assignedMatch.createdAt = {
-        $gte:start,
-        $lte:end
-    };
+}
 
-   totalMatch.createdAt = {
+else if (filters.reportType === "last7") {
+
+    end = new Date();
+    end.setHours(23,59,59,999);
+
+    start = new Date();
+    start.setDate(start.getDate()-6);
+    start.setHours(0,0,0,0);
+
+}
+
+else if (filters.reportType === "monthly" && filters.month) {
+
+    const [year,month] = filters.month.split("-");
+
+    start = new Date(year,month-1,1);
+
+    end = new Date(year,month,0);
+
+    end.setHours(23,59,59,999);
+
+}
+
+else if (filters.reportType === "custom") {
+
+    start = new Date(filters.from);
+    start.setHours(0,0,0,0);
+
+    end = new Date(filters.to);
+    end.setHours(23,59,59,999);
+
+}
+
+if(start && end){
+
+    assignedMatch.createdAt = {
         $gte:start,
         $lte:end
     };
@@ -3776,35 +3813,12 @@ app.post("/api/team-performance", async (req, res) => {
         $lte:end
     };
 
-}
-
-if (filters.reportType === "monthly" && filters.month) {
-
-    const [year, month] = filters.month.split("-");
-
-    const start = new Date(year, month - 1, 1);
-
-    const end = new Date(year, month, 0);
-
-    end.setHours(23,59,59,999);
-
-    assignedMatch.createdAt = {
-        $gte:start,
-        $lte:end
-    };
-
-    totalMatch.createdAt = {
-        $gte:start,
-        $lte:end
-    };
-
-    completedMatch.last_activity_date = {
+    activityMatch.last_activity_date = {
         $gte:start,
         $lte:end
     };
 
 }
-
     /* ===================================
        ASSIGNED TODAY
     =================================== */
@@ -3861,7 +3875,7 @@ if (filters.reportType === "monthly" && filters.month) {
       await Lead.aggregate([
 
         {
-          $match: totalMatch
+         $match: activityMatch
         },
 
         {
@@ -4000,160 +4014,10 @@ if (filters.reportType === "monthly" && filters.month) {
 
       ]);
 
-      app.post("/api/team-performance-details", async (req, res) => {
-  try {
-
-    const {
-      executive,
-      type,
-      filters = {}
-    } = req.body;
-
-    let query = {
-      assigned_to: executive
-    };
 
 
 
-
-
-  let start;
-let end;
-
-if (filters.reportType === "daily") {
-
-  start = new Date(filters.date);
-  start.setHours(0, 0, 0, 0);
-
-  end = new Date(filters.date);
-  end.setHours(23, 59, 59, 999);
-
-}
-
-else if (filters.reportType === "last7") {
-
-  end = new Date();
-  end.setHours(23,59,59,999);
-
-  start = new Date();
-  start.setDate(start.getDate()-6);
-  start.setHours(0,0,0,0);
-
-}
-
-else if (filters.reportType === "monthly") {
-
-  const [year,month] = filters.month.split("-");
-
-  start = new Date(year,month-1,1);
-
-  end = new Date(year,month,0);
-
-  end.setHours(23,59,59,999);
-
-}
-
-else if (filters.reportType === "custom") {
-
-  start = new Date(filters.from);
-  start.setHours(0,0,0,0);
-
-  end = new Date(filters.to);
-  end.setHours(23,59,59,999);
-
-}
-
-if(type==="assigned" || type==="total"){
-
-  query.createdAt={
-    $gte:start,
-    $lte:end
-  };
-
-}
-
-else if(type!=="pending"){
-
-  query.last_activity_date={
-    $gte:start,
-    $lte:end
-  };
-
-  query.last_activity_by=executive;
-
-}
-
-
-
-    switch(type){
-
-      case "interested":
-        query.status="Interested";
-        break;
-
-      case "followup":
-        query.status="Followup";
-        break;
-
-      case "booked":
-        query.status="Booked";
-        break;
-
-      case "notInterested":
-        query.status="Not Interested";
-        break;
-
-      case "ringing":
-        query.status="Ringing";
-        break;
-
-      case "callBack":
-        query.status="Call Back";
-        break;
-
-      case "callCut":
-        query.status="Call Cut";
-        break;
-
-      case "busy":
-        query.status="Busy";
-        break;
-
-      case "switchOff":
-        query.status="Switch Off";
-        break;
-
-      case "visitDone":
-        query.status="Visit Done";
-        break;
-
-     case "pending":
-
-     query.status="New";
-
-     break;
-
-      default:
-        break;
-    }
-
-    const leads = await Lead.find(query).sort({
-      createdAt:-1
-    });
-
-    res.json(leads);
-
-  } catch(err){
-
-    console.log(err);
-
-    res.status(500).json({
-      message:"Server Error"
-    });
-
-  }
-});
-
+     
     /* ===================================
        USER NAMES
     =================================== */
@@ -4255,6 +4119,161 @@ else if(type!=="pending"){
 
   }
 
+});
+
+ app.post("/api/team-performance-details", async (req, res) => {
+  try {
+
+    const {
+      executive,
+      type,
+      filters = {}
+    } = req.body;
+
+    let query = {
+      assigned_to: executive
+    };
+
+
+
+
+
+  let start;
+let end;
+
+if (filters.reportType === "daily") {
+
+  start = new Date(filters.date);
+  start.setHours(0, 0, 0, 0);
+
+  end = new Date(filters.date);
+  end.setHours(23, 59, 59, 999);
+
+}
+
+else if (filters.reportType === "last7") {
+
+  end = new Date();
+  end.setHours(23,59,59,999);
+
+  start = new Date();
+  start.setDate(start.getDate()-6);
+  start.setHours(0,0,0,0);
+
+}
+
+else if (filters.reportType === "monthly") {
+
+  const [year,month] = filters.month.split("-");
+
+  start = new Date(year,month-1,1);
+
+  end = new Date(year,month,0);
+
+  end.setHours(23,59,59,999);
+
+}
+
+else if (filters.reportType === "custom") {
+
+  start = new Date(filters.from);
+  start.setHours(0,0,0,0);
+
+  end = new Date(filters.to);
+  end.setHours(23,59,59,999);
+
+}
+
+if(type === "assigned"){
+
+  query.createdAt = {
+    $gte: start,
+    $lte: end
+  };
+
+}
+
+else if(type === "pending"){
+
+  query.status = "New";
+
+}
+
+else{
+
+  query.last_activity_date = {
+    $gte: start,
+    $lte: end
+  };
+
+  query.last_activity_by = executive;
+
+}
+
+
+
+    switch(type){
+
+      case "interested":
+        query.status="Interested";
+        break;
+
+      case "followup":
+        query.status="Followup";
+        break;
+
+      case "booked":
+        query.status="Booked";
+        break;
+
+      case "notInterested":
+        query.status="Not Interested";
+        break;
+
+      case "ringing":
+        query.status="Ringing";
+        break;
+
+      case "callBack":
+        query.status="Call Back";
+        break;
+
+      case "callCut":
+        query.status="Call Cut";
+        break;
+
+      case "busy":
+        query.status="Busy";
+        break;
+
+      case "switchOff":
+        query.status="Switch Off";
+        break;
+
+      case "visitDone":
+        query.status="Visit Done";
+        break;
+
+     
+      default:
+        break;
+    }
+
+    const leads = await Lead.find(query).sort({
+      createdAt:-1
+    });
+
+    res.json(leads);
+
+  } catch(err){
+
+    console.log(err);
+
+    res.status(500).json({
+      message:"Server Error"
+    });
+
+  }
 });
 
 /* =========================================
