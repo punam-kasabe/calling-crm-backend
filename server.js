@@ -3939,12 +3939,22 @@ activityMatch.last_activity_by = {
       },
 
       visitDone: {
-        $sum: {
-          $cond: [{ $eq: ["$status", "Visit Done"] }, 1, 0]
-        }
-      }
-    }
+  $sum: {
+    $cond: [
+      {
+        $in: [
+          "$status",
+          [
+            "Visit Done",
+            "Site Visit Done"
+          ]
+        ]
+      },
+      1,
+      0
+    ]
   }
+}
 ]);
 const pendingData = await Lead.aggregate([
   {
