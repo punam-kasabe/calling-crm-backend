@@ -382,7 +382,6 @@ leadSchema.index({ next_call_date: 1 });
 leadSchema.index({ createdAt: -1 });
 
 
-
 /* =========================================
    VISIT SCHEMA
 ========================================= */
@@ -4000,6 +3999,11 @@ const pendingData = await Lead.aggregate([
           c => c._id === user.email
            );
 
+           const pending =
+pendingData.find(
+  p => p._id === user.email
+);
+          
         return{
 
           name:user.name,
@@ -4047,7 +4051,7 @@ const pendingData = await Lead.aggregate([
 
           pending:
           pending?.pending || 0,
-          
+
             completed:
            completed ? completed.completed : 0,
 
