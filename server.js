@@ -3746,7 +3746,6 @@ app.post("/api/team-performance", async (req, res) => {
     const { filters = {} } = req.body;
 
 let assignedMatch = {};
-let totalMatch = {};
 let completedMatch = {};
 let activityMatch = {};
 
@@ -3814,9 +3813,14 @@ if(start && end){
     };
 
     activityMatch.last_activity_date = {
-        $gte:start,
-        $lte:end
-    };
+    $gte:start,
+    $lte:end
+};
+
+activityMatch.last_activity_by = {
+    $exists: true,
+    $ne: ""
+};
 
 }
     /* ===================================
@@ -3871,152 +3875,98 @@ if(start && end){
        TOTAL PERFORMANCE
     =================================== */
 
-    const performance =
-      await Lead.aggregate([
+    const performance = await Lead.aggregate([
+  {
+    $match: activityMatch
+  },
+  {
+    $group: {
+      _id: "$last_activity_by",
 
-        {
-         $match: activityMatch
-        },
+      total: { $sum: 1 },
 
-        {
-          $group: {
-
-            _id: "$assigned_to",
-
-            total: {
-              $sum: 1
-            },
-
-            newLead: {
-              $sum: {
-                $cond: [
-                  { $eq: ["$status","New"] },
-                  1,
-                  0
-                ]
-              }
-            },
-
-            interested: {
-              $sum: {
-                $cond: [
-                  { $eq:["$status","Interested"] },
-                  1,
-                  0
-                ]
-              }
-            },
-
-            followup: {
-              $sum: {
-                $cond: [
-                  { $eq:["$status","Followup"] },
-                  1,
-                  0
-                ]
-              }
-            },
-
-            booked: {
-              $sum: {
-                $cond: [
-                  { $eq:["$status","Booked"] },
-                  1,
-                  0
-                ]
-              }
-            },
-
-            notInterested: {
-              $sum: {
-                $cond: [
-                  { $eq:["$status","Not Interested"] },
-                  1,
-                  0
-                ]
-              }
-            },
-
-            ringing: {
-              $sum: {
-                $cond: [
-                  { $eq:["$status","Ringing"] },
-                  1,
-                  0
-                ]
-              }
-            },
-
-            callBack: {
-              $sum: {
-                $cond: [
-                  { $eq:["$status","Call Back"] },
-                  1,
-                  0
-                ]
-              }
-            },
-
-            callCut: {
-              $sum: {
-                $cond: [
-                  { $eq:["$status","Call Cut"] },
-                  1,
-                  0
-                ]
-              }
-            },
-
-            busy: {
-              $sum: {
-                $cond: [
-                  { $eq:["$status","Busy"] },
-                  1,
-                  0
-                ]
-              }
-            },
-
-            switchOff: {
-              $sum: {
-                $cond: [
-                  { $eq:["$status","Switch Off"] },
-                  1,
-                  0
-                ]
-              }
-            },
-
-            visitDone: {
-              $sum: {
-                $cond: [
-                  { $eq:["$status","Visit Done"] },
-                  1,
-                  0
-                ]
-              }
-            },
-
-           pending:{
-  $sum:{
-    $cond:[
-      {
-        $eq:["$status","New"]
-      },
-      1,
-      0
-    ]
-  }
-}
-          }
-
+      interested: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "Interested"] }, 1, 0]
         }
+      },
 
-      ]);
+      followup: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "Followup"] }, 1, 0]
+        }
+      },
 
+      booked: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "Booked"] }, 1, 0]
+        }
+      },
 
+      notInterested: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "Not Interested"] }, 1, 0]
+        }
+      },
 
+      ringing: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "Ringing"] }, 1, 0]
+        }
+      },
 
+      callBack: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "Call Back"] }, 1, 0]
+        }
+      },
+
+      callCut: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "Call Cut"] }, 1, 0]
+        }
+      },
+
+      busy: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "Busy"] }, 1, 0]
+        }
+      },
+
+      switchOff: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "Switch Off"] }, 1, 0]
+        }
+      },
+
+      visitDone: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "Visit Done"] }, 1, 0]
+        }
+      }
+    }
+  }
+]);
+const pendingData = await Lead.aggregate([
+  {
+    $match: assignedMatch
+  },
+  {
+    $group: {
+      _id: "$assigned_to",
+      pending: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "New"] }, 1, 0]
+        }
+      },
+      newLead: {
+        $sum: {
+          $cond: [{ $eq: ["$status", "New"] }, 1, 0]
+        }
+      }
+    }
+  }
+]);
      
     /* ===================================
        USER NAMES
@@ -4095,9 +4045,9 @@ if(start && end){
           visitDone:
             perf?.visitDone || 0,
 
-           pending:
-            perf?.pending || 0,
-
+          pending:
+          pending?.pending || 0,
+          
             completed:
            completed ? completed.completed : 0,
 
@@ -4133,9 +4083,6 @@ if(start && end){
     let query = {
       assigned_to: executive
     };
-
-
-
 
 
   let start;
