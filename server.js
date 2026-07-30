@@ -3954,7 +3954,7 @@ activityMatch.last_activity_by = {
       0
     ]
   }
-}
+}}}
 ]);
 const pendingData = await Lead.aggregate([
   {
