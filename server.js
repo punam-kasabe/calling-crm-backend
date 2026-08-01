@@ -3434,7 +3434,12 @@ if (search && search.trim()) {
         $options: "i"
       }
     },
-
+{
+  source:{
+    $regex:search.trim(),
+    $options:"i"
+  }
+},
     {
       project: {
         $regex: search.trim(),
@@ -3956,6 +3961,7 @@ activityMatch.last_activity_by = {
   }
 }}}
 ]);
+
 const pendingData = await Lead.aggregate([
   {
     $match: assignedMatch
