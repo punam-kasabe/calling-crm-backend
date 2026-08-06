@@ -3332,6 +3332,7 @@ let query = {};
 query.created_by = {
   $ne: "Reception"
 };
+
       const userRole =
         role?.toLowerCase();
 
@@ -3371,16 +3372,19 @@ query.created_by = {
 }
 
 
-      /* ASSIGNED FILTER */
+      /* ASSIGNED FILTER (Multiple Executive) */
 
-      if (filters.assigned) {
+if (
+  filters.assigned &&
+  filters.assigned.length > 0
+) {
+  query.assigned_to = {
+    $in: filters.assigned.map((u) =>
+      u.value.toLowerCase().trim()
+    ),
+  };
+}
 
-        query.assigned_to =
-          filters.assigned
-            .toLowerCase()
-            .trim();
-
-      }
       if (filters.project) {
 
         query.project =
