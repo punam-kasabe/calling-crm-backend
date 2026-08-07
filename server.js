@@ -2487,113 +2487,46 @@ const visit = await Visit.create({
    GET ALL VISITS
 ========================================= */
 
-app.get("/api/visit-entries", async (req, res) => {
+app.get(
+  "/api/visits",
 
-  try {
+  async (req, res) => {
 
-    const {
-      filter,
-      from,
-      to
-    } = req.query;
+    try {
 
-    let query = {};
+      const visits = await Visit.find()
 
-    const today = new Date();
-
-    if (filter === "today") {
-
-      const start = new Date();
-      start.setHours(0,0,0,0);
-
-      const end = new Date();
-      end.setHours(23,59,59,999);
-
-      query.createdAt = {
-        $gte: start,
-        $lte: end
-      };
-
-    }
-
-    if (filter === "last7") {
-
-      const start = new Date();
-
-      start.setDate(today.getDate() - 6);
-
-      start.setHours(0,0,0,0);
-
-      query.createdAt = {
-        $gte: start
-      };
-
-    }
-
-    if (filter === "month") {
-
-      const start =
-        new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          1
-        );
-
-      query.createdAt = {
-        $gte: start
-      };
-
-    }
-
-    if (filter === "custom" && from && to) {
-
-      query.createdAt = {
-
-        $gte: new Date(from),
-
-        $lte: new Date(
-          new Date(to).setHours(
-            23,59,59,999
-          )
+        .populate(
+          "attendedManager",
+          "name email"
         )
 
-      };
+        .populate(
+          "receptionUser",
+          "name email"
+        )
+
+        .sort({
+          createdAt: -1
+        });
+
+      res.json(visits);
 
     }
 
-    const visits = await Visit.find(query)
+    catch (err) {
 
-      .populate(
-        "attendedManager",
-        "name email"
-      )
+      console.log(err);
 
-      .populate(
-        "receptionUser",
-        "name email"
-      )
-
-      .sort({
-        createdAt: -1
+      res.status(500).json({
+        message: "Visits fetch failed ❌"
       });
 
-    res.json(visits);
+    }
 
   }
 
-  catch(err){
-
-    console.log(err);
-
-    res.status(500).json({
-
-      message:"Visit fetch failed"
-
-    });
-
-  }
-
-});
+);
 
 /* =========================================
    UPDATE VISIT
@@ -3437,6 +3370,9 @@ query.created_by = {
     )
   };
 }
+
+
+
       /* ASSIGNED FILTER (Multiple Executive) */
 
 if (
