@@ -2487,46 +2487,113 @@ const visit = await Visit.create({
    GET ALL VISITS
 ========================================= */
 
-app.get(
-  "/api/visits",
+app.get("/api/visit-entries", async (req, res) => {
 
-  async (req, res) => {
+  try {
 
-    try {
+    const {
+      filter,
+      from,
+      to
+    } = req.query;
 
-      const visits = await Visit.find()
+    let query = {};
 
-        .populate(
-          "attendedManager",
-          "name email"
-        )
+    const today = new Date();
 
-        .populate(
-          "receptionUser",
-          "name email"
-        )
+    if (filter === "today") {
 
-        .sort({
-          createdAt: -1
-        });
+      const start = new Date();
+      start.setHours(0,0,0,0);
 
-      res.json(visits);
+      const end = new Date();
+      end.setHours(23,59,59,999);
+
+      query.createdAt = {
+        $gte: start,
+        $lte: end
+      };
 
     }
 
-    catch (err) {
+    if (filter === "last7") {
 
-      console.log(err);
+      const start = new Date();
 
-      res.status(500).json({
-        message: "Visits fetch failed ❌"
+      start.setDate(today.getDate() - 6);
+
+      start.setHours(0,0,0,0);
+
+      query.createdAt = {
+        $gte: start
+      };
+
+    }
+
+    if (filter === "month") {
+
+      const start =
+        new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          1
+        );
+
+      query.createdAt = {
+        $gte: start
+      };
+
+    }
+
+    if (filter === "custom" && from && to) {
+
+      query.createdAt = {
+
+        $gte: new Date(from),
+
+        $lte: new Date(
+          new Date(to).setHours(
+            23,59,59,999
+          )
+        )
+
+      };
+
+    }
+
+    const visits = await Visit.find(query)
+
+      .populate(
+        "attendedManager",
+        "name email"
+      )
+
+      .populate(
+        "receptionUser",
+        "name email"
+      )
+
+      .sort({
+        createdAt: -1
       });
 
-    }
+    res.json(visits);
 
   }
 
-);
+  catch(err){
+
+    console.log(err);
+
+    res.status(500).json({
+
+      message:"Visit fetch failed"
+
+    });
+
+  }
+
+});
 
 /* =========================================
    UPDATE VISIT
@@ -3370,8 +3437,6 @@ query.created_by = {
     )
   };
 }
-
-
       /* ASSIGNED FILTER (Multiple Executive) */
 
 if (
