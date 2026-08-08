@@ -1444,7 +1444,9 @@ app.get("/api/new-leads", async (req, res) => {
 ========================================= */
 
 app.post("/api/export-leads", async (req, res) => {
+
   try {
+
     const {
       email,
       role,
@@ -1456,80 +1458,283 @@ app.post("/api/export-leads", async (req, res) => {
 
     const userRole = role?.toLowerCase();
 
+    /* =========================================
+       ROLE FILTER
+    ========================================= */
+
     if (userRole === "executive") {
-      query.assigned_to = email.toLowerCase().trim();
+
+      query.assigned_to =
+        email?.toLowerCase().trim();
+
     }
 
     if (userRole === "manager") {
-      query.assigned_manager = email.toLowerCase().trim();
+
+      query.assigned_manager =
+        email?.toLowerCase().trim();
+
     }
 
-    // Status
-    if (filters.status && filters.status.length > 0) {
-      query.status = {
-        $in: filters.status.map((s) => s.value),
-      };
+
+    /* =========================================
+       STATUS - MULTIPLE
+    ========================================= */
+
+    if (
+      Array.isArray(filters.status) &&
+      filters.status.length > 0
+    ) {
+
+      const statuses = filters.status
+        .map((s) => {
+
+          if (typeof s === "object") {
+            return s.value;
+          }
+
+          return s;
+
+        })
+        .filter(Boolean);
+
+
+      if (statuses.length > 0) {
+
+        query.status = {
+          $in: statuses
+        };
+
+      }
+
     }
 
-    // Assigned
-    if (filters.assigned) {
-      query.assigned_to = filters.assigned.toLowerCase().trim();
+
+    /* =========================================
+       ASSIGNED TO - MULTIPLE
+    ========================================= */
+
+    if (
+      Array.isArray(filters.assigned) &&
+      filters.assigned.length > 0
+    ) {
+
+      const assignedEmails = filters.assigned
+        .map((item) => {
+
+          if (typeof item === "object") {
+            return item.value;
+          }
+
+          return item;
+
+        })
+        .filter(Boolean)
+        .map((email) =>
+          email.toLowerCase().trim()
+        );
+
+
+      if (assignedEmails.length > 0) {
+
+        query.assigned_to = {
+          $in: assignedEmails
+        };
+
+      }
+
     }
 
-    // Closing Executive
+
+    /* =========================================
+       ASSIGNED TO - SINGLE VALUE SUPPORT
+       जर future मध्ये string आला तरी काम करेल
+    ========================================= */
+
+    else if (
+      typeof filters.assigned === "string" &&
+      filters.assigned.trim()
+    ) {
+
+      query.assigned_to =
+        filters.assigned.toLowerCase().trim();
+
+    }
+
+
+    /* =========================================
+       CLOSING EXECUTIVE
+    ========================================= */
+
     if (filters.closingExecutive) {
+
       query.assigned_manager = new RegExp(
         filters.closingExecutive,
         "i"
       );
+
     }
 
-    // Project
+
+    /* =========================================
+       PROJECT
+    ========================================= */
+
     if (filters.project) {
+
       query.project = new RegExp(
         filters.project,
         "i"
       );
+
     }
 
-    // Created Date
-    if (filters.createdFrom || filters.createdTo) {
+
+    /* =========================================
+       CREATED DATE
+    ========================================= */
+
+    if (
+      filters.createdFrom ||
+      filters.createdTo
+    ) {
+
       query.createdAt = {};
 
+
       if (filters.createdFrom) {
-        query.createdAt.$gte = new Date(filters.createdFrom);
+
+        const start = new Date(
+          `${filters.createdFrom}T00:00:00.000`
+        );
+
+        query.createdAt.$gte = start;
+
       }
+
 
       if (filters.createdTo) {
-        const end = new Date(filters.createdTo);
-        end.setHours(23, 59, 59, 999);
+
+        const end = new Date(
+          `${filters.createdTo}T23:59:59.999`
+        );
+
         query.createdAt.$lte = end;
+
       }
+
     }
 
-    // Search
-    if (search) {
+
+    /* =========================================
+       SEARCH
+    ========================================= */
+
+    if (search && search.trim()) {
+
+      const searchRegex = search.trim();
+
       query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
-        { project: { $regex: search, $options: "i" } },
+
+        {
+          name: {
+            $regex: searchRegex,
+            $options: "i"
+          }
+        },
+
+        {
+          phone: {
+            $regex: searchRegex,
+            $options: "i"
+          }
+        },
+
+        {
+          project: {
+            $regex: searchRegex,
+            $options: "i"
+          }
+        },
+
+        {
+          assigned_to: {
+            $regex: searchRegex,
+            $options: "i"
+          }
+        }
+
       ];
+
     }
 
-    // ✅ NO LIMIT, NO SKIP
-    const leads = await Lead.find(query).sort({
-      createdAt: -1,
-    });
+
+    /* =========================================
+       DEBUG
+    ========================================= */
+
+    console.log(
+      "================================="
+    );
+
+    console.log(
+      "EXPORT FILTERS =",
+      JSON.stringify(filters, null, 2)
+    );
+
+    console.log(
+      "EXPORT QUERY =",
+      JSON.stringify(query, null, 2)
+    );
+
+    console.log(
+      "================================="
+    );
+
+
+    /* =========================================
+       FETCH ALL FILTERED LEADS
+       NO LIMIT / NO SKIP
+    ========================================= */
+
+    const leads = await Lead
+      .find(query)
+      .sort({
+        createdAt: -1
+      })
+      .lean();
+
+
+    console.log(
+      "EXPORT LEADS COUNT =",
+      leads.length
+    );
+
+
+    /* =========================================
+       RESPONSE
+    ========================================= */
 
     res.json(leads);
 
+
   } catch (err) {
-    console.log(err);
+
+    console.error(
+      "EXPORT LEADS ERROR =",
+      err
+    );
 
     res.status(500).json({
+
       message: "Export Failed",
+
+      error: err.message
+
     });
+
   }
+
 });
 /* =========================================
    GET USERS
@@ -3370,8 +3575,6 @@ query.created_by = {
     )
   };
 }
-
-
 
       /* ASSIGNED FILTER (Multiple Executive) */
 
