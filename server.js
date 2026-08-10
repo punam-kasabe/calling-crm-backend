@@ -5616,6 +5616,33 @@ const siteVisit = await Lead.countDocuments({
   visit_created: true
 });
 
+/* =====================================
+   SITE VISIT DONE - EXECUTIVE WISE
+===================================== */
+
+const siteVisitByExecutive = await Lead.aggregate([
+  {
+    $match: {
+      ...match,
+      visit_created: true
+    }
+  },
+
+  {
+    $group: {
+      _id: "$assigned_to",
+      count: {
+        $sum: 1
+      }
+    }
+  },
+
+  {
+    $sort: {
+      count: -1
+    }
+  }
+]);
 
 const today = new Date();
 today.setHours(0,0,0,0);
@@ -6001,6 +6028,7 @@ app.get("/api/dashboard-full", async (req, res) => {
     $lt: tomorrow
   }
 });
+
     const newLeads =
   await Lead.countDocuments({
 
@@ -6185,15 +6213,23 @@ app.get("/api/dashboard-full", async (req, res) => {
                       "$status",
                       ["New", "Followup"]
                     ]
-                  },
-                  
-
-
+                  },                 
                   1,
                   0
                 ]
               }
             },
+            siteVisit: {
+             $sum: {
+               $cond: [
+            {
+                    $eq: ["$visit_created", true]
+             },
+           1,
+           0
+          ]
+         }
+     },
             todayAssigned: {
   $sum: {
     $cond: [
@@ -6235,7 +6271,7 @@ app.get("/api/dashboard-full", async (req, res) => {
     booked: 1,
 
     pending: 1,
-
+    siteVisit: 1,
     todayAssigned: 1
 
   }
@@ -6663,6 +6699,7 @@ app.post("/api/99acres-webhook", async (req, res) => {
 app.get("/", (req, res) => {
   res.send("CRM Backend Running ✅");
 });
+
 /* =========================================
    SAVE DAILY REPORT
 ========================================= */
@@ -6675,21 +6712,18 @@ app.post("/api/daily-report", async (req, res) => {
 
       executive_email,
       executive_name,
-
       totalCalls,
       connectedCalls,
       interested,
       followups,
       siteVisits,
       bookings,
-
       pendingWork,
       tomorrowPlan,
       summary
 
     } = req.body;
 
-    // आजचा report आधीपासून आहे का?
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
