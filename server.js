@@ -5610,7 +5610,6 @@ const visits = await Lead.countDocuments({
   ]
 });
 
-
 const siteVisit = await Lead.countDocuments({
   ...match,
   visit_created: true
@@ -6049,13 +6048,13 @@ app.get("/api/dashboard-full", async (req, res) => {
       });
 
       const interested =
-  await Lead.countDocuments({
+     await Lead.countDocuments({
 
     ...match,
 
     status: "Interested"
 
-  });
+    });
 
     const notInterested =
       await Lead.countDocuments({
@@ -6220,16 +6219,20 @@ app.get("/api/dashboard-full", async (req, res) => {
               }
             },
             siteVisit: {
-             $sum: {
-               $cond: [
-            {
-                    $eq: ["$visit_created", true]
-             },
-           1,
-           0
-          ]
-         }
-     },
+  $sum: {
+    $cond: [
+      {
+        $in: [
+          "$visit_created",
+          [true, "true", 1, "1", "Yes", "yes"]
+        ]
+      },
+      1,
+      0
+    ]
+  }
+},
+
             todayAssigned: {
   $sum: {
     $cond: [
@@ -6271,9 +6274,10 @@ app.get("/api/dashboard-full", async (req, res) => {
     booked: 1,
 
     pending: 1,
-    siteVisit: 1,
-    todayAssigned: 1
 
+    siteVisit: 1,
+
+    todayAssigned: 1
   }
 }
 
@@ -6514,47 +6518,31 @@ app.get("/api/dashboard-full", async (req, res) => {
 
       }));
 
+
     /* =====================================
        FINAL RESPONSE
     ===================================== */
 
     res.json({
-
-
       total,
-
       new: newLeads,
-
       interested,
       booked,
       not_interested: notInterested,
       receptionEntries,
       pending,
-
       statusData,
-
       executives,
-
       assignments: assignmentData,
-
       leaderboard,
-
       followups,
-
       missedFollowups,
-
       projects,
-
       sources,
-
       revenue: revenueData,
-
       activities: activityData,
-
       weekly: weeklyData
-
     });
-
   }
 
   catch (err) {
@@ -6801,6 +6789,329 @@ app.post("/api/daily-report", async (req, res) => {
   }
 
 });
+
+/* =========================================================
+   MONTHLY REPORT
+   Executive-wise monthly performance
+========================================================= */
+
+app.get("/api/monthly-report", async (req, res) => {
+  try {
+    const { month } = req.query;
+
+    /*
+      month format:
+      2026-08
+    */
+
+    if (!month) {
+      return res.status(400).json({
+        message: "Month is required",
+      });
+    }
+
+    const [year, monthNumber] = month.split("-").map(Number);
+
+    if (!year || !monthNumber) {
+      return res.status(400).json({
+        message: "Invalid month format. Use YYYY-MM",
+      });
+    }
+
+    /*
+      Start of selected month
+    */
+    const startDate = new Date(
+      year,
+      monthNumber - 1,
+      1,
+      0,
+      0,
+      0,
+      0
+    );
+
+    /*
+      Start of next month
+    */
+    const endDate = new Date(
+      year,
+      monthNumber,
+      1,
+      0,
+      0,
+      0,
+      0
+    );
+
+    console.log(
+      "MONTHLY REPORT:",
+      startDate,
+      "TO",
+      endDate
+    );
+
+    /* =====================================================
+       STEP 1
+       Find leads assigned in selected month
+    ===================================================== */
+
+    const report = await Lead.aggregate([
+
+      {
+        $match: {
+          assigned_to: {
+            $exists: true,
+            $nin: [
+              null,
+              "",
+              "null",
+              "undefined"
+            ],
+          },
+
+          /*
+            Proper assignment date.
+
+            For old leads where assignedAt doesn't exist,
+            createdAt is used as fallback.
+          */
+
+          $expr: {
+            $and: [
+              {
+                $gte: [
+                  {
+                    $ifNull: [
+                      "$assignedAt",
+                      "$createdAt"
+                    ],
+                  },
+                  startDate,
+                ],
+              },
+
+              {
+                $lt: [
+                  {
+                    $ifNull: [
+                      "$assignedAt",
+                      "$createdAt"
+                    ],
+                  },
+                  endDate,
+                ],
+              },
+            ],
+          },
+        },
+      },
+
+      /* =====================================================
+         GROUP BY EXECUTIVE
+      ===================================================== */
+
+      {
+        $group: {
+          _id: {
+            $toLower: {
+              $trim: {
+                input: "$assigned_to",
+              },
+            },
+          },
+
+          assigned: {
+            $sum: 1,
+          },
+
+          /* Ringing */
+
+          ringing: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    {
+                      $toLower: {
+                        $ifNull: [
+                          "$status",
+                          ""
+                        ],
+                      },
+                    },
+
+                    [
+                      "ringing",
+                      "call ringing",
+                    ],
+                  ],
+                },
+
+                1,
+                0,
+              ],
+            },
+          },
+
+          /* Interested + Very Interested */
+
+          interested: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+
+                    [
+                      "Interested",
+                      "Very Interested",
+                    ],
+                  ],
+                },
+
+                1,
+                0,
+              ],
+            },
+          },
+
+          /* Site Visit */
+
+          siteVisit: {
+            $sum: {
+              $cond: [
+                {
+                  $or: [
+                    {
+                      $eq: [
+                        "$visit_created",
+                        true,
+                      ],
+                    },
+
+                    {
+                      $eq: [
+                        "$visit_status",
+                        "Done",
+                      ],
+                    },
+
+                    {
+                      $eq: [
+                        "$visit_status",
+                        "Site Visit Done",
+                      ],
+                    },
+                  ],
+                },
+
+                1,
+                0,
+              ],
+            },
+          },
+
+          /* Booking */
+
+          booking: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    "$status",
+                    "Booked",
+                  ],
+                },
+
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+
+      /* =====================================================
+         SORT
+      ===================================================== */
+
+      {
+        $sort: {
+          assigned: -1,
+        },
+      },
+
+      /* =====================================================
+         OUTPUT
+      ===================================================== */
+
+      {
+        $project: {
+          _id: 0,
+
+          executive: "$_id",
+
+          assigned: 1,
+          ringing: 1,
+          interested: 1,
+          siteVisit: 1,
+          booking: 1,
+        },
+      },
+    ]);
+
+    /* =====================================================
+       TOTAL
+    ===================================================== */
+
+    const totals = report.reduce(
+      (acc, item) => {
+        acc.assigned += item.assigned || 0;
+        acc.ringing += item.ringing || 0;
+        acc.interested += item.interested || 0;
+        acc.siteVisit += item.siteVisit || 0;
+        acc.booking += item.booking || 0;
+
+        return acc;
+      },
+
+      {
+        assigned: 0,
+        ringing: 0,
+        interested: 0,
+        siteVisit: 0,
+        booking: 0,
+      }
+    );
+
+    res.json({
+      success: true,
+
+      month,
+
+      from: startDate,
+      to: endDate,
+
+      totals,
+
+      data: report,
+    });
+
+  } catch (err) {
+
+    console.error(
+      "MONTHLY REPORT ERROR:",
+      err
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Monthly Report Failed",
+    });
+  }
+});
+
 
 /* =========================================
    MY DAILY REPORTS
