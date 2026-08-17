@@ -3451,64 +3451,133 @@ app.get("/api/manager-clients", async (req, res) => {
 
 app.put(
   "/api/update-status/:id",
-
   async (req, res) => {
 
     try {
 
       const {
+        status,
+        remark,
+        followup_date,
+        visitDate,
+        visit_created,
+        executive_email
+      } = req.body;
 
-status,
-remark,
-followup_date,
-visitDate,
-visit_created,
-executive_email
+      /* ===============================
+         VALIDATION
+      =============================== */
 
-} = req.body;
-      const updated =
-        await Lead.findByIdAndUpdate(
+      if (!req.params.id) {
+        return res.status(400).json({
+          message: "Lead ID is required ❌"
+        });
+      }
 
-          req.params.id,
+      if (!status) {
+        return res.status(400).json({
+          message: "Status is required ❌"
+        });
+      }
 
-          {
+      /* ===============================
+         UPDATE LEAD
+      =============================== */
 
-status,
-remark,
-followup_date,
-visitDate,
-visit_created,
+      const updated = await Lead.findByIdAndUpdate(
 
-last_activity_by: executive_email,
+        req.params.id,
 
-last_activity_date: new Date()
+        {
+          $set: {
 
-},
+            status: status,
 
-          {
+            remark: remark || "",
 
-            new: true
+            followup_date:
+              followup_date || null,
+
+            visitDate:
+              visitDate || null,
+
+            visit_created:
+              visit_created || false,
+
+            last_activity_by:
+              executive_email || "",
+
+            last_activity_date:
+              new Date()
 
           }
+        },
 
-        );
+        {
+          new: true
+        }
 
-      res.json(updated);
+      );
+
+      /* ===============================
+         LEAD NOT FOUND
+      =============================== */
+
+      if (!updated) {
+
+        return res.status(404).json({
+          message: "Lead not found ❌"
+        });
+
+      }
+
+      /* ===============================
+         SUCCESS
+      =============================== */
+
+      console.log(
+        "STATUS UPDATED:",
+        updated._id,
+        "=>",
+        updated.status
+      );
+
+      res.status(200).json({
+
+        success: true,
+
+        message:
+          "Status updated successfully ✅",
+
+        lead: updated
+
+      });
 
     }
 
-    catch {
+    catch (error) {
+
+      console.error(
+        "UPDATE STATUS ERROR:",
+        error
+      );
 
       res.status(500).json({
-        message: "Update failed ❌"
+
+        success: false,
+
+        message:
+          "Status update failed ❌",
+
+        error:
+          error.message
+
       });
 
     }
 
   }
-
 );
-
 /* =========================================
    FILTER LEADS
 ========================================= */
@@ -7163,6 +7232,153 @@ app.get("/api/my-daily-reports", async (req, res) => {
 
 });
 
+/* =========================================================
+   PENDING LEADS REPORT
+   GET /api/pending-leads-report?email=executive@email.com
+========================================================= */
+
+app.get("/api/pending-leads-report", async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    // -----------------------------------------------------
+    // 1. Basic validation
+    // -----------------------------------------------------
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const normalizedEmail = String(email)
+      .trim()
+      .toLowerCase();
+
+    // -----------------------------------------------------
+    // 2. Get logged-in user
+    // -----------------------------------------------------
+    const user = await User.findOne({
+      email: normalizedEmail,
+    }).lean();
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // -----------------------------------------------------
+    // 3. Build filter
+    // -----------------------------------------------------
+    let match = {};
+
+    /*
+      ADMIN
+      -----
+      Admin ला सर्व executives चे pending leads दिसतील.
+
+      EXECUTIVE
+      ---------
+      Executive ला फक्त स्वतःला assigned असलेले leads दिसतील.
+
+      MANAGER
+      -------
+      Manager ला त्याला assigned असलेले leads दिसतील.
+    */
+
+    const role = String(user.role || "").toLowerCase();
+
+    if (role === "admin") {
+      // Admin = all pending leads
+    } else if (role === "executive") {
+      match = {
+        $or: [
+          {
+            assigned_to: normalizedEmail,
+          },
+          {
+            assigned_to_email: normalizedEmail,
+          },
+          {
+            assignedToEmail: normalizedEmail,
+          },
+        ],
+      };
+    } else if (role === "manager") {
+      match = {
+        $or: [
+          {
+            assigned_manager: normalizedEmail,
+          },
+          {
+            assigned_manager_email: normalizedEmail,
+          },
+          {
+            assignedManagerEmail: normalizedEmail,
+          },
+        ],
+      };
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized access",
+      });
+    }
+
+    const pendingStatuses = [
+      "New",
+      "Follow Up",
+      "Interested",
+      "Very Interested",
+      "Call Back",
+      "Meeting Scheduled",
+      "Negotiation",
+      "Site Visit",
+    ];
+
+    match.status = {
+      $in: pendingStatuses,
+    };
+
+    // -----------------------------------------------------
+    // 5. Fetch leads
+    // -----------------------------------------------------
+
+    const leads = await Lead.find(match)
+      .sort({
+        assignedAt: 1,
+        createdAt: 1,
+      })
+      .lean();
+
+    // -----------------------------------------------------
+    // 6. Return response
+    // -----------------------------------------------------
+
+    return res.status(200).json({
+      success: true,
+      count: leads.length,
+      leads,
+    });
+
+  } catch (error) {
+    console.error(
+      "Pending Lead Report Error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load pending lead report",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : undefined,
+    });
+  }
+});
 
 /* =========================================
    ALL DAILY REPORTS
