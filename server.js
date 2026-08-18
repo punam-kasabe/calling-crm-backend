@@ -618,10 +618,6 @@ visitSchema.index({
 });
 
 
-const Visit = mongoose.model(
-  "Visit",
-  visitSchema
-);
 /* =========================================
    FOLLOWUP SCHEMA
 ========================================= */
