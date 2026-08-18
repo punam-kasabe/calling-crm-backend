@@ -390,126 +390,238 @@ const visitSchema = new mongoose.Schema(
 
   {
 
+    /* =========================================
+       LINK TO ORIGINAL LEAD
+    ========================================= */
+
     leadId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Lead",
+      default: null
     },
 
-    clientName: String,
 
-    mobile: String,
+    /* =========================================
+       CLIENT DETAILS
+    ========================================= */
 
-    project: String,
+    clientName: {
+      type: String,
+      default: ""
+    },
+
+    mobile: {
+      type: String,
+      default: "",
+      index: true
+    },
+
+    project: {
+      type: String,
+      default: ""
+    },
+
+
+    /* =========================================
+       RECEPTION / ATTENDING
+    ========================================= */
 
     attendedManager: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      default: null
     },
 
     receptionUser: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      default: null
     },
+
+
+    /* =========================================
+       VISIT STATUS
+    ========================================= */
 
     visitStatus: {
       type: String,
+
       enum: [
-         "IN_OFFICE",
-    "VISIT_PENDING",
-    "VISIT_DONE",
-    "FOLLOWUP",
-    "DECISION_PENDING",
-    "NEGOTIATION",
-    "BOOKED",
-    "TOKEN_RECEIVED",
-    "LOAN_PROCESS",
-    "REGISTRATION_PENDING",
-    "REGISTERED",
-    "NOT_BOOKED",
-    "CANCELLED"
+        "IN_OFFICE",
+        "VISIT_PENDING",
+        "VISIT_DONE",
+        "FOLLOWUP",
+        "DECISION_PENDING",
+        "NEGOTIATION",
+        "BOOKED",
+        "TOKEN_RECEIVED",
+        "LOAN_PROCESS",
+        "REGISTRATION_PENDING",
+        "REGISTERED",
+        "NOT_BOOKED",
+        "CANCELLED"
       ],
-      default: "IN_OFFICE",
+
+      default: "IN_OFFICE"
     },
+
+
+    /* =========================================
+       BOOKING STATUS
+    ========================================= */
 
     bookingStatus: {
       type: String,
+
       enum: [
         "PENDING",
-    "DECISION_PENDING",
-    "NEGOTIATION",
-    "BOOKED",
-    "TOKEN_RECEIVED",
-    "LOAN_PROCESS",
-    "REGISTRATION_PENDING",
-    "REGISTERED",
-    "NOT_BOOKED",
-    "CANCELLED"
+        "DECISION_PENDING",
+        "NEGOTIATION",
+        "BOOKED",
+        "TOKEN_RECEIVED",
+        "LOAN_PROCESS",
+        "REGISTRATION_PENDING",
+        "REGISTERED",
+        "NOT_BOOKED",
+        "CANCELLED"
       ],
-      default: "PENDING",
+
+      default: "PENDING"
     },
 
+
+    /* =========================================
+       MANAGER
+    ========================================= */
 
     assigned_manager: {
       type: String,
       default: ""
     },
 
+
+    /* =========================================
+       CALLING HISTORY
+    ========================================= */
+
     calling_by: [
       {
         type: String
       }
     ],
-     
+
+
+    /* =========================================
+       ATTENDED BY
+    ========================================= */
+
     attended_by: [
-  {
-    type: String
-  }
-],
+      {
+        type: String
+      }
+    ],
+
+
+    /* =========================================
+       OTHER DETAILS
+    ========================================= */
 
     remark: {
       type: String,
       default: ""
     },
-    
+
     department: {
-  type: String,
-  default: ""
-},
+      type: String,
+      default: ""
+    },
 
-source: {
-  type: String,
-  default: ""
-},
+    source: {
+      type: String,
+      default: ""
+    },
 
-assigned_to: {
-  type: String,
-  default: ""
-},
+    assigned_to: {
+      type: String,
+      default: ""
+    },
 
 
-status: {
-  type: String,
-  default: "New"
-},
+    /* =========================================
+       CURRENT VISIT STATUS
+    ========================================= */
 
-  clientType: {
-  type: String,
-  enum: ["New", "Old"],
-  default: "New"
-  },
+    status: {
+      type: String,
+      default: "New"
+    },
+
+
+    /* =========================================
+       CLIENT TYPE
+       Old = Already exists in Lead collection
+       New = Walk-in / no existing lead
+    ========================================= */
+
+    clientType: {
+      type: String,
+
+      enum: [
+        "New",
+        "Old"
+      ],
+
+      default: "New"
+    },
+
+
+    /* =========================================
+       VISIT DATE
+    ========================================= */
+
     visitDate: {
       type: Date,
-      default: Date.now,
-    },
+      default: Date.now
+    }
 
   },
 
   {
-    timestamps: true,
+    timestamps: true
   }
 
 );
 
+
+/* =========================================
+   INDEXES
+========================================= */
+
+visitSchema.index({
+  mobile: 1
+});
+
+visitSchema.index({
+  leadId: 1
+});
+
+visitSchema.index({
+  visitDate: -1
+});
+
+visitSchema.index({
+  visitStatus: 1
+});
+
+visitSchema.index({
+  bookingStatus: 1
+});
+
+
+const Visit = mongoose.model(
+  "Visit",
+  visitSchema
+);
 /* =========================================
    FOLLOWUP SCHEMA
 ========================================= */
@@ -2547,123 +2659,452 @@ app.post(
 
     try {
 
-     const {
-  leadId,
-  clientName,
-  mobile,
-  project,
-  visitDate,
-  clientType,
-  attendedManager,
-  receptionUser,
-  visitStatus,
-  bookingStatus,
-  calling_by,
-  attended_by,     // ✅ ADD THIS
-  remark,
-  assigned_manager,
-  department,
-  source,
-  assigned_to,
-  status
-} = req.body;
+      const {
+        leadId,
+        clientName,
+        mobile,
+        project,
+        visitDate,
+        clientType,
+        attendedManager,
+        receptionUser,
+        visitStatus,
+        bookingStatus,
+        calling_by,
+        attended_by,
+        remark,
+        assigned_manager,
+        department,
+        source,
+        assigned_to,
+        status
+      } = req.body;
 
-let manager = null;
 
-if (attendedManager) {
-  manager = await User.findById(attendedManager);
-}
+      /* =====================================
+         VALIDATION
+      ===================================== */
 
-const visit = await Visit.create({
-  leadId,
-  clientName,
-  mobile,
-  project,
-  visitDate,
-  clientType,
-  attendedManager: attendedManager || null,
-  receptionUser,
-  visitStatus,
-  bookingStatus,
-  calling_by,
-  attended_by: attended_by || [],
-  remark,
-  assigned_manager: manager?.email || "",
-  department,
-  source,
-  assigned_to,
-  status
-});
+      if (!clientName || !mobile) {
 
-     
-      /* ===============================
-         FIND LEAD USING MOBILE
-      =============================== */
+        return res.status(400).json({
+          message: "Client Name and Mobile are required ❌"
+        });
+
+      }
+
+
+      /* =====================================
+         FIND MANAGER
+      ===================================== */
+
+      let manager = null;
+
+      if (attendedManager) {
+
+        manager =
+          await User.findById(attendedManager);
+
+      }
+
+
+      /* =====================================
+         NORMALIZE MOBILE
+      ===================================== */
+
+      const normalizedMobile =
+        normalizePhone(mobile);
+
+
+      /* =====================================
+         FIND EXISTING CALLING LEAD
+      ===================================== */
 
       const existingLead =
         await Lead.findOne({
-
-       phone: normalizePhone(mobile)
+          phone: normalizedMobile
         });
 
-      /* ===============================
-               UPDATE EXISTING LEAD
-            =============================== */
+
+      /* =====================================
+         PREPARE VISIT DATA
+      ===================================== */
+
+      let finalCallingBy =
+        calling_by || [];
+
+      let finalAttendedBy =
+        attended_by || [];
+
+      let finalAssignedTo =
+        assigned_to || "";
+
+      let finalManager =
+        manager?.email ||
+        assigned_manager ||
+        "";
+
+      let finalDepartment =
+        department || "";
+
+      let finalSource =
+        source || "";
+
+
+      /* =====================================
+         EXISTING CALLING LEAD FOUND
+      ===================================== */
 
       if (existingLead) {
 
-        existingLead.name = clientName;
+        console.log(
+          "================================="
+        );
 
-        existingLead.project = project;
-        existingLead.visitDate = visitDate;
-        existingLead.assigned_manager =
-          manager?.email || "";
+        console.log(
+          "EXISTING CALLING LEAD FOUND"
+        );
 
-        existingLead.visit_created = true;
+        console.log(
+          "Lead ID:",
+          existingLead._id
+        );
 
-        existingLead.visit_status =
-          visitStatus;
+        console.log(
+          "Lead Assigned To:",
+          existingLead.assigned_to
+        );
 
-        existingLead.status = status || "New";
-        existingLead.department = department;
-        existingLead.source = source;
-        existingLead.created_by = "Reception";
-        existingLead.assigned_to = assigned_to;
-       existingLead.attended_by = attended_by || [];
-        await existingLead.save();
+        console.log(
+          "Lead Assigned Name:",
+          existingLead.assignedTo
+        );
+
+        console.log(
+          "================================="
+        );
+
+
+        /*
+         * IMPORTANT
+         *
+         * EXISTING LEAD ला UPDATE करायचे नाही.
+         *
+         * Admin/Executive ची original Lead
+         * जसंच्या तशी राहील.
+         */
+
+
+        /* ================================
+           LINK VISIT TO ORIGINAL LEAD
+        ================================= */
+
+        finalAssignedTo =
+          existingLead.assigned_to ||
+          existingLead.assigned_to_email ||
+          assigned_to ||
+          "";
+
+
+        /* =================================
+           CALLING EXECUTIVE
+        ================================= */
+
+        if (existingLead.assigned_to) {
+
+          finalCallingBy = [
+            existingLead.assigned_to
+          ];
+
+        }
+        else if (existingLead.assigned_to_email) {
+
+          finalCallingBy = [
+            existingLead.assigned_to_email
+          ];
+
+        }
+        else if (existingLead.assignedTo) {
+
+          finalCallingBy = [
+            existingLead.assignedTo
+          ];
+
+        }
+
+
+        /* =================================
+           ATTENDED BY
+        ================================= */
+
+        finalAttendedBy =
+          attended_by &&
+          attended_by.length > 0
+
+            ? attended_by
+
+            : existingLead.attended_by || [];
+
+
+        /* =================================
+           MANAGER
+        ================================= */
+
+        if (existingLead.assigned_manager) {
+
+          finalManager =
+            existingLead.assigned_manager;
+
+        }
+
+
+        /* =================================
+           DEPARTMENT
+        ================================= */
+
+        if (existingLead.department) {
+
+          finalDepartment =
+            existingLead.department;
+
+        }
+
+
+        /* =================================
+           SOURCE
+        ================================= */
+
+        if (existingLead.source) {
+
+          finalSource =
+            existingLead.source;
+
+        }
 
       }
 
-      /* ===============================
-         CREATE NEW LEAD
-      =============================== */
 
-      else {
+      /* =====================================
+         CREATE SEPARATE VISIT
+      ===================================== */
 
-  await Lead.create({
-  name: clientName,
-  phone: normalizePhone(mobile),
-  project: project,
-  visitDate,
-  source: "Visit",
-  status: status || "New",
-  assigned_manager: manager?.email || "",
-  visit_created: true,
-  visit_status: visitStatus,
-  created_by: "Reception",
-  department,
-  source,
-  assigned_to,
-  assigned_to_email: assigned_to,
-  attended_by: attended_by || []   // NEW
+      const visit =
+        await Visit.create({
 
-});
+          /*
+           * Existing Lead असेल तर
+           * त्या Lead चा ID save होईल.
+           *
+           * New walk-in असेल तर null.
+           */
+
+          leadId:
+            existingLead
+              ? existingLead._id
+              : leadId || null,
+
+
+          clientName:
+            clientName,
+
+
+          mobile:
+            normalizedMobile,
+
+
+          project:
+            project,
+
+
+          visitDate:
+            visitDate || new Date(),
+
+
+          /*
+           * Existing Lead = Old
+           * New Reception Lead = New
+           */
+
+          clientType:
+            existingLead
+              ? "Old"
+              : (clientType || "New"),
+
+
+          attendedManager:
+            attendedManager || null,
+
+
+          receptionUser:
+            receptionUser || null,
+
+
+          visitStatus:
+            visitStatus || "IN_OFFICE",
+
+
+          bookingStatus:
+            bookingStatus || "PENDING",
+
+
+          /*
+           * Calling Executive
+           */
+
+          calling_by:
+            finalCallingBy,
+
+
+          /*
+           * Attending Officer / Executive
+           */
+
+          attended_by:
+            finalAttendedBy,
+
+
+          remark:
+            remark || "",
+
+
+          assigned_manager:
+            finalManager,
+
+
+          department:
+            finalDepartment,
+
+
+          source:
+            finalSource,
+
+
+          assigned_to:
+            finalAssignedTo,
+
+
+          status:
+            status || "New"
+
+        });
+
+
+      /* =====================================
+         NEW WALK-IN ONLY
+      ===================================== */
+
+      /*
+       * जर Lead database मध्ये आधीपासून नाही,
+       * तर Reception entry साठी नवीन Lead तयार कर.
+       *
+       * Existing Lead असल्यास NEW Lead तयार
+       * करायची नाही.
+       */
+
+      if (!existingLead) {
+
+        const newReceptionLead =
+          await Lead.create({
+
+            name:
+              clientName,
+
+
+            phone:
+              normalizedMobile,
+
+
+            project:
+              project,
+
+
+            visitDate:
+              visitDate || new Date(),
+
+
+            source:
+              source || "Visit",
+
+
+            status:
+              status || "New",
+
+
+            assigned_manager:
+              manager?.email ||
+              assigned_manager ||
+              "",
+
+
+            visit_created:
+              true,
+
+
+            visit_status:
+              visitStatus || "IN_OFFICE",
+
+
+            created_by:
+              "Reception",
+
+
+            department:
+              department || "",
+
+
+            assigned_to:
+              assigned_to || "",
+
+
+            assigned_to_email:
+              assigned_to || "",
+
+
+            attended_by:
+              attended_by || []
+
+          });
+
+
+        /*
+         * Newly created Lead ला
+         * Visit शी link कर.
+         */
+
+        visit.leadId =
+          newReceptionLead._id;
+
+        visit.clientType =
+          "New";
+
+        await visit.save();
 
       }
 
-      res.json({
 
-        message: "Visit created ✅",
+      /* =====================================
+         SUCCESS RESPONSE
+      ===================================== */
+
+      console.log(
+        "VISIT CREATED:",
+        visit._id
+      );
+
+      console.log(
+        "LINKED LEAD:",
+        visit.leadId
+      );
+
+
+      res.status(201).json({
+
+        success: true,
+
+        message:
+          existingLead
+            ? "Existing Lead + Separate Reception Visit created ✅"
+            : "New Reception Lead + Visit created ✅",
 
         visit
 
@@ -2671,14 +3112,24 @@ const visit = await Visit.create({
 
     }
 
+
     catch (err) {
 
-      console.log(err);
+      console.error(
+        "CREATE VISIT ERROR:",
+        err
+      );
+
 
       res.status(500).json({
 
+        success: false,
+
         message:
-          "Visit create failed ❌"
+          "Visit create failed ❌",
+
+        error:
+          err.message
 
       });
 
@@ -2842,6 +3293,7 @@ app.put(
   }
 
 );
+
 /* =========================================
    GET VISIT ENTRIES
 ========================================= */
@@ -3811,6 +4263,7 @@ await Lead.countDocuments({
     }
   ]
 });
+
       const leads =
         await Lead.find(query)
 
