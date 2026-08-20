@@ -7683,7 +7683,6 @@ app.get("/api/my-daily-reports", async (req, res) => {
 
 /* =========================================================
    PENDING LEADS REPORT
-   GET /api/pending-leads-report?email=executive@email.com
 ========================================================= */
 
 app.get("/api/pending-leads-report", async (req, res) => {
@@ -7722,20 +7721,6 @@ app.get("/api/pending-leads-report", async (req, res) => {
     // 3. Build filter
     // -----------------------------------------------------
     let match = {};
-
-    /*
-      ADMIN
-      -----
-      Admin ला सर्व executives चे pending leads दिसतील.
-
-      EXECUTIVE
-      ---------
-      Executive ला फक्त स्वतःला assigned असलेले leads दिसतील.
-
-      MANAGER
-      -------
-      Manager ला त्याला assigned असलेले leads दिसतील.
-    */
 
     const role = String(user.role || "").toLowerCase();
 
@@ -7777,15 +7762,12 @@ app.get("/api/pending-leads-report", async (req, res) => {
     }
 
     const pendingStatuses = [
-      "New",
-      "Follow Up",
-      "Interested",
-      "Very Interested",
-      "Call Back",
-      "Meeting Scheduled",
-      "Negotiation",
-      "Site Visit",
-    ];
+  "New"
+];
+
+match.status = {
+  $in: pendingStatuses
+};
 
     match.status = {
       $in: pendingStatuses,
@@ -7796,11 +7778,11 @@ app.get("/api/pending-leads-report", async (req, res) => {
     // -----------------------------------------------------
 
     const leads = await Lead.find(match)
-      .sort({
-        assignedAt: 1,
-        createdAt: 1,
-      })
-      .lean();
+  .sort({
+    assignedDate: 1,
+    createdAt: 1,
+  })
+  .lean();
 
     // -----------------------------------------------------
     // 6. Return response
