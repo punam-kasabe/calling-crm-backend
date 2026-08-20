@@ -1626,16 +1626,13 @@ app.post("/api/export-leads", async (req, res) => {
       Array.isArray(filters.assigned) &&
       filters.assigned.length > 0
     ) {
-
       const assignedEmails = filters.assigned
         .map((item) => {
 
           if (typeof item === "object") {
             return item.value;
           }
-
           return item;
-
         })
         .filter(Boolean)
         .map((email) =>
@@ -7680,7 +7677,6 @@ app.get("/api/my-daily-reports", async (req, res) => {
   }
 
 });
-
 /* =========================================================
    PENDING LEADS REPORT
 ========================================================= */
@@ -7692,6 +7688,7 @@ app.get("/api/pending-leads-report", async (req, res) => {
     // -----------------------------------------------------
     // 1. Basic validation
     // -----------------------------------------------------
+
     if (!email) {
       return res.status(400).json({
         success: false,
@@ -7706,6 +7703,7 @@ app.get("/api/pending-leads-report", async (req, res) => {
     // -----------------------------------------------------
     // 2. Get logged-in user
     // -----------------------------------------------------
+
     const user = await User.findOne({
       email: normalizedEmail,
     }).lean();
@@ -7718,15 +7716,28 @@ app.get("/api/pending-leads-report", async (req, res) => {
     }
 
     // -----------------------------------------------------
-    // 3. Build filter
+    // 3. Build role-based filter
     // -----------------------------------------------------
+
     let match = {};
 
-    const role = String(user.role || "").toLowerCase();
+    const role = String(user.role || "")
+      .trim()
+      .toLowerCase();
+
+    // -----------------------------------------------------
+    // ADMIN
+    // -----------------------------------------------------
 
     if (role === "admin") {
-      // Admin = all pending leads
-    } else if (role === "executive") {
+      // Admin sees all pending leads
+    }
+
+    // -----------------------------------------------------
+    // EXECUTIVE
+    // -----------------------------------------------------
+
+    else if (role === "executive") {
       match = {
         $or: [
           {
@@ -7740,7 +7751,13 @@ app.get("/api/pending-leads-report", async (req, res) => {
           },
         ],
       };
-    } else if (role === "manager") {
+    }
+
+    // -----------------------------------------------------
+    // MANAGER
+    // -----------------------------------------------------
+
+    else if (role === "manager") {
       match = {
         $or: [
           {
@@ -7754,35 +7771,39 @@ app.get("/api/pending-leads-report", async (req, res) => {
           },
         ],
       };
-    } else {
+    }
+
+    // -----------------------------------------------------
+    // INVALID ROLE
+    // -----------------------------------------------------
+
+    else {
       return res.status(403).json({
         success: false,
         message: "Unauthorized access",
       });
     }
 
-    const pendingStatuses = [
-  "New"
-];
+    // -----------------------------------------------------
+    // 4. Pending status
+    // -----------------------------------------------------
 
-match.status = {
-  $in: pendingStatuses
-};
+    const pendingStatuses = ["New"];
 
     match.status = {
       $in: pendingStatuses,
     };
 
     // -----------------------------------------------------
-    // 5. Fetch leads
+    // 5. Fetch pending leads
     // -----------------------------------------------------
 
     const leads = await Lead.find(match)
-  .sort({
-    assignedDate: 1,
-    createdAt: 1,
-  })
-  .lean();
+      .sort({
+        assignedDate: 1,
+        createdAt: 1,
+      })
+      .lean();
 
     // -----------------------------------------------------
     // 6. Return response
@@ -7810,7 +7831,6 @@ match.status = {
     });
   }
 });
-
 /* =========================================
    ALL DAILY REPORTS
 ========================================= */
