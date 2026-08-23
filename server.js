@@ -5684,18 +5684,14 @@ await Lead.countDocuments({
 
 });
 
-      /* CONVERTED */
+    /* BOOKING DONE */
 
-     const converted =
-  await Lead.countDocuments({
-
+const bookingDone = await Lead.countDocuments({
   $or: [
     { assigned_to: email },
     { assigned_to_email: email }
   ],
-
   status: "Booked"
-
 });
 
       /* INTERESTED */
@@ -5844,14 +5840,13 @@ await Lead.find({
       /* CALLS */
 
       const calls =
-        followups + converted;
-
+        followups + bookingDone;
       res.json({
 
         totalLeads,
         followups,
         calls,
-        converted,
+        bookingDone,
         todayFollowups,
         hotLeads,
         pendingCalls,
