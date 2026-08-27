@@ -551,11 +551,10 @@ const visitSchema = new mongoose.Schema(
        CURRENT VISIT STATUS
     ========================================= */
 
-    status: {
-      type: String,
-      default: "New"
-    },
-
+   status: {
+   type: [String],
+   default: ["New"]
+   },
 
     /* =========================================
        CLIENT TYPE
@@ -3924,7 +3923,20 @@ app.put(
           message: "Status is required ❌"
         });
       }
+     
+      /* ===============================
+   NORMALIZE STATUS TO ARRAY
+================================ */
 
+const statusArray = Array.isArray(status)
+  ? status
+  : [status];
+
+if (statusArray.length === 0) {
+  return res.status(400).json({
+    message: "At least one status is required ❌"
+  });
+}
       /* ===============================
          UPDATE LEAD
       =============================== */
@@ -3936,7 +3948,7 @@ app.put(
         {
           $set: {
 
-            status: status,
+           status: statusArray,
 
             remark: remark || "",
 
