@@ -187,32 +187,27 @@ const leadSchema = new mongoose.Schema({
   source: String,
 
   project: String,
-  
-status: {
-  type: [
-    {
-      type: String,
-      enum: [
-        "New",
-        "Fresh",
-        "Interested",
-        "Followup",
-        "Site Visit Done",
-        "Booked",
-        "Not Interested",
-        "Call Cut",
-        "Call Back",
-        "Ringing",
-        "Busy",
-        "Switch Off",
-        "Out of Service",
-        "Wrong Number"
-      ]
-    }
-  ],
-  default: ["New"]
-},
 
+  status: {
+  type: String,
+  default: "New",
+  enum: [
+    "New",
+    "Fresh",
+    "Interested",
+    "Followup",
+    "Visit Done",
+    "Booked",
+    "Not Interested",
+    "Call Cut",
+    "Call Back",
+    "Ringing",
+    "Busy",
+    "Switch Off",
+    "Out of Service",
+    "Wrong Number"
+  ]
+},
 
   description: {
     type: String,
@@ -558,8 +553,8 @@ const visitSchema = new mongoose.Schema(
 
    status: {
    type: [String],
-   default: ["New"]
-   },
+  default: ["New"]
+},
 
     /* =========================================
        CLIENT TYPE
@@ -3893,6 +3888,7 @@ app.get("/api/manager-clients", async (req, res) => {
 
 });
 
+
 /* =========================================
    UPDATE STATUS
 ========================================= */
@@ -3917,79 +3913,55 @@ app.put(
       =============================== */
 
       if (!req.params.id) {
-
         return res.status(400).json({
-          success: false,
           message: "Lead ID is required ❌"
         });
-
       }
 
-      /* ===============================
-         NORMALIZE STATUS
-      =============================== */
-
-      const statusArray =
-        Array.isArray(status)
-          ? status.filter(Boolean)
-          : status
-            ? [status]
-            : [];
-
-      if (statusArray.length === 0) {
-
+      if (!status) {
         return res.status(400).json({
-          success: false,
-          message: "At least one status is required ❌"
+          message: "Status is required ❌"
         });
-
       }
 
       /* ===============================
          UPDATE LEAD
       =============================== */
 
-      const updated =
-        await Lead.findByIdAndUpdate(
+      const updated = await Lead.findByIdAndUpdate(
 
-          req.params.id,
+        req.params.id,
 
-          {
-            $set: {
+        {
+          $set: {
 
-              status: statusArray,
+            status: status,
 
-              remark:
-                remark || "",
+            remark: remark || "",
 
-              followup_date:
-                followup_date
-                  ? new Date(followup_date)
-                  : null,
+            followup_date:
+              followup_date || null,
 
-              visitDate:
-                visitDate
-                  ? new Date(visitDate)
-                  : null,
+            visitDate:
+              visitDate || null,
 
-              visit_created:
-                Boolean(visit_created),
+            visit_created:
+              visit_created || false,
 
-              last_activity_by:
-                executive_email || "",
+            last_activity_by:
+              executive_email || "",
 
-              last_activity_date:
-                new Date()
+            last_activity_date:
+              new Date()
 
-            }
-          },
-
-          {
-            new: true,
-            runValidators: true
           }
+        },
 
-        );
+        {
+          new: true
+        }
+
+      );
 
       /* ===============================
          LEAD NOT FOUND
@@ -3998,7 +3970,6 @@ app.put(
       if (!updated) {
 
         return res.status(404).json({
-          success: false,
           message: "Lead not found ❌"
         });
 
@@ -4010,12 +3981,12 @@ app.put(
 
       console.log(
         "STATUS UPDATED:",
-        updated._id.toString(),
+        updated._id,
         "=>",
         updated.status
       );
 
-      return res.status(200).json({
+      res.status(200).json({
 
         success: true,
 
@@ -4035,7 +4006,7 @@ app.put(
         error
       );
 
-      return res.status(500).json({
+      res.status(500).json({
 
         success: false,
 
