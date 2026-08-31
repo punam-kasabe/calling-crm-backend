@@ -5252,46 +5252,76 @@ app.put("/api/update-lead/:id", async (req, res) => {
   }
 
 });
+
 /* =========================================
-   DELETE LEAD
+   DELETE SINGLE LEAD
 ========================================= */
 
-app.delete("/api/delete-lead/:id", auth, adminOnly, async (req, res) => {
+app.delete(
+  "/api/delete-lead/:id",
+  auth,
+  adminOnly,
+  async (req, res) => {
 
-  try {
+    try {
 
-    console.log("DELETE REQUEST");
-    console.log("Lead ID:", req.params.id);
-    console.log("User:", req.user);
+      console.log("=================================");
+      console.log("DELETE SINGLE LEAD REQUEST");
+      console.log("Lead ID =", req.params.id);
+      console.log("Logged User =", req.user);
+      console.log("=================================");
 
-    const deletedLead =
-      await Lead.findByIdAndDelete(req.params.id);
+      const leadId = req.params.id;
 
-    if (!deletedLead) {
+      if (!mongoose.Types.ObjectId.isValid(leadId)) {
 
-      return res.status(404).json({
-        message: "Lead not found ❌"
+        return res.status(400).json({
+          success: false,
+          message: "Invalid Lead ID ❌"
+        });
+
+      }
+
+      const deletedLead =
+        await Lead.findByIdAndDelete(leadId);
+
+      if (!deletedLead) {
+
+        return res.status(404).json({
+          success: false,
+          message: "Lead not found ❌"
+        });
+
+      }
+
+      console.log(
+        "Lead Deleted Successfully =",
+        deletedLead._id
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Lead deleted successfully ✅"
+      });
+
+    } catch (err) {
+
+      console.error(
+        "DELETE SINGLE LEAD ERROR =",
+        err
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: "Delete failed ❌",
+        error: err.message
       });
 
     }
 
-    res.json({
-      message: "Lead deleted ✅"
-    });
-
   }
+);
 
-  catch (err) {
-
-    console.log("DELETE ERROR:", err);
-
-    res.status(500).json({
-      message: "Delete failed ❌"
-    });
-
-  }
-
-});
 
 /* =========================================
    DELETE MULTIPLE LEADS
@@ -5301,44 +5331,87 @@ app.post(
   "/api/delete-multiple-leads",
   auth,
   adminOnly,
-
   async (req, res) => {
 
     try {
 
+      console.log("=================================");
+      console.log("BULK DELETE REQUEST");
+      console.log("Logged User =", req.user);
+      console.log("IDs =", req.body.ids);
+      console.log("=================================");
+
       const { ids } = req.body;
 
-      if (!ids || !Array.isArray(ids)) {
+      if (!Array.isArray(ids)) {
 
         return res.status(400).json({
+          success: false,
           message: "IDs array required ❌"
         });
 
       }
 
-      await Lead.deleteMany({
-        _id: { $in: ids }
+      if (ids.length === 0) {
+
+        return res.status(400).json({
+          success: false,
+          message: "No leads selected ❌"
+        });
+
+      }
+
+      const validIds = ids.filter((id) =>
+        mongoose.Types.ObjectId.isValid(id)
+      );
+
+      if (validIds.length === 0) {
+
+        return res.status(400).json({
+          success: false,
+          message: "No valid Lead IDs found ❌"
+        });
+
+      }
+
+      const result = await Lead.deleteMany({
+        _id: {
+          $in: validIds
+        }
       });
 
-      res.json({
+      console.log(
+        "Deleted Count =",
+        result.deletedCount
+      );
+
+      return res.status(200).json({
+
         success: true,
-        message: "Selected leads deleted ✅"
+
+        deletedCount: result.deletedCount,
+
+        message:
+          `${result.deletedCount} leads deleted successfully ✅`
+
       });
 
-    }
+    } catch (err) {
 
-    catch (err) {
+      console.error(
+        "BULK DELETE ERROR =",
+        err
+      );
 
-      console.log(err);
-
-      res.status(500).json({
-        message: "Bulk delete failed ❌"
+      return res.status(500).json({
+        success: false,
+        message: "Bulk delete failed ❌",
+        error: err.message
       });
 
     }
 
   }
-
 );
 
 /* =========================================
