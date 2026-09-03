@@ -5392,7 +5392,7 @@ app.post(
         deletedCount: result.deletedCount,
 
         message:
-          `${result.deletedCount} leads deleted successfully ✅`
+          `${result.deletedCount} leads deleted successfully`
 
       });
 
