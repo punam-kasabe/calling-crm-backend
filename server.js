@@ -5429,6 +5429,110 @@ app.delete(
 
 
 /* =========================================
+   DELETE SINGLE REMARK - ADMIN ONLY
+========================================= */
+
+app.delete(
+  "/api/delete-lead-remark/:leadId/:remarkId",
+  async (req, res) => {
+    try {
+
+      const { leadId, remarkId } = req.params;
+
+      /* =========================================
+         CHECK ADMIN
+      ========================================= */
+
+      const email =
+        req.body?.email ||
+        req.query?.email ||
+        req.headers["x-user-email"];
+
+      if (!email) {
+        return res.status(401).json({
+          message: "Admin authentication required ❌"
+        });
+      }
+
+      const admin = await User.findOne({
+        email: String(email).toLowerCase().trim(),
+        role: {
+          $regex: /^admin$/i
+        }
+      });
+
+      if (!admin) {
+        return res.status(403).json({
+          message: "Only Admin can delete remarks ❌"
+        });
+      }
+
+      /* =========================================
+         FIND LEAD
+      ========================================= */
+
+      const lead = await Lead.findById(leadId);
+
+      if (!lead) {
+        return res.status(404).json({
+          message: "Lead not found ❌"
+        });
+      }
+
+      /* =========================================
+         FIND REMARK
+      ========================================= */
+
+      const remarkExists =
+        lead.remarks?.some(
+          (remark) =>
+            String(remark._id) === String(remarkId)
+        );
+
+      if (!remarkExists) {
+        return res.status(404).json({
+          message: "Remark not found ❌"
+        });
+      }
+
+      /* =========================================
+         DELETE REMARK
+      ========================================= */
+
+      lead.remarks =
+        lead.remarks.filter(
+          (remark) =>
+            String(remark._id) !== String(remarkId)
+        );
+
+      await lead.save();
+
+      /* =========================================
+         RESPONSE
+      ========================================= */
+
+      res.json({
+        message: "Remark deleted successfully ✅",
+        lead
+      });
+
+    } catch (err) {
+
+      console.error(
+        "DELETE REMARK ERROR:",
+        err
+      );
+
+      res.status(500).json({
+        message: "Failed to delete remark ❌",
+        error: err.message
+      });
+
+    }
+  }
+);
+
+/* =========================================
    DELETE MULTIPLE LEADS
 ========================================= */
 
@@ -5543,7 +5647,8 @@ createdAt:-1
 
 res.json(bookings);
 
-}catch(err){
+}
+catch(err){
 
 console.log(err);
 
@@ -5658,41 +5763,6 @@ app.get(
   }
 
 );
-/* =========================================
-   GET LEAD BOOKINGS
-========================================= */
-
-app.get(
-"/api/lead-bookings/:leadId",
-
-async(req,res)=>{
-
-try{
-
-const bookings =
-await Booking.find({
-
-leadId:
-req.params.leadId
-
-})
-.sort({
-createdAt:-1
-});
-
-res.json(bookings);
-
-}catch(err){
-
-console.log(err);
-
-res.status(500).json({
-message:"Failed"
-});
-
-}
-
-});
 
 /* =========================================
    TODAY FOLLOWUPS
