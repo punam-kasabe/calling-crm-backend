@@ -224,29 +224,10 @@ const leadSchema = new mongoose.Schema({
     default: ""
   },
 
- remarks: [
-  {
-    text: {
-      type: String,
-      trim: true
-    },
-
-    addedBy: {
-      type: String,
-      default: ""
-    },
-
-    addedByEmail: {
-      type: String,
-      default: ""
-    },
-
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
-  }
-],
+  remark: {
+    type: String,
+    default: ""
+  },
 
   executive_remark: {
   type: String,
@@ -5217,145 +5198,59 @@ app.get(
 ========================================= */
 
 app.put("/api/update-lead/:id", async (req, res) => {
+
   try {
-    const leadId = req.params.id;
 
     const data = { ...req.body };
 
-    /* =========================================
-       FIND EXISTING LEAD
-    ========================================= */
+    // If Attending Officer selected
+    if (data.assigned_to_email) {
 
-    const existingLead = await Lead.findById(leadId);
+      const officer = await User.findOne({
+        email: data.assigned_to_email.toLowerCase().trim()
+      });
 
-    if (!existingLead) {
+      if (officer) {
+        data.assignedTo = officer.name;          // Display Name
+        data.assigned_to = officer.email;        // Email
+        data.assigned_to_email = officer.email; 
+        data.assignedDate = new Date(); // Email
+        data.last_activity_by =
+        req.body.executive_email;
+
+        data.last_activity_date =
+        new Date();
+      }
+    }
+
+
+    const updated = await Lead.findByIdAndUpdate(
+      req.params.id,
+      data,
+      { new: true }
+    );
+
+    if (!updated) {
       return res.status(404).json({
         message: "Lead not found ❌"
       });
     }
 
-    /* =========================================
-       REMARK / COMMENT
-    ========================================= */
-
-    const newRemarkText =
-      typeof data.description === "string"
-        ? data.description.trim()
-        : "";
-
-    /* =========================================
-       REMOVE DESCRIPTION FROM DIRECT UPDATE
-       We will keep it as latest description,
-       but also save it in remarks history.
-    ========================================= */
-
-    delete data.remarks;
-
-    /* =========================================
-       ATTENDING OFFICER
-    ========================================= */
-
-    if (data.assigned_to_email) {
-      const officer = await User.findOne({
-        email: String(data.assigned_to_email)
-          .toLowerCase()
-          .trim()
-      });
-
-      if (officer) {
-        data.assignedTo = officer.name;
-        data.assigned_to = officer.email;
-        data.assigned_to_email = officer.email;
-
-        data.assignedDate = new Date();
-
-        data.last_activity_by =
-          req.body.executive_email || "";
-
-        data.last_activity_date =
-          new Date();
-      }
-    }
-
-    /* =========================================
-       ADD REMARK TO HISTORY
-    ========================================= */
-
-    if (newRemarkText) {
-      const currentRemarks =
-        Array.isArray(existingLead.remarks)
-          ? existingLead.remarks
-          : [];
-
-      currentRemarks.push({
-        text: newRemarkText,
-
-        addedBy:
-          req.body.executive_name ||
-          req.body.closingExecutive ||
-          req.body.assignedTo ||
-          "",
-
-        addedByEmail:
-          req.body.executive_email ||
-          "",
-
-        createdAt: new Date()
-      });
-
-      data.remarks = currentRemarks;
-    }
-
-    /* =========================================
-       UPDATE LAST ACTIVITY
-    ========================================= */
-
-    if (newRemarkText) {
-      data.last_activity_by =
-        req.body.executive_email || "";
-
-      data.last_activity_date =
-        new Date();
-    }
-
-    /* =========================================
-       UPDATE MONGODB
-    ========================================= */
-
-    const updated =
-      await Lead.findByIdAndUpdate(
-        leadId,
-        data,
-        {
-          new: true,
-          runValidators: true
-        }
-      );
-
-    /* =========================================
-       RESPONSE
-    ========================================= */
-
     res.json({
-      message: newRemarkText
-        ? "Lead updated & remark added ✅"
-        : "Lead updated ✅",
-
+      message: "Lead updated ✅",
       lead: updated
     });
 
   } catch (err) {
 
-    console.error(
-      "UPDATE LEAD ERROR:",
-      err
-    );
+    console.log(err);
 
     res.status(500).json({
-      message: "Update failed ❌",
-      error: err.message
+      message: "Update failed ❌"
     });
+
   }
+
 });
 
 /* =========================================
@@ -5429,110 +5324,6 @@ app.delete(
 
 
 /* =========================================
-   DELETE SINGLE REMARK - ADMIN ONLY
-========================================= */
-
-app.delete(
-  "/api/delete-lead-remark/:leadId/:remarkId",
-  async (req, res) => {
-    try {
-
-      const { leadId, remarkId } = req.params;
-
-      /* =========================================
-         CHECK ADMIN
-      ========================================= */
-
-      const email =
-        req.body?.email ||
-        req.query?.email ||
-        req.headers["x-user-email"];
-
-      if (!email) {
-        return res.status(401).json({
-          message: "Admin authentication required ❌"
-        });
-      }
-
-      const admin = await User.findOne({
-        email: String(email).toLowerCase().trim(),
-        role: {
-          $regex: /^admin$/i
-        }
-      });
-
-      if (!admin) {
-        return res.status(403).json({
-          message: "Only Admin can delete remarks ❌"
-        });
-      }
-
-      /* =========================================
-         FIND LEAD
-      ========================================= */
-
-      const lead = await Lead.findById(leadId);
-
-      if (!lead) {
-        return res.status(404).json({
-          message: "Lead not found ❌"
-        });
-      }
-
-      /* =========================================
-         FIND REMARK
-      ========================================= */
-
-      const remarkExists =
-        lead.remarks?.some(
-          (remark) =>
-            String(remark._id) === String(remarkId)
-        );
-
-      if (!remarkExists) {
-        return res.status(404).json({
-          message: "Remark not found ❌"
-        });
-      }
-
-      /* =========================================
-         DELETE REMARK
-      ========================================= */
-
-      lead.remarks =
-        lead.remarks.filter(
-          (remark) =>
-            String(remark._id) !== String(remarkId)
-        );
-
-      await lead.save();
-
-      /* =========================================
-         RESPONSE
-      ========================================= */
-
-      res.json({
-        message: "Remark deleted successfully ✅",
-        lead
-      });
-
-    } catch (err) {
-
-      console.error(
-        "DELETE REMARK ERROR:",
-        err
-      );
-
-      res.status(500).json({
-        message: "Failed to delete remark ❌",
-        error: err.message
-      });
-
-    }
-  }
-);
-
-/* =========================================
    DELETE MULTIPLE LEADS
 ========================================= */
 
@@ -5601,7 +5392,7 @@ app.post(
         deletedCount: result.deletedCount,
 
         message:
-          `${result.deletedCount} leads deleted successfully`
+          `${result.deletedCount} leads deleted successfully ✅`
 
       });
 
@@ -5647,8 +5438,7 @@ createdAt:-1
 
 res.json(bookings);
 
-}
-catch(err){
+}catch(err){
 
 console.log(err);
 
@@ -5763,6 +5553,41 @@ app.get(
   }
 
 );
+/* =========================================
+   GET LEAD BOOKINGS
+========================================= */
+
+app.get(
+"/api/lead-bookings/:leadId",
+
+async(req,res)=>{
+
+try{
+
+const bookings =
+await Booking.find({
+
+leadId:
+req.params.leadId
+
+})
+.sort({
+createdAt:-1
+});
+
+res.json(bookings);
+
+}catch(err){
+
+console.log(err);
+
+res.status(500).json({
+message:"Failed"
+});
+
+}
+
+});
 
 /* =========================================
    TODAY FOLLOWUPS
