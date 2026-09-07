@@ -224,10 +224,29 @@ const leadSchema = new mongoose.Schema({
     default: ""
   },
 
-  remark: {
-    type: String,
-    default: ""
-  },
+ remarks: [
+  {
+    text: {
+      type: String,
+      trim: true
+    },
+
+    addedBy: {
+      type: String,
+      default: ""
+    },
+
+    addedByEmail: {
+      type: String,
+      default: ""
+    },
+
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }
+],
 
   executive_remark: {
   type: String,
@@ -5198,59 +5217,145 @@ app.get(
 ========================================= */
 
 app.put("/api/update-lead/:id", async (req, res) => {
-
   try {
+    const leadId = req.params.id;
 
     const data = { ...req.body };
 
-    // If Attending Officer selected
-    if (data.assigned_to_email) {
+    /* =========================================
+       FIND EXISTING LEAD
+    ========================================= */
 
-      const officer = await User.findOne({
-        email: data.assigned_to_email.toLowerCase().trim()
-      });
+    const existingLead = await Lead.findById(leadId);
 
-      if (officer) {
-        data.assignedTo = officer.name;          // Display Name
-        data.assigned_to = officer.email;        // Email
-        data.assigned_to_email = officer.email; 
-        data.assignedDate = new Date(); // Email
-        data.last_activity_by =
-        req.body.executive_email;
-
-        data.last_activity_date =
-        new Date();
-      }
-    }
-
-
-    const updated = await Lead.findByIdAndUpdate(
-      req.params.id,
-      data,
-      { new: true }
-    );
-
-    if (!updated) {
+    if (!existingLead) {
       return res.status(404).json({
         message: "Lead not found ❌"
       });
     }
 
+    /* =========================================
+       REMARK / COMMENT
+    ========================================= */
+
+    const newRemarkText =
+      typeof data.description === "string"
+        ? data.description.trim()
+        : "";
+
+    /* =========================================
+       REMOVE DESCRIPTION FROM DIRECT UPDATE
+       We will keep it as latest description,
+       but also save it in remarks history.
+    ========================================= */
+
+    delete data.remarks;
+
+    /* =========================================
+       ATTENDING OFFICER
+    ========================================= */
+
+    if (data.assigned_to_email) {
+      const officer = await User.findOne({
+        email: String(data.assigned_to_email)
+          .toLowerCase()
+          .trim()
+      });
+
+      if (officer) {
+        data.assignedTo = officer.name;
+        data.assigned_to = officer.email;
+        data.assigned_to_email = officer.email;
+
+        data.assignedDate = new Date();
+
+        data.last_activity_by =
+          req.body.executive_email || "";
+
+        data.last_activity_date =
+          new Date();
+      }
+    }
+
+    /* =========================================
+       ADD REMARK TO HISTORY
+    ========================================= */
+
+    if (newRemarkText) {
+      const currentRemarks =
+        Array.isArray(existingLead.remarks)
+          ? existingLead.remarks
+          : [];
+
+      currentRemarks.push({
+        text: newRemarkText,
+
+        addedBy:
+          req.body.executive_name ||
+          req.body.closingExecutive ||
+          req.body.assignedTo ||
+          "",
+
+        addedByEmail:
+          req.body.executive_email ||
+          "",
+
+        createdAt: new Date()
+      });
+
+      data.remarks = currentRemarks;
+    }
+
+    /* =========================================
+       UPDATE LAST ACTIVITY
+    ========================================= */
+
+    if (newRemarkText) {
+      data.last_activity_by =
+        req.body.executive_email || "";
+
+      data.last_activity_date =
+        new Date();
+    }
+
+    /* =========================================
+       UPDATE MONGODB
+    ========================================= */
+
+    const updated =
+      await Lead.findByIdAndUpdate(
+        leadId,
+        data,
+        {
+          new: true,
+          runValidators: true
+        }
+      );
+
+    /* =========================================
+       RESPONSE
+    ========================================= */
+
     res.json({
-      message: "Lead updated ✅",
+      message: newRemarkText
+        ? "Lead updated & remark added ✅"
+        : "Lead updated ✅",
+
       lead: updated
     });
 
   } catch (err) {
 
-    console.log(err);
+    console.error(
+      "UPDATE LEAD ERROR:",
+      err
+    );
 
     res.status(500).json({
-      message: "Update failed ❌"
+      message: "Update failed ❌",
+      error: err.message
     });
-
   }
-
 });
 
 /* =========================================
