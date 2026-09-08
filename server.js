@@ -3557,12 +3557,14 @@ duplicates.push({
 
   continue;
 }
-  await Lead.create({
+
+const newLead = await Lead.create({
   name: row["name"] || "",
   phone: normalizePhone(rawPhone),
   email: row["Email"] || "",
   source: row["Lead Source"] || "",
   subSource: row["Sub Source"] || "",
+
   project:
     row["Enquiry"] ||
     row["Project"] ||
@@ -3576,16 +3578,40 @@ duplicates.push({
       ?.toLowerCase()
       ?.trim() || "",
 
-   assignedDate: new Date(),
+  assignedDate: new Date(),
 
   closingExecutive:
     row["Closing Executive"] || "",
 
   description:
     row["Description"] || ""
+});
 
-         });
 
+/* ======================================
+   REALTIME LEAD ASSIGNMENT NOTIFICATION
+====================================== */
+
+const executiveEmail =
+  row["assigned_to"]
+    ?.toLowerCase()
+    ?.trim();
+
+if (executiveEmail) {
+
+  io.to(`executive_${executiveEmail}`).emit(
+    "lead-assigned",
+    {
+      message: "New lead assigned to you",
+      lead: newLead
+    }
+  );
+
+  console.log(
+    "Lead notification sent to:",
+    executiveEmail
+  );
+}
 
 
         updated++;
