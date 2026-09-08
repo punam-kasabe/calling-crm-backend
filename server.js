@@ -60,14 +60,7 @@ app.use(compression());
 
 io.on("connection", (socket) => {
 
-  console.log(
-    "Socket connected:",
-    socket.id
-  );
-
-io.on("connection", (socket) => {
-
-  console.log("Executive connected:", socket.id);
+  console.log("Socket connected:", socket.id);
 
   socket.on("register-executive", (email) => {
 
@@ -80,7 +73,7 @@ io.on("connection", (socket) => {
     socket.join(`executive_${executiveEmail}`);
 
     console.log(
-      "Executive joined room:",
+      "Executive joined:",
       executiveEmail
     );
 
@@ -89,7 +82,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
 
     console.log(
-      "Executive disconnected:",
+      "Socket disconnected:",
       socket.id
     );
 
@@ -8167,6 +8160,7 @@ res.status(500).json([]);
 
 });
 
+const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
 
