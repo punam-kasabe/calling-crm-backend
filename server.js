@@ -22,9 +22,7 @@ const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-
   cors: {
-
     origin: [
       "https://calling-crmfrontend.vercel.app",
       "https://calling-crmfrontend-95in.vercel.app",
@@ -41,11 +39,8 @@ const io = new Server(server, {
     ],
 
     credentials: true
-
   }
-
 });
-
 
 app.set("trust proxy", 1);
 
@@ -89,52 +84,11 @@ io.on("connection", (socket) => {
   });
 
 });
-  /* =========================================
-     REGISTER EXECUTIVE
-  ========================================= */
-
-  socket.on(
-    "register-executive",
-    (email) => {
-
-      if (!email) return;
-
-      const executiveEmail =
-        email.toLowerCase().trim();
 
 
-      socket.join(
-        `executive_${executiveEmail}`
-      );
-
-
-      console.log(
-        "Executive joined:",
-        executiveEmail
-      );
-
-    }
-  );
-
-
-  /* =========================================
-     DISCONNECT
-  ========================================= */
-
-  socket.on(
-    "disconnect",
-    () => {
-
-      console.log(
-        "Socket disconnected:",
-        socket.id
-      );
-
-    }
-  );
-
-});
-
+/* =========================================
+   CORS
+========================================= */
 
 const allowedOrigins = [
   "https://calling-crmfrontend.vercel.app",
@@ -152,23 +106,30 @@ app.use(
         callback(null, true);
       } else {
         console.log("Blocked Origin:", origin);
-
         callback(new Error("CORS blocked ❌"));
       }
 
     },
 
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "OPTIONS"
+    ],
 
     allowedHeaders: [
       "Content-Type",
       "Authorization"
     ],
+
     credentials: true
   })
 );
 
 app.use(express.json());
+
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
