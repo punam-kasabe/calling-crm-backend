@@ -26,6 +26,7 @@
     "mongoose": "^8.23.0",
     "multer": "^2.1.1",
     "mysql2": "^3.21.1",
+    "socket.io": "^4.8.3",
     "string-similarity": "^4.0.4"
   }
 }

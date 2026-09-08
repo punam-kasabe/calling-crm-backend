@@ -1,4 +1,6 @@
 const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const multer = require("multer");
@@ -11,11 +13,135 @@ require("dotenv").config();
 const rateLimit = require("express-rate-limit");
 const compression = require("compression");
 
-
 const app = express();
+
+/* =========================================
+   SOCKET.IO SERVER
+========================================= */
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+
+  cors: {
+
+    origin: [
+      "https://calling-crmfrontend.vercel.app",
+      "https://calling-crmfrontend-95in.vercel.app",
+      "https://calling-crmfrontend-kv6d.vercel.app",
+      "https://crm-frontend-4191q4glk-punam-kasabes-projects.vercel.app",
+      "http://localhost:3000"
+    ],
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE"
+    ],
+
+    credentials: true
+
+  }
+
+});
+
+
 app.set("trust proxy", 1);
+
 app.use(helmet());
+
 app.use(compression());
+
+
+/* =========================================
+   SOCKET.IO CONNECTION
+========================================= */
+
+io.on("connection", (socket) => {
+
+  console.log(
+    "Socket connected:",
+    socket.id
+  );
+
+io.on("connection", (socket) => {
+
+  console.log("Executive connected:", socket.id);
+
+  socket.on("register-executive", (email) => {
+
+    if (!email) return;
+
+    const executiveEmail = email
+      .toLowerCase()
+      .trim();
+
+    socket.join(`executive_${executiveEmail}`);
+
+    console.log(
+      "Executive joined room:",
+      executiveEmail
+    );
+
+  });
+
+  socket.on("disconnect", () => {
+
+    console.log(
+      "Executive disconnected:",
+      socket.id
+    );
+
+  });
+
+});
+  /* =========================================
+     REGISTER EXECUTIVE
+  ========================================= */
+
+  socket.on(
+    "register-executive",
+    (email) => {
+
+      if (!email) return;
+
+      const executiveEmail =
+        email.toLowerCase().trim();
+
+
+      socket.join(
+        `executive_${executiveEmail}`
+      );
+
+
+      console.log(
+        "Executive joined:",
+        executiveEmail
+      );
+
+    }
+  );
+
+
+  /* =========================================
+     DISCONNECT
+  ========================================= */
+
+  socket.on(
+    "disconnect",
+    () => {
+
+      console.log(
+        "Socket disconnected:",
+        socket.id
+      );
+
+    }
+  );
+
+});
+
 
 const allowedOrigins = [
   "https://calling-crmfrontend.vercel.app",
@@ -1991,6 +2117,10 @@ app.post(
 
   async (req, res) => {
 
+    let inserted = 0;
+    let duplicateLeads = [];
+    let assignedExecutives = {};
+
     try {
 
       if (!req.file) {
@@ -2065,49 +2195,79 @@ app.post(
 
     continue;
   }
+/* =====================================
+   GET ASSIGNED EXECUTIVE
+===================================== */
 
-  await Lead.create({
-
-    name:
-      data["Name"] || "",
-
-    phone,
-
-    email:
-      data["Email"] || "",
-
-    source:
-      data["Lead Source"] || "",
-
-    project:
-      data["Project"] || "",
-
-    created_date: new Date(),
-
-    status:
-      data["Lead Status"] || "New",
-
-   assigned_to:
+const leadAssignedTo =
   data["assigned_to"]
     ? data["assigned_to"]
         .toLowerCase()
         .trim()
-    : assigned_to,
+    : assigned_to;
 
-assigned_to_email:
-  data["assigned_to"]
-    ? data["assigned_to"]
-        .toLowerCase()
-        .trim()
-    : assigned_to,
 
-    created_by
+/* =====================================
+   CREATE LEAD
+===================================== */
 
-  });
+await Lead.create({
 
-  inserted++;
+  name:
+    data["Name"] || "",
 
-}           fs.unlinkSync(
+  phone,
+
+  email:
+    data["Email"] || "",
+
+  source:
+    data["Lead Source"] || "",
+
+  project:
+    data["Project"] || "",
+
+  created_date:
+    new Date(),
+
+  status:
+    data["Lead Status"] || "New",
+
+  assigned_to:
+    leadAssignedTo,
+
+  assigned_to_email:
+    leadAssignedTo,
+
+  created_by
+
+});
+
+
+/* =====================================
+   COUNT LEADS PER EXECUTIVE
+===================================== */
+
+if (leadAssignedTo) {
+
+  if (!assignedExecutives[leadAssignedTo]) {
+
+    assignedExecutives[leadAssignedTo] = 0;
+
+  }
+
+  assignedExecutives[leadAssignedTo]++;
+
+}
+
+
+inserted++;
+
+
+
+}       
+
+fs.unlinkSync(
               req.file.path
             );
 
@@ -8007,8 +8167,12 @@ res.status(500).json([]);
 
 });
 
-app.listen(PORT, () => {
+const PORT = process.env.PORT || 5000;
 
-  console.log(`🚀 Server Running On Port ${PORT}`);
+server.listen(PORT, () => {
+
+  console.log(
+    `🚀 Server running on port ${PORT}`
+  );
 
 });
