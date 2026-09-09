@@ -52,7 +52,6 @@ app.use(compression());
 /* =========================================
    SOCKET.IO CONNECTION
 ========================================= */
-
 io.on("connection", (socket) => {
 
   console.log("Socket connected:", socket.id);
@@ -61,14 +60,15 @@ io.on("connection", (socket) => {
 
     if (!email) return;
 
-    const executiveEmail = email
-      .toLowerCase()
-      .trim();
+    const executiveEmail =
+      email.toLowerCase().trim();
 
-    socket.join(`executive_${executiveEmail}`);
+    socket.join(
+      `executive_${executiveEmail}`
+    );
 
     console.log(
-      "Executive joined:",
+      "Executive joined room:",
       executiveEmail
     );
 
@@ -3599,13 +3599,15 @@ const executiveEmail =
 
 if (executiveEmail) {
 
-  io.to(`executive_${executiveEmail}`).emit(
-    "lead-assigned",
-    {
-      message: "New lead assigned to you",
-      lead: newLead
-    }
-  );
+io.to(`executive_${executiveEmail}`).emit(
+  "new-leads-assigned",
+  {
+    count: 1,
+    lead: newLead,
+    message: "New lead assigned to you"
+  }
+);
+
 
   console.log(
     "Lead notification sent to:",
@@ -3663,6 +3665,8 @@ if (executiveEmail) {
   }
 
 );
+
+
 /* =========================================
    ASSIGN MANAGER
 ========================================= */
