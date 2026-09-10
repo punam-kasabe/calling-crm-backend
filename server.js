@@ -3891,61 +3891,136 @@ app.get("/api/executive-leads", async (req, res) => {
 
 });
 
-
 /* =========================================
-   MY LEADS
+   MY LEADS - PAGINATED
 ========================================= */
 
 app.get("/api/my-leads", async (req, res) => {
+
   try {
 
-    const email = req.query.email
-      ?.toLowerCase()
+    const email = String(req.query.email || "")
+      .toLowerCase()
       .trim();
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email required"
+      });
+    }
+
+    const page = Math.max(
+      parseInt(req.query.page || "1"),
+      1
+    );
+
+    const limit = Math.min(
+      Math.max(
+        parseInt(req.query.limit || "20"),
+        1
+      ),
+      100
+    );
+
+    const skip = (page - 1) * limit;
+
+    /* =========================
+       USER
+    ========================= */
 
     const user = await User.findOne({
       email
-    });
+    })
+      .select("name")
+      .lean();
 
-    const userName =
-      user?.name || "";
+    const userName = user?.name || "";
 
-    const leads = await Lead.find({
+    /* =========================
+       MATCH
+    ========================= */
 
+    const match = {
       $or: [
-
-         {
-            executive_email: email
-          },
-        {
-          assigned_to: email
-        },
-
-        {
-          assigned_to_email: email
-        },
-
-        {
-          closingExecutive: userName
-        }
-
+        { executive_email: email },
+        { assigned_to: email },
+        { assigned_to_email: email },
+        ...(userName
+          ? [{ closingExecutive: userName }]
+          : [])
       ]
+    };
 
-    }).sort({
-      createdAt: -1
+    /* =========================
+       TOTAL + LEADS
+       RUN IN PARALLEL
+    ========================= */
+
+    const [total, leads] = await Promise.all([
+
+      Lead.countDocuments(match),
+
+      Lead.find(match)
+        .sort({
+          createdAt: -1,
+          _id: -1
+        })
+        .skip(skip)
+        .limit(limit)
+        .select(`
+          name
+          phone
+          email
+          source
+          subSource
+          project
+          status
+          description
+          closingExecutive
+          remark
+          followup_date
+          next_call_date
+          assigned_to
+          assigned_to_email
+          assigned_manager
+          visit_created
+          visit_status
+          createdAt
+          updatedAt
+        `)
+        .lean()
+
+    ]);
+
+    res.json({
+
+      success: true,
+
+      data: leads,
+
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page * limit < total,
+        hasPrevPage: page > 1
+      }
+
     });
-
-    res.json(leads);
 
   } catch (err) {
 
-    console.log(err);
+    console.log("MY LEADS ERROR ❌", err);
 
     res.status(500).json({
+      success: false,
       message: "Server Error"
     });
 
   }
+
 });
 /* =========================================
    GET ALL USERS
