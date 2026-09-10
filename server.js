@@ -86,56 +86,6 @@ io.on("connection", (socket) => {
 });
 
 
-/* =========================================
-   CORS
-========================================= */
-
-const allowedOrigins = [
-  "https://calling-crmfrontend.vercel.app",
-  "https://calling-crmfrontend-95in.vercel.app",
-  "https://calling-crmfrontend-kv6d.vercel.app",
-  "https://crm-frontend-4191q4glk-punam-kasabes-projects.vercel.app",
-  "http://localhost:3000"
-];
-
-app.use(
-  cors({
-    origin: function (origin, callback) {
-
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.log("Blocked Origin:", origin);
-        callback(new Error("CORS blocked ❌"));
-      }
-
-    },
-
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "DELETE",
-      "OPTIONS"
-    ],
-
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization"
-    ],
-
-    credentials: true
-  })
-);
-
-app.use(express.json());
-
-
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: "Too many login attempts ❌"
-});
 
 /* =========================================
    MONGODB
@@ -1065,22 +1015,27 @@ app.post("/api/login", loginLimiter, async (req, res) => {
 
   try {
 
-    const {
-      email,
-      password
-    } = req.body;
+    const email =
+      String(req.body.email || "")
+        .toLowerCase()
+        .trim();
+
+    const password =
+      String(req.body.password || "");
 
     if (!email || !password) {
+
       return res.status(400).json({
         message: "Email & Password required ❌"
       });
+
     }
 
-
     const user = await User.findOne({
-      email: email.toLowerCase().trim()
-    }).select("+password");
-
+      email
+    })
+      .select("+password")
+      .lean(false);
 
     if (!user) {
 
@@ -1090,10 +1045,11 @@ app.post("/api/login", loginLimiter, async (req, res) => {
 
     }
 
-    const isMatch = await bcrypt.compare(
-      password,
-      user.password
-    );
+    const isMatch =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
 
     if (!isMatch) {
 
@@ -1103,7 +1059,10 @@ app.post("/api/login", loginLimiter, async (req, res) => {
 
     }
 
-    if ((user.status || "").toLowerCase() !== "active") {
+    if (
+      String(user.status || "")
+        .toLowerCase() !== "active"
+    ) {
 
       return res.status(403).json({
         message: "User inactive ❌"
@@ -1111,48 +1070,48 @@ app.post("/api/login", loginLimiter, async (req, res) => {
 
     }
 
-
-    /* =========================================
+    /* =====================================
        ROLE
-    ========================================= */
+    ===================================== */
 
     const role =
-      user.role?.toLowerCase();
+      String(user.role || "")
+        .toLowerCase()
+        .trim();
 
     const isAdmin =
       role === "admin";
 
-    /* =========================================
-       LOGIN TIME CHECK
-    ========================================= */
+    /* =====================================
+       LOGIN TIME
+    ===================================== */
 
     if (!isAdmin) {
 
-      const now = new Date();
-
-      const indiaTime = new Date(
-
-        now.toLocaleString("en-US", {
-          timeZone: "Asia/Kolkata"
-        })
-
+      const indiaHour = Number(
+        new Intl.DateTimeFormat("en-IN", {
+          timeZone: "Asia/Kolkata",
+          hour: "2-digit",
+          hour12: false
+        }).format(new Date())
       );
 
-      const hour =
-        indiaTime.getHours();
-
-      if (hour < 10 || hour >= 19) {
+      if (
+        indiaHour < 10 ||
+        indiaHour >= 19
+      ) {
 
         return res.status(403).json({
-
           message:
             "Login allowed only between 10 AM and 7 PM ❌"
-
         });
 
       }
-
     }
+
+    /* =====================================
+       JWT
+    ===================================== */
 
     const token = jwt.sign(
 
@@ -1168,9 +1127,14 @@ app.post("/api/login", loginLimiter, async (req, res) => {
         expiresIn: "7d",
         issuer: "crm-backend"
       }
+
     );
 
-    res.json({
+    /* =====================================
+       RESPONSE
+    ===================================== */
+
+    return res.json({
 
       token,
 
@@ -1185,26 +1149,29 @@ app.post("/api/login", loginLimiter, async (req, res) => {
         role,
 
         can_import:
-          isAdmin || user.can_import,
+          isAdmin || !!user.can_import,
 
         can_export:
-          isAdmin || user.can_export,
+          isAdmin || !!user.can_export,
 
         can_delete_lead:
-          isAdmin || user.can_delete_lead,
+          isAdmin || !!user.can_delete_lead,
+
+        can_access_project:
+          isAdmin || !!user.can_access_project
 
       }
 
     });
 
-  }
+  } catch (err) {
 
+    console.error(
+      "LOGIN ERROR:",
+      err
+    );
 
-  catch (err) {
-
-    console.log(err);
-
-    res.status(500).json({
+    return res.status(500).json({
       message: "Login error ❌"
     });
 
@@ -5338,85 +5305,63 @@ app.get(
 );
 
 /* =========================================
-   UPDATE LEAD - OPTIMIZED
+   UPDATE LEAD
 ========================================= */
 
 app.put("/api/update-lead/:id", async (req, res) => {
+
   try {
-    const leadId = req.params.id;
 
     const data = { ...req.body };
 
-    // -----------------------------------------
-    // Attending Officer / Executive Assignment
-    // -----------------------------------------
+    // If Attending Officer selected
     if (data.assigned_to_email) {
-      const email = String(data.assigned_to_email)
-        .toLowerCase()
-        .trim();
 
-      const officer = await User.findOne(
-        { email },
-        {
-          name: 1,
-          email: 1,
-        }
-      ).lean();
+      const officer = await User.findOne({
+        email: data.assigned_to_email.toLowerCase().trim()
+      });
 
       if (officer) {
-        data.assignedTo = officer.name;
-        data.assigned_to = officer.email;
-        data.assigned_to_email = officer.email;
-
-        // Assignment changed
-        data.assignedDate = new Date();
-
+        data.assignedTo = officer.name;          // Display Name
+        data.assigned_to = officer.email;        // Email
+        data.assigned_to_email = officer.email; 
+        data.assignedDate = new Date(); // Email
         data.last_activity_by =
-          req.body.executive_email || officer.email;
+        req.body.executive_email;
 
-        data.last_activity_date = new Date();
+        data.last_activity_date =
+        new Date();
       }
     }
 
-    // -----------------------------------------
-    // Remove fields which should NOT be updated
-    // -----------------------------------------
-    delete data._id;
-    delete data.__v;
-    delete data.createdAt;
-    delete data.updatedAt;
 
-    // -----------------------------------------
-    // Update only this lead
-    // -----------------------------------------
     const updated = await Lead.findByIdAndUpdate(
-      leadId,
-      { $set: data },
-      {
-        new: true,
-        runValidators: true,
-      }
-    ).lean();
+      req.params.id,
+      data,
+      { new: true }
+    );
 
     if (!updated) {
       return res.status(404).json({
-        message: "Lead not found ❌",
+        message: "Lead not found ❌"
       });
     }
 
-    return res.status(200).json({
-      message: "Lead updated successfully ✅",
-      lead: updated,
+    res.json({
+      message: "Lead updated ✅",
+      lead: updated
     });
 
   } catch (err) {
-    console.error("UPDATE LEAD ERROR:", err);
 
-    return res.status(500).json({
-      message: "Update failed ❌",
-      error: err.message,
+    console.log(err);
+
+    res.status(500).json({
+      message: "Update failed ❌"
     });
+
   }
+
 });
 
 /* =========================================
