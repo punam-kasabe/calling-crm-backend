@@ -5338,63 +5338,85 @@ app.get(
 );
 
 /* =========================================
-   UPDATE LEAD
+   UPDATE LEAD - OPTIMIZED
 ========================================= */
 
 app.put("/api/update-lead/:id", async (req, res) => {
-
   try {
+    const leadId = req.params.id;
 
     const data = { ...req.body };
 
-    // If Attending Officer selected
+    // -----------------------------------------
+    // Attending Officer / Executive Assignment
+    // -----------------------------------------
     if (data.assigned_to_email) {
+      const email = String(data.assigned_to_email)
+        .toLowerCase()
+        .trim();
 
-      const officer = await User.findOne({
-        email: data.assigned_to_email.toLowerCase().trim()
-      });
+      const officer = await User.findOne(
+        { email },
+        {
+          name: 1,
+          email: 1,
+        }
+      ).lean();
 
       if (officer) {
-        data.assignedTo = officer.name;          // Display Name
-        data.assigned_to = officer.email;        // Email
-        data.assigned_to_email = officer.email; 
-        data.assignedDate = new Date(); // Email
-        data.last_activity_by =
-        req.body.executive_email;
+        data.assignedTo = officer.name;
+        data.assigned_to = officer.email;
+        data.assigned_to_email = officer.email;
 
-        data.last_activity_date =
-        new Date();
+        // Assignment changed
+        data.assignedDate = new Date();
+
+        data.last_activity_by =
+          req.body.executive_email || officer.email;
+
+        data.last_activity_date = new Date();
       }
     }
 
+    // -----------------------------------------
+    // Remove fields which should NOT be updated
+    // -----------------------------------------
+    delete data._id;
+    delete data.__v;
+    delete data.createdAt;
+    delete data.updatedAt;
 
+    // -----------------------------------------
+    // Update only this lead
+    // -----------------------------------------
     const updated = await Lead.findByIdAndUpdate(
-      req.params.id,
-      data,
-      { new: true }
-    );
+      leadId,
+      { $set: data },
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).lean();
 
     if (!updated) {
       return res.status(404).json({
-        message: "Lead not found ❌"
+        message: "Lead not found ❌",
       });
     }
 
-    res.json({
-      message: "Lead updated ✅",
-      lead: updated
+    return res.status(200).json({
+      message: "Lead updated successfully ✅",
+      lead: updated,
     });
 
   } catch (err) {
+    console.error("UPDATE LEAD ERROR:", err);
 
-    console.log(err);
-
-    res.status(500).json({
-      message: "Update failed ❌"
+    return res.status(500).json({
+      message: "Update failed ❌",
+      error: err.message,
     });
-
   }
-
 });
 
 /* =========================================
