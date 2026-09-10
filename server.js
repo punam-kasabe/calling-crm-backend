@@ -1007,6 +1007,60 @@ const upload = multer({
 
 });
 
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log("Blocked Origin:", origin);
+        callback(new Error("CORS blocked ❌"));
+      }
+
+    },
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "OPTIONS"
+    ],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization"
+    ],
+
+    credentials: true
+  })
+);
+
+app.use(express.json());
+
+
+/* =========================================
+   LOGIN RATE LIMITER
+========================================= */
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: "Too many login attempts. Please try again later ❌"
+  }
+});
+
+
+/* =========================================
+   MONGODB
+========================================= */
+
+mongoose.set("strictQuery", false);
 /* =========================================
    LOGIN
 ========================================= */
