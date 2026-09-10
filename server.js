@@ -86,6 +86,56 @@ io.on("connection", (socket) => {
 });
 
 
+/* =========================================
+   CORS
+========================================= */
+
+const allowedOrigins = [
+  "https://calling-crmfrontend.vercel.app",
+  "https://calling-crmfrontend-95in.vercel.app",
+  "https://calling-crmfrontend-kv6d.vercel.app",
+  "https://crm-frontend-4191q4glk-punam-kasabes-projects.vercel.app",
+  "http://localhost:3000"
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log("Blocked Origin:", origin);
+        callback(new Error("CORS blocked ❌"));
+      }
+
+    },
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "OPTIONS"
+    ],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization"
+    ],
+
+    credentials: true
+  })
+);
+
+app.use(express.json());
+
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: "Too many login attempts ❌"
+});
 
 /* =========================================
    MONGODB
@@ -1007,60 +1057,6 @@ const upload = multer({
 
 });
 
-
-app.use(
-  cors({
-    origin: function (origin, callback) {
-
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.log("Blocked Origin:", origin);
-        callback(new Error("CORS blocked ❌"));
-      }
-
-    },
-
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "DELETE",
-      "OPTIONS"
-    ],
-
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization"
-    ],
-
-    credentials: true
-  })
-);
-
-app.use(express.json());
-
-
-/* =========================================
-   LOGIN RATE LIMITER
-========================================= */
-
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    message: "Too many login attempts. Please try again later ❌"
-  }
-});
-
-
-/* =========================================
-   MONGODB
-========================================= */
-
-mongoose.set("strictQuery", false);
 /* =========================================
    LOGIN
 ========================================= */
@@ -1069,27 +1065,22 @@ app.post("/api/login", loginLimiter, async (req, res) => {
 
   try {
 
-    const email =
-      String(req.body.email || "")
-        .toLowerCase()
-        .trim();
-
-    const password =
-      String(req.body.password || "");
+    const {
+      email,
+      password
+    } = req.body;
 
     if (!email || !password) {
-
       return res.status(400).json({
         message: "Email & Password required ❌"
       });
-
     }
 
+
     const user = await User.findOne({
-      email
-    })
-      .select("+password")
-      .lean(false);
+      email: email.toLowerCase().trim()
+    }).select("+password");
+
 
     if (!user) {
 
@@ -1099,11 +1090,10 @@ app.post("/api/login", loginLimiter, async (req, res) => {
 
     }
 
-    const isMatch =
-      await bcrypt.compare(
-        password,
-        user.password
-      );
+    const isMatch = await bcrypt.compare(
+      password,
+      user.password
+    );
 
     if (!isMatch) {
 
@@ -1113,10 +1103,7 @@ app.post("/api/login", loginLimiter, async (req, res) => {
 
     }
 
-    if (
-      String(user.status || "")
-        .toLowerCase() !== "active"
-    ) {
+    if ((user.status || "").toLowerCase() !== "active") {
 
       return res.status(403).json({
         message: "User inactive ❌"
@@ -1124,48 +1111,48 @@ app.post("/api/login", loginLimiter, async (req, res) => {
 
     }
 
-    /* =====================================
+
+    /* =========================================
        ROLE
-    ===================================== */
+    ========================================= */
 
     const role =
-      String(user.role || "")
-        .toLowerCase()
-        .trim();
+      user.role?.toLowerCase();
 
     const isAdmin =
       role === "admin";
 
-    /* =====================================
-       LOGIN TIME
-    ===================================== */
+    /* =========================================
+       LOGIN TIME CHECK
+    ========================================= */
 
     if (!isAdmin) {
 
-      const indiaHour = Number(
-        new Intl.DateTimeFormat("en-IN", {
-          timeZone: "Asia/Kolkata",
-          hour: "2-digit",
-          hour12: false
-        }).format(new Date())
+      const now = new Date();
+
+      const indiaTime = new Date(
+
+        now.toLocaleString("en-US", {
+          timeZone: "Asia/Kolkata"
+        })
+
       );
 
-      if (
-        indiaHour < 10 ||
-        indiaHour >= 19
-      ) {
+      const hour =
+        indiaTime.getHours();
+
+      if (hour < 10 || hour >= 19) {
 
         return res.status(403).json({
+
           message:
             "Login allowed only between 10 AM and 7 PM ❌"
+
         });
 
       }
-    }
 
-    /* =====================================
-       JWT
-    ===================================== */
+    }
 
     const token = jwt.sign(
 
@@ -1181,14 +1168,9 @@ app.post("/api/login", loginLimiter, async (req, res) => {
         expiresIn: "7d",
         issuer: "crm-backend"
       }
-
     );
 
-    /* =====================================
-       RESPONSE
-    ===================================== */
-
-    return res.json({
+    res.json({
 
       token,
 
@@ -1203,29 +1185,26 @@ app.post("/api/login", loginLimiter, async (req, res) => {
         role,
 
         can_import:
-          isAdmin || !!user.can_import,
+          isAdmin || user.can_import,
 
         can_export:
-          isAdmin || !!user.can_export,
+          isAdmin || user.can_export,
 
         can_delete_lead:
-          isAdmin || !!user.can_delete_lead,
-
-        can_access_project:
-          isAdmin || !!user.can_access_project
+          isAdmin || user.can_delete_lead,
 
       }
 
     });
 
-  } catch (err) {
+  }
 
-    console.error(
-      "LOGIN ERROR:",
-      err
-    );
 
-    return res.status(500).json({
+  catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
       message: "Login error ❌"
     });
 
