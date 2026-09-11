@@ -15,6 +15,8 @@ const compression = require("compression");
 
 const app = express();
 
+
+
 /* =========================================
    SOCKET.IO SERVER
 ========================================= */
@@ -892,6 +894,178 @@ const CallLog = mongoose.model(
   "CallLog",
   callLogSchema
 );
+
+/* =========================================
+   AUTO ASSIGN LEAD TO EXECUTIVE
+   ROUND ROBIN
+========================================= */
+
+async function autoAssignLead() {
+
+  try {
+
+    /* =====================================
+       GET ACTIVE EXECUTIVES
+    ===================================== */
+
+    const executives = await User.find({
+
+      role: {
+        $regex: /^executive$/i
+      },
+
+      status: {
+        $ne: "inactive"
+      },
+
+      email: {
+        $exists: true,
+        $nin: ["", null]
+      }
+
+    })
+    .sort({
+      _id: 1
+    });
+
+
+    /* =====================================
+       NO EXECUTIVE FOUND
+    ===================================== */
+
+    if (!executives.length) {
+
+      console.log(
+        "No active executive found for auto assignment"
+      );
+
+      return {
+
+        assigned_to: "",
+
+        assigned_to_email: ""
+
+      };
+
+    }
+
+
+    /* =====================================
+       FIND LAST AUTO ASSIGNED LEAD
+    ===================================== */
+
+    const lastLead =
+      await Lead.findOne({
+
+        assigned_to: {
+          $exists: true,
+
+          $nin: [
+            "",
+            null,
+            "null",
+            "undefined"
+          ]
+        }
+
+      })
+      .sort({
+
+        assignedDate: -1,
+
+        createdAt: -1
+
+      });
+
+
+    /* =====================================
+       DEFAULT EXECUTIVE
+    ===================================== */
+
+    let index = 0;
+
+
+    /* =====================================
+       FIND NEXT EXECUTIVE
+    ===================================== */
+
+    if (lastLead) {
+
+      const lastIndex =
+        executives.findIndex(
+
+          (user) =>
+
+            user.email
+              ?.toLowerCase()
+              .trim() ===
+
+            lastLead.assigned_to
+              ?.toLowerCase()
+              .trim()
+
+        );
+
+
+      if (lastIndex >= 0) {
+
+        index =
+          (lastIndex + 1) %
+          executives.length;
+
+      }
+
+    }
+
+
+    /* =====================================
+       SELECT EXECUTIVE
+    ===================================== */
+
+    const executive =
+      executives[index];
+
+
+    const email =
+      executive.email
+        ?.toLowerCase()
+        .trim();
+
+
+    console.log(
+      "AUTO ASSIGNED TO:",
+      email
+    );
+
+
+    return {
+
+      assigned_to: email,
+
+      assigned_to_email: email
+
+    };
+
+  }
+
+  catch (err) {
+
+    console.log(
+      "AUTO ASSIGN ERROR:",
+      err
+    );
+
+    return {
+
+      assigned_to: "",
+
+      assigned_to_email: ""
+
+    };
+
+  }
+
+}
 
 /* =========================================
    BOOKING SCHEMA
@@ -2059,6 +2233,8 @@ app.get("/api/managers", async (req, res) => {
   }
 
 });
+
+
 
 /* =========================================
    CSV UPLOAD
@@ -7480,48 +7656,81 @@ app.post("/api/99acres-webhook", async (req, res) => {
 
     }
 
-    /* =========================
-       CREATE LEAD
-    ========================= */
+/* =========================================
+   AUTO ASSIGN EXECUTIVE
+========================================= */
 
-    const lead = await Lead.create({
+const assignment =
+  await autoAssignLead();
 
-      name:
-        data.name ||
-        data.customer_name ||
-        "",
 
-      phone,
+/* =========================================
+   CREATE 99ACRES LEAD
+========================================= */
 
-      email:
-        data.email || "",
+const lead = await Lead.create({
 
-      source: "99acres",
+  name:
+    data.name ||
+    data.customer_name ||
+    "",
 
-      subSource: "99acres",
+  phone,
 
-      project:
-        data.project ||
-        data.project_name ||
-        "",
+  email:
+    data.email ||
+    "",
 
-      status: "New",
+  source:
+    "99acres",
 
-      assigned_to: "",
+  subSource:
+    "99acres",
 
-      created_by: "99acres"
+  project:
+    data.project ||
+    data.project_name ||
+    "",
 
-    });
+  status:
+    "New",
 
-    res.json({
+  /* =====================================
+     AUTOMATIC EXECUTIVE ASSIGNMENT
+  ===================================== */
 
-      success: true,
+  assigned_to:
+    assignment.assigned_to,
 
-      message: "Lead Added ✅",
+  assigned_to_email:
+    assignment.assigned_to_email,
 
-      lead
+  assignedDate:
+    assignment.assigned_to
+      ? new Date()
+      : null,
 
-    });
+  created_by:
+    "99acres"
+
+});
+
+   res.json({
+
+  success: true,
+
+  message:
+    "Lead Added & Assigned Successfully ✅",
+
+  assigned_to:
+    lead.assigned_to,
+
+  assigned_to_email:
+    lead.assigned_to_email,
+
+  lead
+
+});
 
   }
 
