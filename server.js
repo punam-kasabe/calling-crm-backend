@@ -875,6 +875,175 @@ const Lead = mongoose.model(
   leadSchema
 );
 
+/* =========================================
+   AUTO ASSIGN LEAD TO EXECUTIVE
+========================================= */
+
+async function autoAssignLead() {
+
+  try {
+
+    /* =====================================
+       GET ACTIVE EXECUTIVES
+    ===================================== */
+
+    const executives = await User.find({
+
+      role: {
+        $regex: /^executive$/i
+      },
+
+      status: {
+        $ne: "inactive"
+      }
+
+    }).sort({
+
+      _id: 1
+    });
+
+
+    /* =====================================
+       NO EXECUTIVE FOUND
+    ===================================== */
+
+    if (!executives.length) {
+
+      console.log(
+        "No active executive available"
+      );
+
+      return {
+
+        assigned_to: "",
+
+        assigned_to_email: ""
+
+      };
+
+    }
+
+
+    /* =====================================
+       FIND LAST AUTO ASSIGNED LEAD
+    ===================================== */
+
+    const lastLead =
+      await Lead.findOne({
+
+        assigned_to: {
+
+          $exists: true,
+
+          $nin: [
+            "",
+            null,
+            "null",
+            "undefined"
+          ]
+
+        }
+
+      }).sort({
+
+        assignedDate: -1,
+
+        createdAt: -1
+
+      });
+
+
+    /* =====================================
+       DEFAULT EXECUTIVE INDEX
+    ===================================== */
+
+    let index = 0;
+
+
+    /* =====================================
+       FIND NEXT EXECUTIVE
+    ===================================== */
+
+    if (lastLead) {
+
+      const lastIndex =
+        executives.findIndex(
+
+          (user) =>
+
+            user.email
+              ?.toLowerCase()
+              .trim() ===
+
+            lastLead.assigned_to
+              ?.toLowerCase()
+              .trim()
+
+        );
+
+
+      if (lastIndex >= 0) {
+
+        index =
+          (lastIndex + 1) %
+          executives.length;
+
+      }
+
+    }
+
+
+    /* =====================================
+       SELECT EXECUTIVE
+    ===================================== */
+
+    const executive =
+      executives[index];
+
+
+    const executiveEmail =
+      executive.email
+        ?.toLowerCase()
+        .trim();
+
+
+    console.log(
+      "AUTO ASSIGNED TO:",
+      executiveEmail
+    );
+
+
+    return {
+
+      assigned_to:
+        executiveEmail,
+
+      assigned_to_email:
+        executiveEmail
+
+    };
+
+  }
+
+  catch (err) {
+
+    console.log(
+      "AUTO ASSIGN ERROR:",
+      err
+    );
+
+    return {
+
+      assigned_to: "",
+
+      assigned_to_email: ""
+
+    };
+
+  }
+
+}
+
 const Visit = mongoose.model(
   "Visit",
   visitSchema
@@ -2325,55 +2494,7 @@ app.post(
 
     continue;
   }
-/* =====================================
-   GET ASSIGNED EXECUTIVE
-===================================== */
-
-const leadAssignedTo =
-  data["assigned_to"]
-    ? data["assigned_to"]
-        .toLowerCase()
-        .trim()
-    : assigned_to;
-
-
-/* =====================================
-   CREATE LEAD
-===================================== */
-
-await Lead.create({
-
-  name:
-    data["Name"] || "",
-
-  phone,
-
-  email:
-    data["Email"] || "",
-
-  source:
-    data["Lead Source"] || "",
-
-  project:
-    data["Project"] || "",
-
-  created_date:
-    new Date(),
-
-  status:
-    data["Lead Status"] || "New",
-
-  assigned_to:
-    leadAssignedTo,
-
-  assigned_to_email:
-    leadAssignedTo,
-
-  created_by
-
-});
-
-
+ 
 /* =====================================
    COUNT LEADS PER EXECUTIVE
 ===================================== */
