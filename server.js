@@ -4166,42 +4166,45 @@ app.put(
 
   }
 );
+
 /* =========================================
    FILTER LEADS
 ========================================= */
 
 app.post(
   "/api/filter-leads",
-
   async (req, res) => {
 
     try {
 
       const {
-  email,
-  role,
-  page = 1,
-  filters = {},
-  search = ""
-} = req.body;
+        email,
+        role,
+        page = 1,
+        filters = {},
+        search = ""
+      } = req.body;
 
-const limit = 10;
-const skip = (page - 1) * limit;
+      const limit = 10;
+      const skip = (page - 1) * limit;
 
-let query = {};
+      let query = {};
 
-// Hide Reception created leads
-query.created_by = {
-  $ne: "Reception"
-};
+      // =========================================
+      // HIDE RECEPTION CREATED LEADS
+      // =========================================
 
-      const userRole =
-        role?.toLowerCase();
+      query.created_by = {
+        $ne: "Reception"
+      };
 
-      if (
-        userRole ===
-        "executive"
-      ) {
+      // =========================================
+      // ROLE FILTER
+      // =========================================
+
+      const userRole = role?.toLowerCase();
+
+      if (userRole === "executive") {
 
         query.assigned_to =
           email
@@ -4210,10 +4213,7 @@ query.created_by = {
 
       }
 
-      if (
-        userRole ===
-        "manager"
-      ) {
+      if (userRole === "manager") {
 
         query.assigned_manager =
           email
@@ -4222,29 +4222,46 @@ query.created_by = {
 
       }
 
+      // =========================================
+      // STATUS FILTER
+      // =========================================
+
       if (
-  filters.status &&
-  filters.status.length > 0
-) {
-  query.status = {
-    $in: filters.status.map(
-      (s) => s.value
-    )
-  };
-}
+        filters.status &&
+        filters.status.length > 0
+      ) {
 
-      /* ASSIGNED FILTER (Multiple Executive) */
+        query.status = {
+          $in: filters.status.map(
+            (s) => s.value
+          )
+        };
 
-if (
-  filters.assigned &&
-  filters.assigned.length > 0
-) {
-  query.assigned_to = {
-    $in: filters.assigned.map((u) =>
-      u.value.toLowerCase().trim()
-    ),
-  };
-}
+      }
+
+      // =========================================
+      // ASSIGNED TO FILTER
+      // =========================================
+
+      if (
+        filters.assigned &&
+        filters.assigned.length > 0
+      ) {
+
+        query.assigned_to = {
+          $in: filters.assigned.map(
+            (u) =>
+              u.value
+                .toLowerCase()
+                .trim()
+          )
+        };
+
+      }
+
+      // =========================================
+      // PROJECT FILTER
+      // =========================================
 
       if (filters.project) {
 
@@ -4256,149 +4273,228 @@ if (
 
       }
 
-/* CREATED DATE FILTER */
+      // =========================================
+      // CREATED DATE FILTER
+      // =========================================
 
-if (filters.createdFrom || filters.createdTo) {
+      if (
+        filters.createdFrom ||
+        filters.createdTo
+      ) {
 
-  query.createdAt = {};
+        query.createdAt = {};
 
-  if (filters.createdFrom) {
+        if (filters.createdFrom) {
 
-    query.createdAt.$gte = new Date(filters.createdFrom);
-  }
+          query.createdAt.$gte =
+            new Date(
+              filters.createdFrom
+            );
 
-  if (filters.createdTo) {
+        }
 
-    const toDate = new Date(filters.createdTo);
+        if (filters.createdTo) {
 
-    toDate.setHours(23, 59, 59, 999);
+          const toDate =
+            new Date(
+              filters.createdTo
+            );
 
-    query.createdAt.$lte = toDate;
+          toDate.setHours(
+            23,
+            59,
+            59,
+            999
+          );
 
-  }
+          query.createdAt.$lte =
+            toDate;
 
-}
+        }
 
-
-      /* SEARCH */
-
-if (search && search.trim()) {
-
-  query.$or = [
-
-    {
-      name: {
-        $regex: search.trim(),
-        $options: "i"
       }
-    },
 
-    {
-      phone: {
-        $regex: search.trim(),
-        $options: "i"
+      // =========================================
+      // SEARCH
+      // =========================================
+
+      if (search && search.trim()) {
+
+        const searchValue =
+          search.trim();
+
+        query.$or = [
+
+          {
+            name: {
+              $regex: searchValue,
+              $options: "i"
+            }
+          },
+
+          {
+            phone: {
+              $regex: searchValue,
+              $options: "i"
+            }
+          },
+
+          {
+            source: {
+              $regex: searchValue,
+              $options: "i"
+            }
+          },
+
+          {
+            project: {
+              $regex: searchValue,
+              $options: "i"
+            }
+          },
+
+          {
+            status: {
+              $regex: searchValue,
+              $options: "i"
+            }
+          },
+
+          {
+            assigned_to: {
+              $regex: searchValue,
+              $options: "i"
+            }
+          },
+
+          {
+            assigned_manager: {
+              $regex: searchValue,
+              $options: "i"
+            }
+          }
+
+        ];
+
       }
-    },
-{
-  source:{
-    $regex:search.trim(),
-    $options:"i"
-  }
-},
-    {
-      project: {
-        $regex: search.trim(),
-        $options: "i"
-      }
-    },
 
-    {
-      status: {
-        $regex: search.trim(),
-        $options: "i"
-      }
-    },
-
-    {
-      assigned_to: {
-        $regex: search.trim(),
-        $options: "i"
-      }
-    },
-
-    {
-      assigned_manager: {
-        $regex: search.trim(),
-        $options: "i"
-      }
-    }
-
-  ];
-
-}
-
+      // =========================================
+      // FILTERED TOTAL
+      // =========================================
 
       const total =
         await Lead.countDocuments(
           query
         );
 
-       const totalLeads =
-  await Lead.countDocuments(query);
+      // =========================================
+      // 🔥 ALL DATABASE LEADS
+      // =========================================
+      // This gives complete MongoDB lead count
+      // Example: 10425
 
-const hotLeads =
-  await Lead.countDocuments({
-    ...query,
-    status: "Interested"
-  });
+      const totalAllLeads =
+        await Lead.countDocuments({});
 
-const newLeads =
-  await Lead.countDocuments({
-    ...query,
-    status: "New"
-  });
+      // =========================================
+      // HOT LEADS
+      // =========================================
 
-const bookedLeads =
-  await Lead.countDocuments({
-    ...query,
-    status: "Booked"
-  });
+      const hotLeads =
+        await Lead.countDocuments({
+          ...query,
+          status: "Interested"
+        });
 
-const inactiveLeads =
-  await Lead.countDocuments({
-    ...query,
-    status: "Not Interested"
-  });
+      // =========================================
+      // NEW LEADS
+      // =========================================
 
-const today = new Date();
-today.setHours(0, 0, 0, 0);
+      const newLeads =
+        await Lead.countDocuments({
+          ...query,
+          status: "New"
+        });
 
-const tomorrow = new Date(today);
-tomorrow.setDate(tomorrow.getDate() + 1);
+      // =========================================
+      // BOOKED LEADS
+      // =========================================
 
-const todayFollowups =
-await Lead.countDocuments({
-  ...query,
-  next_call_date: {
-    $gte: today,
-    $lt: tomorrow
-  }
-});
+      const bookedLeads =
+        await Lead.countDocuments({
+          ...query,
+          status: "Booked"
+        });
 
-const backlog =
-await Lead.countDocuments({
-  ...query,
-  $or: [
-    {
-      next_call_date: null
-    },
-    {
-      next_call_date: {
-        $exists: false
-      }
-    }
-  ]
-});
+      // =========================================
+      // INACTIVE LEADS
+      // =========================================
+
+      const inactiveLeads =
+        await Lead.countDocuments({
+          ...query,
+          status: "Not Interested"
+        });
+
+      // =========================================
+      // TODAY FOLLOWUPS
+      // =========================================
+
+      const today = new Date();
+
+      today.setHours(
+        0,
+        0,
+        0,
+        0
+      );
+
+      const tomorrow =
+        new Date(today);
+
+      tomorrow.setDate(
+        tomorrow.getDate() + 1
+      );
+
+      const todayFollowups =
+        await Lead.countDocuments({
+          ...query,
+
+          next_call_date: {
+            $gte: today,
+            $lt: tomorrow
+          }
+
+        });
+
+      // =========================================
+      // BACKLOG
+      // =========================================
+
+      const backlog =
+        await Lead.countDocuments({
+
+          ...query,
+
+          $or: [
+
+            {
+              next_call_date: null
+            },
+
+            {
+              next_call_date: {
+                $exists: false
+              }
+            }
+
+          ]
+
+        });
+
+      // =========================================
+      // FETCH PAGINATED LEADS
+      // =========================================
 
       const leads =
         await Lead.find(query)
@@ -4411,35 +4507,66 @@ await Lead.countDocuments({
 
           .limit(limit);
 
+      // =========================================
+      // RESPONSE
+      // =========================================
+
       res.json({
-  data: leads,
-  total,
-  totalPages: Math.ceil(total / limit),
-  totalLeads,
-  totalAllLeads,
-  hotLeads,
-  newLeads,
-  bookedLeads,
-  inactiveLeads,
-  todayFollowups,
-  backlog
-});
+
+        data: leads,
+
+        // Filtered count
+        total,
+
+        // Pagination
+        totalPages:
+          Math.ceil(
+            total / limit
+          ),
+
+        // 🔥 ALL DATABASE LEADS
+        totalAllLeads,
+
+        // Stats
+        totalLeads:
+          totalAllLeads,
+
+        hotLeads,
+
+        newLeads,
+
+        bookedLeads,
+
+        inactiveLeads,
+
+        todayFollowups,
+
+        backlog
+
+      });
 
     }
 
     catch (err) {
 
-  console.log("FILTER ERROR =", err);
+      console.error(
+        "FILTER LEADS ERROR =",
+        err
+      );
 
-  res.status(500).json({
-    message: err.message
-  });
+      res.status(500).json({
 
-}
+        message:
+          err.message
+
+      });
+
+    }
 
   }
-
 );
+
+
 
 
 app.get("/api/all-leads", async (req, res) => {
