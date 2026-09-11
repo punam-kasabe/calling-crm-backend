@@ -4416,6 +4416,7 @@ await Lead.countDocuments({
   total,
   totalPages: Math.ceil(total / limit),
   totalLeads,
+  totalAllLeads,
   hotLeads,
   newLeads,
   bookedLeads,
