@@ -1304,9 +1304,9 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
         project: location,
 
-        source: "Collect.chat",
+        source: "Chatbot",
 
-        subSource: "Collect.chat",
+        subSource: "Chatbot",
 
         status: "New",
 
