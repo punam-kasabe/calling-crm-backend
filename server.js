@@ -875,174 +875,6 @@ const Lead = mongoose.model(
   leadSchema
 );
 
-/* =========================================
-   AUTO ASSIGN LEAD TO EXECUTIVE
-========================================= */
-
-async function autoAssignLead() {
-
-  try {
-
-    /* =====================================
-       GET ACTIVE EXECUTIVES
-    ===================================== */
-
-    const executives = await User.find({
-
-      role: {
-        $regex: /^executive$/i
-      },
-
-      status: {
-        $ne: "inactive"
-      }
-
-    }).sort({
-
-      _id: 1
-    });
-
-
-    /* =====================================
-       NO EXECUTIVE FOUND
-    ===================================== */
-
-    if (!executives.length) {
-
-      console.log(
-        "No active executive available"
-      );
-
-      return {
-
-        assigned_to: "",
-
-        assigned_to_email: ""
-
-      };
-
-    }
-
-
-    /* =====================================
-       FIND LAST AUTO ASSIGNED LEAD
-    ===================================== */
-
-    const lastLead =
-      await Lead.findOne({
-
-        assigned_to: {
-
-          $exists: true,
-
-          $nin: [
-            "",
-            null,
-            "null",
-            "undefined"
-          ]
-
-        }
-
-      }).sort({
-
-        assignedDate: -1,
-
-        createdAt: -1
-
-      });
-
-
-    /* =====================================
-       DEFAULT EXECUTIVE INDEX
-    ===================================== */
-
-    let index = 0;
-
-
-    /* =====================================
-       FIND NEXT EXECUTIVE
-    ===================================== */
-
-    if (lastLead) {
-
-      const lastIndex =
-        executives.findIndex(
-
-          (user) =>
-
-            user.email
-              ?.toLowerCase()
-              .trim() ===
-
-            lastLead.assigned_to
-              ?.toLowerCase()
-              .trim()
-
-        );
-
-
-      if (lastIndex >= 0) {
-
-        index =
-          (lastIndex + 1) %
-          executives.length;
-
-      }
-
-    }
-
-
-    /* =====================================
-       SELECT EXECUTIVE
-    ===================================== */
-
-    const executive =
-      executives[index];
-
-
-    const executiveEmail =
-      executive.email
-        ?.toLowerCase()
-        .trim();
-
-
-    console.log(
-      "AUTO ASSIGNED TO:",
-      executiveEmail
-    );
-
-
-    return {
-
-      assigned_to:
-        executiveEmail,
-
-      assigned_to_email:
-        executiveEmail
-
-    };
-
-  }
-
-  catch (err) {
-
-    console.log(
-      "AUTO ASSIGN ERROR:",
-      err
-    );
-
-    return {
-
-      assigned_to: "",
-
-      assigned_to_email: ""
-
-    };
-
-  }
-
-}
 
 const Visit = mongoose.model(
   "Visit",
@@ -1236,6 +1068,8 @@ async function autoAssignLead() {
 
 }
 
+
+
 /* =========================================
    BOOKING SCHEMA
 ========================================= */
@@ -1395,6 +1229,167 @@ const upload = multer({
     } else {
       cb(new Error("Only CSV files allowed ❌"));
     }
+
+  }
+
+});
+
+/* =========================================
+   COLLECT.CHAT WEBHOOK
+========================================= */
+
+app.post("/api/collectchat-webhook", async (req, res) => {
+
+  try {
+
+    console.log("COLLECTCHAT DATA =", req.body);
+
+    const name =
+      req.body.name ||
+      req.body.client_name ||
+      "";
+
+    const phone =
+      normalizePhone(
+        req.body.phone ||
+        req.body.mobile ||
+        ""
+      );
+
+    const location =
+      req.body.location ||
+      "";
+
+    if (!phone) {
+
+      return res.status(400).json({
+        success: false,
+        message: "Phone missing"
+      });
+
+    }
+
+    const existingLead =
+      await Lead.findOne({
+        phone
+      });
+
+    if (existingLead) {
+
+      return res.json({
+        success: true,
+        duplicate: true,
+        leadId: existingLead._id
+      });
+
+    }
+
+    /* =====================================
+       AUTO ASSIGN EXECUTIVE
+    ===================================== */
+
+    const assignment =
+      await autoAssignLead();
+
+    /* =====================================
+       CREATE LEAD
+    ===================================== */
+
+    const lead =
+      await Lead.create({
+
+        name,
+
+        phone,
+
+        project: location,
+
+        source: "Collect.chat",
+
+        subSource: "Collect.chat",
+
+        status: "New",
+
+        assigned_to:
+          assignment.assigned_to,
+
+        assigned_to_email:
+          assignment.assigned_to_email,
+
+        assignedDate:
+          assignment.assigned_to
+            ? new Date()
+            : null,
+
+        created_by:
+          "Collect.chat",
+
+        created_date:
+          new Date()
+
+      });
+
+    /* =====================================
+       REAL-TIME NOTIFICATION
+    ===================================== */
+
+    if (assignment.assigned_to_email) {
+
+      io.to(
+        `executive_${assignment.assigned_to_email}`
+      ).emit(
+        "new-lead",
+        {
+          leadId: lead._id,
+          name: lead.name,
+          phone: lead.phone,
+          project: lead.project,
+          source: "Collect.chat"
+        }
+      );
+
+    }
+
+    console.log(
+      "COLLECTCHAT LEAD CREATED:",
+      lead._id
+    );
+
+    res.json({
+
+      success: true,
+
+      message:
+        "Lead created successfully",
+
+      leadId:
+        lead._id,
+
+      assigned_to:
+        assignment.assigned_to
+
+    });
+
+  }
+
+  catch (err) {
+
+    console.error(
+      "COLLECTCHAT WEBHOOK ERROR:",
+      err
+    );
+
+    res.status(500).json({
+
+      success: false,
+
+      message:
+        "Webhook failed",
+
+      error:
+        err.message
+
+    });
 
   }
 
