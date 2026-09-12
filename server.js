@@ -1288,9 +1288,10 @@ app.post("/api/collectchat-webhook", async (req, res) => {
        AUTO ASSIGN EXECUTIVE
     ===================================== */
 
-    const assignment =
-      await autoAssignLead();
-
+            const assignment = {
+          assigned_to: "jyoti@zaminwale.com",
+               assigned_to_email: "jyoti@zaminwale.com"
+                };
     /* =====================================
        CREATE LEAD
     ===================================== */
@@ -1322,7 +1323,7 @@ app.post("/api/collectchat-webhook", async (req, res) => {
             : null,
 
         created_by:
-          "Collect.chat",
+          "Chatbot",
 
         created_date:
           new Date()
