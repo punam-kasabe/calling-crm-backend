@@ -7868,6 +7868,83 @@ app.get("/", (req, res) => {
   res.send("CRM Backend Running ✅");
 });
 
+// ==========================================
+// META LEAD ADS WEBHOOK
+// ==========================================
+
+const META_VERIFY_TOKEN = process.env.META_VERIFY_TOKEN;
+
+// META WEBHOOK VERIFICATION
+app.get("/api/meta-webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  console.log("META WEBHOOK VERIFY:", {
+    mode,
+    tokenReceived: !!token,
+    challengeReceived: !!challenge,
+  });
+
+  if (
+    mode === "subscribe" &&
+    token === META_VERIFY_TOKEN
+  ) {
+    console.log("META WEBHOOK VERIFIED ✅");
+    return res.status(200).send(challenge);
+  }
+
+  console.log("META WEBHOOK VERIFICATION FAILED ❌");
+
+  return res.sendStatus(403);
+});
+
+
+// META LEAD WEBHOOK
+app.post("/api/meta-webhook", async (req, res) => {
+  try {
+    console.log(
+      "META WEBHOOK DATA =",
+      JSON.stringify(req.body, null, 2)
+    );
+
+    // Meta ला लगेच 200 द्या
+    res.sendStatus(200);
+
+    const entries = req.body?.entry || [];
+
+    for (const entry of entries) {
+      const changes = entry?.changes || [];
+
+      for (const change of changes) {
+        if (change.field !== "leadgen") {
+          continue;
+        }
+
+        const leadgenId =
+          change.value?.leadgen_id;
+
+        if (!leadgenId) {
+          console.log("META: leadgen_id missing");
+          continue;
+        }
+
+        console.log(
+          "META LEADGEN ID =",
+          leadgenId
+        );
+
+        // पुढे Graph API मधून lead details घेऊ
+      }
+    }
+  } catch (error) {
+    console.error(
+      "META WEBHOOK ERROR:",
+      error
+    );
+  }
+});
+
 /* =========================================
    SAVE DAILY REPORT
 ========================================= */
