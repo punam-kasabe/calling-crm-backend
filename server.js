@@ -413,7 +413,41 @@ assignedDate: {
   default: Date.now
   },
 
- 
+ // =============================
+// META LEAD ADS FIELDS
+// =============================
+meta_lead_id: {
+  type: String,
+  index: true,
+  sparse: true
+},
+
+meta_page_id: {
+  type: String,
+  default: ""
+},
+
+meta_form_id: {
+  type: String,
+  default: ""
+},
+
+meta_ad_id: {
+  type: String,
+  default: ""
+},
+
+meta_created_time: {
+  type: Date,
+  default: null
+},
+
+meta_field_data: {
+  type: mongoose.Schema.Types.Mixed,
+  default: {}
+},
+
+
   next_call_date: {
     type: Date,
     default: null
@@ -875,6 +909,139 @@ const Lead = mongoose.model(
   leadSchema
 );
 
+// ==========================================
+// META LEAD ROUND-ROBIN COUNTER
+// ==========================================
+
+const MetaAssignmentCounterSchema = new mongoose.Schema(
+  {
+    key: {
+      type: String,
+      unique: true,
+      default: "meta_lead_assignment"
+    },
+
+    value: {
+      type: Number,
+      default: 0
+    }
+  },
+  {
+    timestamps: true
+  }
+);
+
+const MetaAssignmentCounter =
+  mongoose.models.MetaAssignmentCounter ||
+  mongoose.model(
+    "MetaAssignmentCounter",
+    MetaAssignmentCounterSchema
+  );
+
+  // ==========================================
+// META LEAD EXECUTIVES
+// ==========================================
+
+const META_EXECUTIVES = [
+  {
+    name: "Jyoti",
+    email: "jyoti@zaminwale.com"
+  },
+  {
+    name: "Vrushali",
+    email: "vrushali@zaminwale.com"
+  },
+  {
+    name: "Rakhi",
+    email: "rakhi@zaminwale.com"
+  },
+  {
+    name: "Shaila",
+    email: "shaila@zaminwale.com"
+  },
+  {
+    name: "Vidya",
+    email: "vidyazamin@gmail.com"
+  },
+  {
+    name: "Manisha",
+    email: "manisha@zaminwale.com"
+  }
+];
+
+
+// ==========================================
+// META ROUND-ROBIN ASSIGNMENT
+// ==========================================
+
+async function assignMetaLead() {
+  const counter =
+    await MetaAssignmentCounter.findOneAndUpdate(
+      {
+        key: "meta_lead_assignment"
+      },
+      {
+        $setOnInsert: {
+          key: "meta_lead_assignment",
+          value: 0
+        },
+        $inc: {
+          value: 1
+        }
+      },
+      {
+        new: true,
+        upsert: true
+      }
+    );
+
+  const index =
+    (counter.value - 1 + META_EXECUTIVES.length) %
+    META_EXECUTIVES.length;
+
+  const executive = META_EXECUTIVES[index];
+
+  return {
+    assigned_to: executive.name,
+    assigned_to_email: executive.email
+  };
+}
+
+// ==========================================
+// META FIELD DATA PARSER
+// ==========================================
+
+function getMetaField(fieldData, possibleNames = []) {
+  if (!Array.isArray(fieldData)) {
+    return "";
+  }
+
+  const wantedNames = possibleNames.map((name) =>
+    String(name)
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "_")
+  );
+
+  const field = fieldData.find((item) => {
+    const fieldName = String(item?.name || "")
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "_");
+
+    return wantedNames.includes(fieldName);
+  });
+
+  if (!field) {
+    return "";
+  }
+
+  if (Array.isArray(field.values)) {
+    return String(field.values[0] || "").trim();
+  }
+
+  return String(field.values || "").trim();
+}
 
 const Visit = mongoose.model(
   "Visit",
@@ -7900,15 +8067,22 @@ app.get("/api/meta-webhook", (req, res) => {
 });
 
 
-// META LEAD WEBHOOK
+// ==========================================
+// META LEAD ADS WEBHOOK
+// ==========================================
+
 app.post("/api/meta-webhook", async (req, res) => {
   try {
+    console.log(
+      "=========================================="
+    );
+
     console.log(
       "META WEBHOOK DATA =",
       JSON.stringify(req.body, null, 2)
     );
 
-    // Meta ला लगेच 200 द्या
+    // Meta ला लगेच 200 response
     res.sendStatus(200);
 
     const entries = req.body?.entry || [];
@@ -7917,15 +8091,21 @@ app.post("/api/meta-webhook", async (req, res) => {
       const changes = entry?.changes || [];
 
       for (const change of changes) {
-        if (change.field !== "leadgen") {
+        if (change?.field !== "leadgen") {
           continue;
         }
 
-        const leadgenId =
-          change.value?.leadgen_id;
+        const value = change?.value || {};
+
+        const leadgenId = value?.leadgen_id;
+        const pageId = value?.page_id || entry?.id;
+        const formId = value?.form_id || "";
+        const adId = value?.ad_id || "";
 
         if (!leadgenId) {
-          console.log("META: leadgen_id missing");
+          console.log(
+            "META: leadgen_id missing ❌"
+          );
           continue;
         }
 
@@ -7934,16 +8114,309 @@ app.post("/api/meta-webhook", async (req, res) => {
           leadgenId
         );
 
-        // पुढे Graph API मधून lead details घेऊ
+        // ======================================
+        // DUPLICATE CHECK
+        // ======================================
+
+        const existingLead = await Lead.findOne({
+          meta_lead_id: String(leadgenId)
+        }).lean();
+
+        if (existingLead) {
+          console.log(
+            "META DUPLICATE LEAD SKIPPED:",
+            leadgenId
+          );
+
+          continue;
+        }
+
+
+        // ======================================
+        // GET LEAD DETAILS FROM META
+        // ======================================
+
+        const graphUrl =
+          `https://graph.facebook.com/v26.0/${encodeURIComponent(
+            leadgenId
+          )}`;
+
+        const metaResponse = await axios.get(
+          graphUrl,
+          {
+            params: {
+              access_token:
+                process.env.META_PAGE_ACCESS_TOKEN
+            },
+
+            timeout: 15000
+          }
+        );
+
+        const metaLead =
+          metaResponse.data || {};
+
+        console.log(
+          "META LEAD DETAILS =",
+          JSON.stringify(
+            metaLead,
+            null,
+            2
+          )
+        );
+
+
+        // ======================================
+        // EXTRACT FIELD DATA
+        // ======================================
+
+        const fieldData =
+          metaLead?.field_data || [];
+
+        const name = getMetaField(
+          fieldData,
+          [
+            "full_name",
+            "name",
+            "your_name",
+            "client_name"
+          ]
+        );
+
+        const phoneRaw = getMetaField(
+          fieldData,
+          [
+            "phone_number",
+            "phone",
+            "mobile",
+            "mobile_number",
+            "phone_no"
+          ]
+        );
+
+        const email = getMetaField(
+          fieldData,
+          [
+            "email",
+            "email_address"
+          ]
+        );
+
+        const city = getMetaField(
+          fieldData,
+          [
+            "city",
+            "location"
+          ]
+        );
+
+        const project = getMetaField(
+          fieldData,
+          [
+            "project",
+            "project_name",
+            "interested_project",
+            "choose_your_project",
+            "location"
+          ]
+        );
+
+
+        // ======================================
+        // NORMALIZE PHONE
+        // ======================================
+
+        const phone =
+          normalizePhone(phoneRaw);
+
+
+        if (!phone) {
+          console.log(
+            "META LEAD PHONE MISSING ❌",
+            leadgenId
+          );
+
+          continue;
+        }
+
+
+        // ======================================
+        // PHONE DUPLICATE CHECK
+        // ======================================
+
+        const existingPhoneLead =
+          await Lead.findOne({
+            phone
+          }).lean();
+
+        if (existingPhoneLead) {
+          console.log(
+            "META PHONE DUPLICATE SKIPPED:",
+            phone
+          );
+
+          continue;
+        }
+
+
+        // ======================================
+        // ROUND ROBIN ASSIGNMENT
+        // ======================================
+
+        const assignment =
+          await assignMetaLead();
+
+        console.log(
+          "META ASSIGNED TO:",
+          assignment
+        );
+
+
+        // ======================================
+        // CREATE LEAD
+        // ======================================
+
+        const lead =
+          await Lead.create({
+            name: name || "Meta Lead",
+
+            phone,
+
+            email: email || "",
+
+            city: city || "",
+
+            project: project || "",
+
+            source: "Meta Lead Ads",
+
+            subSource: "Meta",
+
+            status: "New",
+
+            assigned_to:
+              assignment.assigned_to_email,
+
+            assigned_to_email:
+              assignment.assigned_to_email,
+
+            assignedTo:
+              assignment.assigned_to,
+
+            assignedDate: new Date(),
+
+            created_by: "Meta Lead Ads",
+
+            created_date: new Date(),
+
+            meta_lead_id:
+              String(leadgenId),
+
+            meta_page_id:
+              String(pageId || ""),
+
+            meta_form_id:
+              String(formId || ""),
+
+            meta_ad_id:
+              String(adId || ""),
+
+            meta_created_time:
+              metaLead.created_time
+                ? new Date(
+                    metaLead.created_time
+                  )
+                : null,
+
+            meta_field_data:
+              fieldData
+          });
+
+
+        console.log(
+          "=========================================="
+        );
+
+        console.log(
+          "META LEAD CREATED ✅"
+        );
+
+        console.log(
+          "Mongo ID:",
+          lead._id
+        );
+
+        console.log(
+          "Name:",
+          lead.name
+        );
+
+        console.log(
+          "Phone:",
+          lead.phone
+        );
+
+        console.log(
+          "Assigned:",
+          assignment.assigned_to_email
+        );
+
+        console.log(
+          "=========================================="
+        );
+
+
+        // ======================================
+        // SOCKET NOTIFICATION
+        // ======================================
+
+        if (
+          assignment.assigned_to_email &&
+          typeof io !== "undefined"
+        ) {
+          io.to(
+            `executive_${assignment.assigned_to_email}`
+          ).emit(
+            "new-lead",
+            {
+              leadId: lead._id,
+
+              name: lead.name,
+
+              phone: lead.phone,
+
+              project: lead.project,
+
+              source: "Meta Lead Ads",
+
+              assigned_to:
+                assignment.assigned_to_email
+            }
+          );
+        }
       }
     }
   } catch (error) {
     console.error(
-      "META WEBHOOK ERROR:",
+      "=========================================="
+    );
+
+    console.error(
+      "META WEBHOOK PROCESSING ERROR ❌"
+    );
+
+    console.error(
+      error?.response?.data ||
+      error.message ||
       error
+    );
+
+    console.error(
+      "=========================================="
     );
   }
 });
+
 
 /* =========================================
    SAVE DAILY REPORT
