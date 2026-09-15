@@ -9,10 +9,10 @@ const fs = require("fs");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const helmet = require("helmet");
+const axios = require("axios");
 require("dotenv").config();
 const rateLimit = require("express-rate-limit");
 const compression = require("compression");
-
 const app = express();
 
 
