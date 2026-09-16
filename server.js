@@ -4927,6 +4927,92 @@ app.post(
 
         });
 
+        // =========================================
+// FILTERED ASSIGNED LEADS COUNT
+// CREATED FROM / CREATED TO
+// =========================================
+
+let assignedDateQuery = {
+  created_by: {
+    $ne: "Reception"
+  }
+};
+
+// =========================================
+// ROLE FILTER FOR ASSIGNED COUNT
+// =========================================
+
+if (userRole === "executive") {
+
+  assignedDateQuery.assigned_to =
+    email
+      ?.toLowerCase()
+      .trim();
+
+}
+
+if (userRole === "manager") {
+
+  assignedDateQuery.assigned_manager =
+    email
+      ?.toLowerCase()
+      .trim();
+
+}
+
+// =========================================
+// ASSIGNED DATE FILTER
+// =========================================
+
+if (
+  filters.createdFrom ||
+  filters.createdTo
+) {
+
+  assignedDateQuery.assignedDate = {};
+
+  // FROM DATE
+  if (filters.createdFrom) {
+
+    assignedDateQuery.assignedDate.$gte =
+      new Date(
+        filters.createdFrom
+      );
+
+  }
+
+  // TO DATE
+  if (filters.createdTo) {
+
+    const assignedToDate =
+      new Date(
+        filters.createdTo
+      );
+
+    assignedToDate.setHours(
+      23,
+      59,
+      59,
+      999
+    );
+
+    assignedDateQuery.assignedDate.$lte =
+      assignedToDate;
+
+  }
+
+}
+
+// =========================================
+// FINAL ASSIGNED LEADS COUNT
+// =========================================
+
+const filteredAssignedLeads =
+  await Lead.countDocuments(
+    assignedDateQuery
+  );
+
+
       // =========================================
       // BACKLOG
       // =========================================
@@ -4978,6 +5064,7 @@ app.post(
         // Filtered count
         total,
 
+        filteredAssignedLeads,
          // ⭐ Filtered Leads Card Count
            filteredLeadsCount: total,
 
