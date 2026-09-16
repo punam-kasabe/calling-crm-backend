@@ -4978,6 +4978,9 @@ app.post(
         // Filtered count
         total,
 
+         // ⭐ Filtered Leads Card Count
+           filteredLeadsCount: total,
+
         // Pagination
         totalPages:
           Math.ceil(
