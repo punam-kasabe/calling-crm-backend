@@ -986,7 +986,7 @@ async function assignMetaLead() {
     }
   );
 
-  
+
   const index =
     (counter.value - 1 + META_EXECUTIVES.length) %
     META_EXECUTIVES.length;
@@ -998,6 +998,7 @@ async function assignMetaLead() {
     assigned_to_email: executive.email
   };
 }
+
 // ==========================================
 // META FIELD DATA PARSER
 // ==========================================
@@ -8425,7 +8426,7 @@ app.post("/api/meta-webhook", async (req, res) => {
 
             project: project || "",
 
-            source: "Meta Lead Ads",
+            source: "Facebook",
 
             subSource: "Meta",
 
