@@ -4847,6 +4847,70 @@ app.post(
           query
         );
 
+        // =========================================
+// CRM CREATED LEADS COUNT
+// CREATED FROM -> CREATED TO
+// =========================================
+
+let createdDateQuery = {
+  created_by: {
+    $ne: "Reception"
+  }
+};
+
+// =========================================
+// CREATED FROM DATE
+// =========================================
+
+if (filters.createdFrom) {
+
+  createdDateQuery.createdAt = {
+    $gte: new Date(
+      filters.createdFrom
+    )
+  };
+
+}
+
+// =========================================
+// CREATED TO DATE
+// =========================================
+
+if (filters.createdTo) {
+
+  const endDate =
+    new Date(
+      filters.createdTo
+    );
+
+  endDate.setHours(
+    23,
+    59,
+    59,
+    999
+  );
+
+  if (!createdDateQuery.createdAt) {
+
+    createdDateQuery.createdAt = {};
+
+  }
+
+  createdDateQuery.createdAt.$lte =
+    endDate;
+
+}
+
+// =========================================
+// FINAL CRM CREATED LEADS COUNT
+// =========================================
+
+const createdLeadsCount =
+  await Lead.countDocuments(
+    createdDateQuery
+  );
+
+      
       // =========================================
       // 🔥 ALL DATABASE LEADS
       // =========================================
@@ -5003,15 +5067,6 @@ if (
 
 }
 
-// =========================================
-// FINAL ASSIGNED LEADS COUNT
-// =========================================
-
-const filteredAssignedLeads =
-  await Lead.countDocuments(
-    assignedDateQuery
-  );
-
 
       // =========================================
       // BACKLOG
@@ -5061,10 +5116,11 @@ const filteredAssignedLeads =
 
         data: leads,
 
+
         // Filtered count
         total,
-
-        filteredAssignedLeads,
+        createdLeadsCount,
+    
          // ⭐ Filtered Leads Card Count
            filteredLeadsCount: total,
 
