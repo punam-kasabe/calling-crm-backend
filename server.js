@@ -969,32 +969,24 @@ const META_EXECUTIVES = [
   }
 ];
 
-
-// ==========================================
-// META ROUND-ROBIN ASSIGNMENT
-// ==========================================
-
 async function assignMetaLead() {
-  const counter =
-    await MetaAssignmentCounter.findOneAndUpdate(
-      {
+  const counter = await MetaAssignmentCounter.findOneAndUpdate(
+    { key: "meta_lead_assignment" },
+    {
+      $setOnInsert: {
         key: "meta_lead_assignment"
       },
-      {
-        $setOnInsert: {
-          key: "meta_lead_assignment",
-          value: 0
-        },
-        $inc: {
-          value: 1
-        }
-      },
-      {
-        new: true,
-        upsert: true
+      $inc: {
+        value: 1
       }
-    );
+    },
+    {
+      new: true,
+      upsert: true
+    }
+  );
 
+  
   const index =
     (counter.value - 1 + META_EXECUTIVES.length) %
     META_EXECUTIVES.length;
@@ -1006,7 +998,6 @@ async function assignMetaLead() {
     assigned_to_email: executive.email
   };
 }
-
 // ==========================================
 // META FIELD DATA PARSER
 // ==========================================
