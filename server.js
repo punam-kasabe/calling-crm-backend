@@ -5064,26 +5064,17 @@ if (
       // BACKLOG
       // =========================================
 
-      const backlog =
-        await Lead.countDocuments({
-
-          ...query,
-
-          $or: [
-
-            {
-              next_call_date: null
-            },
-
-            {
-              next_call_date: {
-                $exists: false
-              }
-            }
-
-          ]
-
-        });
+     const backlog = await Lead.countDocuments({
+  ...query,
+  status: {
+    $nin: [
+      "Interested",
+      "Booked",
+      "Site Visit Planned",
+      "Site Visit Done"
+    ]
+  }
+});
 
       // =========================================
       // FETCH PAGINATED LEADS
