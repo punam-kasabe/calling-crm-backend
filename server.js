@@ -1443,14 +1443,54 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
     }
 
-    /* =====================================
-       AUTO ASSIGN EXECUTIVE
-    ===================================== */
+  /* =====================================
+   AUTO ASSIGN EXECUTIVE - ROUND ROBIN
+===================================== */
 
-            const assignment = {
-          assigned_to: "jyoti@zaminwale.com",
-               assigned_to_email: "jyoti@zaminwale.com"
-                };
+const executives = [
+  "jyoti@zaminwale.com",
+  "vrushali@zaminwale.com",
+  "shaila@zaminwale.com",
+  "rakhi@zaminwale.com",
+  "vidya@zaminwale.com"
+];
+
+const properties =
+  PropertiesService.getScriptProperties();
+
+let currentIndex = Number(
+  properties.getProperty("CHATBOT_ASSIGN_INDEX") || "0"
+);
+
+// Current executive
+const assignedExecutive =
+  executives[currentIndex];
+
+/* =====================================
+   ASSIGNMENT
+===================================== */
+
+const assignment = {
+  assigned_to: assignedExecutive,
+  assigned_to_email: assignedExecutive
+};
+
+/* =====================================
+   MOVE TO NEXT EXECUTIVE
+===================================== */
+
+currentIndex =
+  (currentIndex + 1) % executives.length;
+
+properties.setProperty(
+  "CHATBOT_ASSIGN_INDEX",
+  String(currentIndex)
+);
+
+Logger.log(
+  "CHATBOT LEAD ASSIGNED TO = " +
+  assignedExecutive
+);
     /* =====================================
        CREATE LEAD
     ===================================== */
