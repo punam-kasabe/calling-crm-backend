@@ -269,17 +269,26 @@ const leadSchema = new mongoose.Schema({
   source: String,
 
   project: String,
-
-  status: {
+status: {
   type: String,
+  trim: true,
   default: "New",
+
   enum: [
     "New",
     "Fresh",
     "Interested",
+    "Very Interested",
     "Followup",
+    "Follow Up",
     "Visit Done",
+    "Site Visit Planned",
+    "Site Visit Done",
+    "Decision Pending",
+    "Negotiation",
+    "Payment Pending",
     "Booked",
+    "Token Received",
     "Not Interested",
     "Call Cut",
     "Call Back",
@@ -1392,6 +1401,8 @@ const upload = multer({
   }
 
 });
+
+
 /* =========================================
    COLLECT.CHAT WEBHOOK
 ========================================= */
