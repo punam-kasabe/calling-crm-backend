@@ -285,6 +285,7 @@ status: {
     "Site Visit Planned",
     "Site Visit Done",
     "Decision Pending",
+    "Site Visit Pending",
     "Negotiation",
     "Payment Pending",
     "Booked",
