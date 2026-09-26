@@ -1703,11 +1703,11 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
         source:
           req.body.source ||
-          "CollectChat",
+          "Chatbot",
 
         subSource:
           req.body.subSource ||
-          "CollectChat",
+          "Chatbot",
 
         status:
           "New",
@@ -1732,7 +1732,7 @@ app.post("/api/collectchat-webhook", async (req, res) => {
         =============================== */
 
         created_by:
-          "CollectChat",
+          "Chatbot",
 
         created_date:
           new Date()
@@ -1767,7 +1767,7 @@ app.post("/api/collectchat-webhook", async (req, res) => {
             lead.project,
 
           source:
-            "CollectChat",
+            "Chatbot",
 
           assigned_to:
             assignedExecutive.email,
@@ -1859,7 +1859,7 @@ app.post("/api/collectchat-webhook", async (req, res) => {
         true,
 
       message:
-        "CollectChat lead created and assigned successfully",
+        "Chatbot lead created and assigned successfully",
 
       leadId:
         lead._id,
