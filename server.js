@@ -922,6 +922,34 @@ const Lead = mongoose.model(
   leadSchema
 );
 
+/* =========================================
+   COLLECT CHAT ROUND ROBIN COUNTER
+========================================= */
+
+const collectChatCounterSchema = new mongoose.Schema(
+  {
+    _id: {
+      type: String,
+      default: "collectchat_assignment"
+    },
+
+    value: {
+      type: Number,
+      default: 0
+    }
+  },
+  {
+    timestamps: true
+  }
+);
+
+const CollectChatCounter =
+  mongoose.models.CollectChatCounter ||
+  mongoose.model(
+    "CollectChatCounter",
+    collectChatCounterSchema
+  );
+  
 // ==========================================
 // META LEAD ROUND-ROBIN COUNTER
 // ==========================================
