@@ -1392,7 +1392,6 @@ const upload = multer({
   }
 
 });
-
 /* =========================================
    COLLECT.CHAT WEBHOOK
 ========================================= */
@@ -1401,7 +1400,14 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
   try {
 
+    console.log("=========================================");
+    console.log("COLLECT.CHAT WEBHOOK RECEIVED");
     console.log("COLLECTCHAT DATA =", req.body);
+    console.log("=========================================");
+
+    /* =====================================
+       GET DATA
+    ===================================== */
 
     const name =
       req.body.name ||
@@ -1419,7 +1425,20 @@ app.post("/api/collectchat-webhook", async (req, res) => {
       req.body.location ||
       "";
 
+    console.log("NAME =", name);
+    console.log("PHONE =", phone);
+    console.log("LOCATION =", location);
+
+
+    /* =====================================
+       PHONE VALIDATION
+    ===================================== */
+
     if (!phone) {
+
+      console.log(
+        "❌ COLLECTCHAT PHONE MISSING"
+      );
 
       return res.status(400).json({
         success: false,
@@ -1428,69 +1447,145 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
     }
 
+
+    /* =====================================
+       DUPLICATE CHECK
+    ===================================== */
+
     const existingLead =
       await Lead.findOne({
-        phone
+        phone: phone
       });
 
     if (existingLead) {
 
+      console.log(
+        "⚠️ DUPLICATE LEAD FOUND:",
+        existingLead._id
+      );
+
       return res.json({
+
         success: true,
+
         duplicate: true,
-        leadId: existingLead._id
+
+        message:
+          "Lead already exists",
+
+        leadId:
+          existingLead._id
+
       });
 
     }
 
-  /* =====================================
-   AUTO ASSIGN EXECUTIVE - ROUND ROBIN
-===================================== */
 
-const executives = [
-  "jyoti@zaminwale.com",
-  "vrushali@zaminwale.com",
-  "shaila@zaminwale.com",
-  "rakhi@zaminwale.com",
-  "vidya@zaminwale.com"
-];
+    /* =====================================
+       AUTO ASSIGN EXECUTIVE
+       ROUND ROBIN
+    ===================================== */
 
-const properties =
-  PropertiesService.getScriptProperties();
+    const executives = [
 
-let currentIndex = Number(
-  properties.getProperty("CHATBOT_ASSIGN_INDEX") || "0"
-);
+      {
+        name: "Jyoti",
+        email: "jyoti@zaminwale.com"
+      },
 
-// Current executive
-const assignedExecutive =
-  executives[currentIndex];
+      {
+        name: "Vrushali",
+        email: "vrushali@zaminwale.com"
+      },
 
-/* =====================================
-   ASSIGNMENT
-===================================== */
+      {
+        name: "Shaila",
+        email: "shaila@zaminwale.com"
+      },
 
-const assignment = {
-  assigned_to: assignedExecutive,
-  assigned_to_email: assignedExecutive
-};
+      {
+        name: "Rakhi",
+        email: "rakhi@zaminwale.com"
+      },
 
-/* =====================================
-   MOVE TO NEXT EXECUTIVE
-===================================== */
+      {
+        name: "Vidya",
+        email: "vidya@zaminwale.com"
+      }
 
-currentIndex =
-  (currentIndex + 1) % executives.length;
+    ];
 
-properties.setProperty(
-  "CHATBOT_ASSIGN_INDEX",
-  String(currentIndex)
-);
 
-Logger.log(
-  "CHATBOT LEAD ASSIGNED TO = " +
-  assignedExecutive
-);
+    /* =====================================
+       ATOMIC MONGODB COUNTER
+
+       PropertiesService वापरायचा नाही.
+       Counter MongoDB मध्ये store होईल.
+    ===================================== */
+
+    const counter =
+      await CollectChatCounter.findOneAndUpdate(
+
+        {
+          _id: "collectchat_assignment"
+        },
+
+        {
+          $inc: {
+            value: 1
+          }
+        },
+
+        {
+          new: true,
+          upsert: true,
+          setDefaultsOnInsert: true
+        }
+
+      );
+
+
+    /* =====================================
+       CALCULATE EXECUTIVE INDEX
+    ===================================== */
+
+    const currentIndex =
+      (Number(counter.value) - 1) %
+      executives.length;
+
+
+    /* =====================================
+       CURRENT EXECUTIVE
+    ===================================== */
+
+    const assignedExecutive =
+      executives[currentIndex];
+
+
+    console.log(
+      "========================================="
+    );
+
+    console.log(
+      "ROUND ROBIN INDEX =",
+      currentIndex
+    );
+
+    console.log(
+      "ASSIGNED EXECUTIVE =",
+      assignedExecutive.name
+    );
+
+    console.log(
+      "ASSIGNED EMAIL =",
+      assignedExecutive.email
+    );
+
+    console.log(
+      "========================================="
+    );
+
+
     /* =====================================
        CREATE LEAD
     ===================================== */
@@ -1498,64 +1593,118 @@ Logger.log(
     const lead =
       await Lead.create({
 
-        name,
+        name: name,
 
-        phone,
+        phone: phone,
 
         project: location,
 
-        source: "Chatbot",
+        source: "CollectChat",
 
-        subSource: "Chatbot",
+        subSource: "CollectChat",
 
         status: "New",
 
         assigned_to:
-          assignment.assigned_to,
+          assignedExecutive.email,
 
         assigned_to_email:
-          assignment.assigned_to_email,
+          assignedExecutive.email,
 
         assignedDate:
-          assignment.assigned_to
-            ? new Date()
-            : null,
+          new Date(),
 
         created_by:
-          "Chatbot",
+          "CollectChat",
 
         created_date:
           new Date()
 
       });
 
+
     /* =====================================
        REAL-TIME NOTIFICATION
     ===================================== */
 
-    if (assignment.assigned_to_email) {
+    if (
+      assignedExecutive.email
+    ) {
 
       io.to(
-        `executive_${assignment.assigned_to_email}`
+        `executive_${assignedExecutive.email}`
       ).emit(
         "new-lead",
         {
-          leadId: lead._id,
-          name: lead.name,
-          phone: lead.phone,
-          project: lead.project,
-          source: "Collect.chat"
+
+          leadId:
+            lead._id,
+
+          name:
+            lead.name,
+
+          phone:
+            lead.phone,
+
+          project:
+            lead.project,
+
+          source:
+            "CollectChat"
+
         }
       );
 
     }
 
+
+    /* =====================================
+       SUCCESS LOG
+    ===================================== */
+
     console.log(
-      "COLLECTCHAT LEAD CREATED:",
+      "========================================="
+    );
+
+    console.log(
+      "✅ COLLECTCHAT LEAD CREATED"
+    );
+
+    console.log(
+      "LEAD ID =",
       lead._id
     );
 
-    res.json({
+    console.log(
+      "NAME =",
+      lead.name
+    );
+
+    console.log(
+      "PHONE =",
+      lead.phone
+    );
+
+    console.log(
+      "PROJECT =",
+      lead.project
+    );
+
+    console.log(
+      "ASSIGNED TO =",
+      assignedExecutive.email
+    );
+
+    console.log(
+      "========================================="
+    );
+
+
+    /* =====================================
+       RESPONSE
+    ===================================== */
+
+    return res.status(200).json({
 
       success: true,
 
@@ -1566,20 +1715,42 @@ Logger.log(
         lead._id,
 
       assigned_to:
-        assignment.assigned_to
+        assignedExecutive.email,
+
+      assigned_to_name:
+        assignedExecutive.name
 
     });
 
-  }
 
-  catch (err) {
+  } catch (error) {
+
+    /* =====================================
+       ERROR HANDLING
+    ===================================== */
 
     console.error(
-      "COLLECTCHAT WEBHOOK ERROR:",
-      err
+      "========================================="
     );
 
-    res.status(500).json({
+    console.error(
+      "❌ COLLECTCHAT WEBHOOK ERROR"
+    );
+
+    console.error(
+      error
+    );
+
+    console.error(
+      error.stack
+    );
+
+    console.error(
+      "========================================="
+    );
+
+
+    return res.status(500).json({
 
       success: false,
 
@@ -1587,7 +1758,7 @@ Logger.log(
         "Webhook failed",
 
       error:
-        err.message
+        error.message
 
     });
 
