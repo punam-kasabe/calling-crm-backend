@@ -1406,9 +1406,9 @@ const upload = multer({
 
 });
 
-
 /* =========================================
    COLLECT.CHAT WEBHOOK
+   AUTO ROUND-ROBIN ASSIGNMENT
 ========================================= */
 
 app.post("/api/collectchat-webhook", async (req, res) => {
@@ -1420,14 +1420,18 @@ app.post("/api/collectchat-webhook", async (req, res) => {
     console.log("COLLECTCHAT DATA =", req.body);
     console.log("=========================================");
 
+
     /* =====================================
        GET DATA
     ===================================== */
 
     const name =
-      req.body.name ||
-      req.body.client_name ||
-      "";
+      String(
+        req.body.name ||
+        req.body.client_name ||
+        ""
+      ).trim();
+
 
     const phone =
       normalizePhone(
@@ -1436,9 +1440,13 @@ app.post("/api/collectchat-webhook", async (req, res) => {
         ""
       );
 
+
     const location =
-      req.body.location ||
-      "";
+      String(
+        req.body.location ||
+        ""
+      ).trim();
+
 
     console.log("NAME =", name);
     console.log("PHONE =", phone);
@@ -1456,8 +1464,12 @@ app.post("/api/collectchat-webhook", async (req, res) => {
       );
 
       return res.status(400).json({
+
         success: false,
-        message: "Phone missing"
+
+        message:
+          "Phone missing"
+
       });
 
     }
@@ -1472,14 +1484,15 @@ app.post("/api/collectchat-webhook", async (req, res) => {
         phone: phone
       });
 
+
     if (existingLead) {
 
       console.log(
-        "⚠️ DUPLICATE LEAD FOUND:",
+        "⚠️ DUPLICATE COLLECTCHAT LEAD:",
         existingLead._id
       );
 
-      return res.json({
+      return res.status(200).json({
 
         success: true,
 
@@ -1489,7 +1502,12 @@ app.post("/api/collectchat-webhook", async (req, res) => {
           "Lead already exists",
 
         leadId:
-          existingLead._id
+          existingLead._id,
+
+        assigned_to:
+          existingLead.assigned_to_email ||
+          existingLead.assigned_to ||
+          ""
 
       });
 
@@ -1497,8 +1515,7 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
 
     /* =====================================
-       AUTO ASSIGN EXECUTIVE
-       ROUND ROBIN
+       EXECUTIVE LIST
     ===================================== */
 
     const executives = [
@@ -1532,17 +1549,43 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
 
     /* =====================================
+       VALIDATE EXECUTIVE LIST
+    ===================================== */
+
+    if (
+      !executives.length
+    ) {
+
+      console.error(
+        "❌ NO EXECUTIVES CONFIGURED"
+      );
+
+      return res.status(500).json({
+
+        success: false,
+
+        message:
+          "No executives configured"
+
+      });
+
+    }
+
+
+    /* =====================================
        ATOMIC MONGODB COUNTER
 
+       Counter MongoDB मध्ये कायम save राहील.
+
        PropertiesService वापरायचा नाही.
-       Counter MongoDB मध्ये store होईल.
     ===================================== */
 
     const counter =
       await CollectChatCounter.findOneAndUpdate(
 
         {
-          _id: "collectchat_assignment"
+          _id:
+            "collectchat_assignment"
         },
 
         {
@@ -1553,7 +1596,9 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
         {
           new: true,
+
           upsert: true,
+
           setDefaultsOnInsert: true
         }
 
@@ -1561,16 +1606,18 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
 
     /* =====================================
-       CALCULATE EXECUTIVE INDEX
+       ROUND ROBIN INDEX
     ===================================== */
 
     const currentIndex =
-      (Number(counter.value) - 1) %
+      (
+        Number(counter.value) - 1
+      ) %
       executives.length;
 
 
     /* =====================================
-       CURRENT EXECUTIVE
+       ASSIGNED EXECUTIVE
     ===================================== */
 
     const assignedExecutive =
@@ -1579,6 +1626,11 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
     console.log(
       "========================================="
+    );
+
+    console.log(
+      "CHATBOT COUNTER =",
+      counter.value
     );
 
     console.log(
@@ -1608,17 +1660,34 @@ app.post("/api/collectchat-webhook", async (req, res) => {
     const lead =
       await Lead.create({
 
-        name: name,
+        name:
+          name,
 
-        phone: phone,
+        phone:
+          phone,
 
-        project: location,
+        email:
+          req.body.email ||
+          "",
 
-        source: "CollectChat",
+        project:
+          location,
 
-        subSource: "CollectChat",
+        source:
+          req.body.source ||
+          "CollectChat",
 
-        status: "New",
+        subSource:
+          req.body.subSource ||
+          "CollectChat",
+
+        status:
+          "New",
+
+
+        /* ===============================
+           AUTO ASSIGNMENT
+        =============================== */
 
         assigned_to:
           assignedExecutive.email,
@@ -1628,6 +1697,11 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
         assignedDate:
           new Date(),
+
+
+        /* ===============================
+           OTHER FIELDS
+        =============================== */
 
         created_by:
           "CollectChat",
@@ -1639,17 +1713,17 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
 
     /* =====================================
-       REAL-TIME NOTIFICATION
+       REALTIME NOTIFICATION
     ===================================== */
 
-    if (
-      assignedExecutive.email
-    ) {
+    try {
 
       io.to(
         `executive_${assignedExecutive.email}`
       ).emit(
+
         "new-lead",
+
         {
 
           leadId:
@@ -1665,9 +1739,36 @@ app.post("/api/collectchat-webhook", async (req, res) => {
             lead.project,
 
           source:
-            "CollectChat"
+            "CollectChat",
+
+          assigned_to:
+            assignedExecutive.email,
+
+          assigned_to_name:
+            assignedExecutive.name
 
         }
+
+      );
+
+
+      console.log(
+        "🔔 SOCKET NOTIFICATION SENT TO:",
+        assignedExecutive.email
+      );
+
+    }
+
+    catch (socketError) {
+
+      /*
+       Socket notification fail झाली
+       तरी lead creation successful राहील.
+      */
+
+      console.error(
+        "⚠️ SOCKET NOTIFICATION ERROR:",
+        socketError.message
       );
 
     }
@@ -1711,20 +1812,26 @@ app.post("/api/collectchat-webhook", async (req, res) => {
     );
 
     console.log(
+      "ASSIGNED NAME =",
+      assignedExecutive.name
+    );
+
+    console.log(
       "========================================="
     );
 
 
     /* =====================================
-       RESPONSE
+       RESPONSE TO GOOGLE APPS SCRIPT
     ===================================== */
 
     return res.status(200).json({
 
-      success: true,
+      success:
+        true,
 
       message:
-        "Lead created successfully",
+        "CollectChat lead created and assigned successfully",
 
       leadId:
         lead._id,
@@ -1738,7 +1845,9 @@ app.post("/api/collectchat-webhook", async (req, res) => {
     });
 
 
-  } catch (error) {
+  }
+
+  catch (error) {
 
     /* =====================================
        ERROR HANDLING
@@ -1767,7 +1876,8 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
     return res.status(500).json({
 
-      success: false,
+      success:
+        false,
 
       message:
         "Webhook failed",
