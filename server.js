@@ -297,7 +297,8 @@ status: {
     "Busy",
     "Switch Off",
     "Out of Service",
-    "Wrong Number"
+    "Wrong Number",
+    "Direct Site visit"
   ]
 },
 
