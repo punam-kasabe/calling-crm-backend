@@ -298,7 +298,7 @@ status: {
     "Switch Off",
     "Out of Service",
     "Wrong Number",
-    "Direct Site visit",
+    "Direct Site Visit",
      "Office visit"
 
   ]
