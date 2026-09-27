@@ -5894,15 +5894,7 @@ activityMatch.last_activity_by = {
       visitDone: {
   $sum: {
     $cond: [
-      {
-        $in: [
-          "$status",
-          [
-            "Visit Done",
-            "Site Visit Done"
-          ]
-        ]
-      },
+      { $eq: ["$status", "Site Visit Done"] },
       1,
       0
     ]
@@ -6166,9 +6158,8 @@ else{
         break;
 
       case "visitDone":
-        query.status="Visit Done";
+       query.status = "Site Visit Done";
         break;
-
      
       default:
         break;
