@@ -1700,14 +1700,11 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
         project:
           location,
+source:
+  "Chatbot",
 
-        source:
-          req.body.source ||
-          "Chatbot",
-
-        subSource:
-          req.body.subSource ||
-          "Chatbot",
+subSource:
+  "Chatbot",
 
         status:
           "New",
@@ -2336,7 +2333,6 @@ app.post("/api/bulk-add-users", auth, adminOnly, async (req, res) => {
         can_delete_lead,
         can_access_project
       } = userData;
-
       if (
         !name ||
         !email ||
