@@ -4844,7 +4844,6 @@ app.get("/api/manager-clients", async (req, res) => {
 
 });
 
-
 /* =========================================
    UPDATE STATUS
 ========================================= */
@@ -4864,105 +4863,191 @@ app.put(
         executive_email
       } = req.body;
 
-      /* ===============================
+      console.log("=========================================");
+      console.log("UPDATE STATUS REQUEST");
+      console.log("LEAD ID =", req.params.id);
+      console.log("NEW STATUS =", status);
+      console.log("EXECUTIVE =", executive_email);
+      console.log("=========================================");
+
+
+      /* =====================================
          VALIDATION
-      =============================== */
+      ===================================== */
 
       if (!req.params.id) {
+
         return res.status(400).json({
+          success: false,
           message: "Lead ID is required ❌"
         });
+
       }
+
 
       if (!status) {
+
         return res.status(400).json({
+          success: false,
           message: "Status is required ❌"
         });
+
       }
 
-      /* ===============================
-         UPDATE LEAD
-      =============================== */
 
-      const updated = await Lead.findByIdAndUpdate(
+      /* =====================================
+         FIND LEAD
+      ===================================== */
 
-        req.params.id,
+      const lead =
+        await Lead.findById(
+          req.params.id
+        );
 
-        {
-          $set: {
 
-            status: status,
-
-            remark: remark || "",
-
-            followup_date:
-              followup_date || null,
-
-            visitDate:
-              visitDate || null,
-
-            visit_created:
-              visit_created || false,
-
-            last_activity_by:
-              executive_email || "",
-
-            last_activity_date:
-              new Date()
-
-          }
-        },
-
-        {
-          new: true
-        }
-
-      );
-
-      /* ===============================
-         LEAD NOT FOUND
-      =============================== */
-
-      if (!updated) {
+      if (!lead) {
 
         return res.status(404).json({
+          success: false,
           message: "Lead not found ❌"
         });
 
       }
 
-      /* ===============================
-         SUCCESS
-      =============================== */
 
       console.log(
-        "STATUS UPDATED:",
-        updated._id,
-        "=>",
-        updated.status
+        "OLD STATUS =",
+        lead.status
       );
 
-      res.status(200).json({
+
+      /* =====================================
+         UPDATE STATUS
+      ===================================== */
+
+      lead.status =
+        String(status).trim();
+
+
+      /* =====================================
+         OPTIONAL FIELDS
+      ===================================== */
+
+      if (remark !== undefined) {
+
+        lead.remark =
+          remark || "";
+
+      }
+
+
+      if (followup_date !== undefined) {
+
+        lead.followup_date =
+          followup_date || null;
+
+      }
+
+
+      if (visitDate !== undefined) {
+
+        lead.visitDate =
+          visitDate || null;
+
+      }
+
+
+      if (visit_created !== undefined) {
+
+        lead.visit_created =
+          Boolean(visit_created);
+
+      }
+
+
+      if (executive_email) {
+
+        lead.last_activity_by =
+          executive_email
+            .toLowerCase()
+            .trim();
+
+      }
+
+
+      lead.last_activity_date =
+        new Date();
+
+
+      /* =====================================
+         SAVE TO MONGODB
+      ===================================== */
+
+      await lead.save();
+
+
+      console.log(
+        "NEW STATUS SAVED =",
+        lead.status
+      );
+
+      console.log(
+        "MONGODB LEAD ID =",
+        lead._id
+      );
+
+      console.log(
+        "=========================================",
+        "\n"
+      );
+
+
+      /* =====================================
+         SUCCESS RESPONSE
+      ===================================== */
+
+      return res.status(200).json({
 
         success: true,
 
         message:
           "Status updated successfully ✅",
 
-        lead: updated
+        lead: lead
 
       });
 
     }
 
+
     catch (error) {
 
       console.error(
-        "UPDATE STATUS ERROR:",
+        "========================================="
+      );
+
+      console.error(
+        "❌ UPDATE STATUS ERROR"
+      );
+
+      console.error(
         error
       );
 
-      res.status(500).json({
+      console.error(
+        error.message
+      );
+
+      console.error(
+        error.stack
+      );
+
+      console.error(
+        "========================================="
+      );
+
+
+      return res.status(500).json({
 
         success: false,
 
@@ -4978,7 +5063,6 @@ app.put(
 
   }
 );
-
 /* =========================================
    FILTER LEADS
 ========================================= */
