@@ -4843,226 +4843,147 @@ app.get("/api/manager-clients", async (req, res) => {
   }
 
 });
-
 /* =========================================
    UPDATE STATUS
 ========================================= */
 
-app.put(
-  "/api/update-status/:id",
-  async (req, res) => {
-
-    try {
-
-      const {
-        status,
-        remark,
-        followup_date,
-        visitDate,
-        visit_created,
-        executive_email
-      } = req.body;
-
-      console.log("=========================================");
-      console.log("UPDATE STATUS REQUEST");
-      console.log("LEAD ID =", req.params.id);
-      console.log("NEW STATUS =", status);
-      console.log("EXECUTIVE =", executive_email);
-      console.log("=========================================");
-
-
-      /* =====================================
-         VALIDATION
-      ===================================== */
-
-      if (!req.params.id) {
-
-        return res.status(400).json({
-          success: false,
-          message: "Lead ID is required ❌"
-        });
-
-      }
-
-
-      if (!status) {
-
-        return res.status(400).json({
-          success: false,
-          message: "Status is required ❌"
-        });
-
-      }
-
-
-      /* =====================================
-         FIND LEAD
-      ===================================== */
-
-      const lead =
-        await Lead.findById(
-          req.params.id
-        );
-
-
-      if (!lead) {
-
-        return res.status(404).json({
-          success: false,
-          message: "Lead not found ❌"
-        });
-
-      }
-
-
-      console.log(
-        "OLD STATUS =",
-        lead.status
-      );
-
-
-      /* =====================================
-         UPDATE STATUS
-      ===================================== */
-
-      lead.status =
-        String(status).trim();
-
-
-      /* =====================================
-         OPTIONAL FIELDS
-      ===================================== */
-
-      if (remark !== undefined) {
-
-        lead.remark =
-          remark || "";
-
-      }
-
-
-      if (followup_date !== undefined) {
-
-        lead.followup_date =
-          followup_date || null;
-
-      }
-
-
-      if (visitDate !== undefined) {
-
-        lead.visitDate =
-          visitDate || null;
-
-      }
-
-
-      if (visit_created !== undefined) {
-
-        lead.visit_created =
-          Boolean(visit_created);
-
-      }
-
-
-      if (executive_email) {
-
-        lead.last_activity_by =
-          executive_email
-            .toLowerCase()
-            .trim();
-
-      }
-
-
-      lead.last_activity_date =
-        new Date();
-
-
-      /* =====================================
-         SAVE TO MONGODB
-      ===================================== */
-
-      await lead.save();
-
-
-      console.log(
-        "NEW STATUS SAVED =",
-        lead.status
-      );
-
-      console.log(
-        "MONGODB LEAD ID =",
-        lead._id
-      );
-
-      console.log(
-        "=========================================",
-        "\n"
-      );
-
-
-      /* =====================================
-         SUCCESS RESPONSE
-      ===================================== */
-
-      return res.status(200).json({
-
-        success: true,
-
-        message:
-          "Status updated successfully ✅",
-
-        lead: lead
-
-      });
-
-    }
-
-
-    catch (error) {
-
-      console.error(
-        "========================================="
-      );
-
-      console.error(
-        "❌ UPDATE STATUS ERROR"
-      );
-
-      console.error(
-        error
-      );
-
-      console.error(
-        error.message
-      );
-
-      console.error(
-        error.stack
-      );
-
-      console.error(
-        "========================================="
-      );
-
-
-      return res.status(500).json({
-
+app.put("/api/update-status/:id", async (req, res) => {
+
+  try {
+
+    const leadId = req.params.id;
+
+    const {
+      status,
+      remark = "",
+      followup_date = null,
+      visitDate = null,
+      visit_created = false,
+      executive_email = ""
+    } = req.body;
+
+    console.log("=================================");
+    console.log("STATUS UPDATE REQUEST");
+    console.log("LEAD ID :", leadId);
+    console.log("NEW STATUS :", status);
+    console.log("=================================");
+
+    if (!leadId) {
+      return res.status(400).json({
         success: false,
+        message: "Lead ID is required"
+      });
+    }
 
-        message:
-          "Status update failed ❌",
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "Status is required"
+      });
+    }
 
-        error:
-          error.message
+    /* ===============================
+       FIND LEAD FIRST
+    =============================== */
 
+    const lead = await Lead.findById(leadId);
+
+    if (!lead) {
+
+      console.log("❌ LEAD NOT FOUND");
+
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found"
       });
 
     }
+
+    console.log(
+      "OLD STATUS :",
+      lead.status
+    );
+
+    /* ===============================
+       UPDATE DOCUMENT
+    =============================== */
+
+    lead.status = status;
+
+    lead.remark = remark;
+
+    lead.followup_date =
+      followup_date || null;
+
+    lead.visitDate =
+      visitDate || null;
+
+    lead.visit_created =
+      Boolean(visit_created);
+
+    lead.last_activity_by =
+      executive_email || "";
+
+    lead.last_activity_date =
+      new Date();
+
+    /* ===============================
+       SAVE
+    =============================== */
+
+    await lead.save();
+
+    console.log(
+      "NEW STATUS :",
+      lead.status
+    );
+
+    console.log(
+      "✅ STATUS SAVED IN MONGODB"
+    );
+
+    console.log("=================================");
+
+    return res.status(200).json({
+
+      success: true,
+
+      message:
+        "Status updated successfully",
+
+      lead
+
+    });
 
   }
-);
+
+  catch (error) {
+
+    console.error(
+      "❌ UPDATE STATUS ERROR"
+    );
+
+    console.error(
+      error
+    );
+
+    return res.status(500).json({
+
+      success: false,
+
+      message:
+        "Status update failed",
+
+      error:
+        error.message
+
+    });
+
+  }
+
+});
+
+
 /* =========================================
    FILTER LEADS
 ========================================= */
