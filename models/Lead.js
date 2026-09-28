@@ -1,171 +1,67 @@
 const mongoose = require("mongoose");
 
-const leadSchema = new mongoose.Schema(
-  {
-    customer_name: {
-      type: String,
-      trim: true
-    },
-
-    phone: {
-      type: String,
-      trim: true,
-      index: true
-    },
-
-    email: {
-      type: String,
-      trim: true,
-      lowercase: true
-    },
-
-    source: {
-      type: String,
-      trim: true,
-      default: ""
-    },
-
-    status: {
-      type: String,
-      trim: true,
-      default: "New",
-      index: true,
-
-      enum: [
-        "New",
-        "Fresh",
-
-        "Ringing",
-        "Connected",
-
-        "Interested",
-        "Very Interested",
-
-        "Old Booking From Old Data",
-
-        "Not Interested",
-
-        "Call Cut",
-        "Busy",
-        "Call Back",
-        "Switched Off",
-        "Switch Off",
-
-        "Number Not Reachable",
-        "Invalid Number",
-        "Wrong Number",
-        "Duplicate Lead",
-
-        "Follow Up",
-        "Followup",
-        "Follow Up Done",
-
-        "Meeting Scheduled",
-
-        "Site Visit Planned",
-        "Site Visit Done",
-
-        "Negotiation",
-        "Payment Pending",
-
-        "Booked",
-        "Other Property Booked",
-        "Token Received",
-
-        "Cancelled",
-        "Future Prospect",
-        "No Response",
-
-        "Decision Pending",
-        "Site Visit Pending",
-
-        "Direct Site Visit",
-        "Office visit",
-        "Out of Service"
-      ]
-    },
-
-    assigned_to: {
-      type: String,
-      lowercase: true,
-      trim: true,
-      index: true
-    },
-
-    created_by: {
-      type: String,
-      lowercase: true,
-      trim: true
-    },
-
-    upload_batch: {
-      type: Number,
-      index: true
-    },
-
-    project: {
-      type: String,
-      trim: true,
-      default: "",
-      index: true
-    },
-
-    next_call_date: {
-      type: Date,
-      index: true
-    }
+const leadSchema = new mongoose.Schema({
+  customer_name: {
+    type: String,
+    trim: true
   },
-  {
-    timestamps: true
-  }
-);
 
+  phone: {
+    type: String,
+    trim: true,
+    index: true // 🔥 fast search
+  },
 
-// =====================================================
-// PERFORMANCE INDEXES
-// =====================================================
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true
+  },
 
-// Executive + Status
-leadSchema.index({
-  assigned_to: 1,
-  status: 1
-});
+  source: {
+    type: String,
+    trim: true,
+    default: ""
+  },
 
-// Executive + Latest Leads
-leadSchema.index({
-  assigned_to: 1,
-  createdAt: -1
-});
+  status: {
+    type: String,
+    default: "New",
+    enum: ["New", "Interested", "Not Interested", "Booked"] // 🔥 control values
+  },
 
-// Status + Latest Leads
-leadSchema.index({
-  status: 1,
-  createdAt: -1
-});
+  assigned_to: {
+    type: String,
+    lowercase: true,
+    trim: true,
+    index: true // 🔥 executive filtering fast
+  },
 
-// Project + Latest Leads
-leadSchema.index({
-  project: 1,
-  createdAt: -1
-});
+  created_by: {
+    type: String,
+    lowercase: true,
+    trim: true
+  },
 
-// Source filtering
-leadSchema.index({
-  source: 1
-});
+  upload_batch: {
+    type: Number, // 🔥 number better than string
+    index: true
+  },
 
-// Next Call Date filtering
-leadSchema.index({
-  next_call_date: 1
-});
+  project: {
+    type: String,
+    trim: true,
+    default: ""
+  },
 
+  next_call_date: {
+  type: Date,
+  index: true // 🔥 fast date filtering
+}
 
-// =====================================================
-// MODEL
-// =====================================================
+}, { timestamps: true });
 
-const Lead =
-  mongoose.models.Lead ||
-  mongoose.model("Lead", leadSchema);
+/* 🔥 Compound Index (powerful for dashboard) */
+leadSchema.index({ assigned_to: 1, status: 1 });
 
-module.exports = Lead;
+module.exports = mongoose.model("Lead", leadSchema);
