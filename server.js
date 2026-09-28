@@ -269,7 +269,7 @@ const leadSchema = new mongoose.Schema({
   source: String,
 
   project: String,
-status: {
+  status: {
   type: String,
   trim: true,
   default: "New",
