@@ -297,6 +297,7 @@ const leadSchema = new mongoose.Schema({
     "Meeting Scheduled",
     "Site Visit Planned",
     "Site Visit Done",
+     "Office Visit",
     "Negotiation",
     "Payment Pending",
     "Booked",
