@@ -317,7 +317,7 @@ const leadSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
-
+ 
   subSource: {
     type: String,
     default: ""
@@ -347,12 +347,13 @@ attending_remark: {
     type: Date,
     default: null
   },
- 
+
   attended_by: [
   {
     type: String
   }
 ],
+
   visitDate: {
   type: Date,
   default: null
@@ -4852,6 +4853,8 @@ app.get("/api/manager-clients", async (req, res) => {
   }
 
 });
+
+
 /* =========================================
    UPDATE STATUS
 ========================================= */
@@ -5064,26 +5067,48 @@ app.post(
         };
 
       }
+// =========================================
+// ASSIGNED TO / EXECUTIVE FILTER
+// =========================================
 
-      // =========================================
-      // ASSIGNED TO FILTER
-      // =========================================
+if (filters.assigned) {
 
-      if (
-        filters.assigned &&
-        filters.assigned.length > 0
-      ) {
+  if (filters.assigned === "UNASSIGNED") {
 
-        query.assigned_to = {
-          $in: filters.assigned.map(
-            (u) =>
-              u.value
-                .toLowerCase()
-                .trim()
-          )
-        };
-
+    query.$and = [
+      ...(query.$and || []),
+      {
+        $or: [
+          {
+            assigned_to: {
+              $exists: false
+            }
+          },
+          {
+            assigned_to: ""
+          },
+          {
+            assigned_to: null
+          }
+        ]
       }
+    ];
+
+  } else {
+
+    query.$and = [
+      ...(query.$and || []),
+      {
+        assigned_to:
+          filters.assigned
+            .toLowerCase()
+            .trim()
+      }
+    ];
+
+  }
+
+}
 
       // =========================================
       // PROJECT FILTER
@@ -5434,6 +5459,166 @@ if (
 }
 
 
+
+// =========================================
+// EXECUTIVE-WISE LEAD COUNTS
+// =========================================
+// Counts respect:
+// - Reception hidden leads
+// - Role restriction
+// - Status filter
+// - Project filter
+// - Created date filter
+// - Search
+//
+// BUT ignore selected Executive filter
+// so every executive count can be shown.
+// =========================================
+
+const executiveCountQuery = {
+  ...query
+};
+
+// Remove currently selected Executive filter
+// because we need counts for ALL executives.
+
+// Normal executive filter
+if (filters.assigned &&
+    filters.assigned !== "UNASSIGNED") {
+
+  delete executiveCountQuery.assigned_to;
+
+}
+
+// Unassigned filter is stored inside $and.
+// Remove that assigned condition while keeping
+// other possible $and conditions.
+if (
+  filters.assigned === "UNASSIGNED" &&
+  Array.isArray(executiveCountQuery.$and)
+) {
+
+  executiveCountQuery.$and =
+    executiveCountQuery.$and.filter(
+      (condition) => {
+
+        if (
+          condition &&
+          condition.$or
+        ) {
+
+          const isUnassignedCondition =
+            condition.$or.some(
+              (item) =>
+                item.assigned_to?.$exists === false ||
+                item.assigned_to === "" ||
+                item.assigned_to === null
+            );
+
+          return !isUnassignedCondition;
+
+        }
+
+        return true;
+
+      }
+    );
+
+  // Remove empty $and
+  if (
+    executiveCountQuery.$and.length === 0
+  ) {
+
+    delete executiveCountQuery.$and;
+
+  }
+
+}
+
+// =========================================
+// AGGREGATE EXECUTIVE COUNTS
+// =========================================
+
+const executiveCountData =
+  await Lead.aggregate([
+
+    {
+      $match:
+        executiveCountQuery
+    },
+
+    {
+      $group: {
+
+        _id: "$assigned_to",
+
+        count: {
+          $sum: 1
+        }
+
+      }
+
+    }
+
+  ]);
+
+// =========================================
+// CONVERT TO EMAIL -> COUNT OBJECT
+// =========================================
+
+const executiveCounts = {};
+
+executiveCountData.forEach((item) => {
+
+  if (
+    item._id &&
+    typeof item._id === "string"
+  ) {
+
+    executiveCounts[
+      item._id.toLowerCase().trim()
+    ] = item.count;
+
+  }
+
+});
+
+// =========================================
+// UNASSIGNED COUNT
+// =========================================
+
+const unassignedCount =
+  await Lead.countDocuments({
+
+    ...executiveCountQuery,
+
+    $and: [
+      ...(executiveCountQuery.$and || []),
+
+      {
+        $or: [
+          {
+            assigned_to: {
+              $exists: false
+            }
+          },
+          {
+            assigned_to: ""
+          },
+          {
+            assigned_to: null
+          }
+        ]
+      }
+
+    ]
+
+  });
+
+executiveCounts.UNASSIGNED =
+  unassignedCount;
+
+
       // =========================================
       // BACKLOG
       // =========================================
@@ -5504,7 +5689,9 @@ if (
 
         todayFollowups,
 
-        backlog
+        backlog,
+        
+        executiveCounts
 
       });
 
