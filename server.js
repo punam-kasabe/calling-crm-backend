@@ -4995,6 +4995,7 @@ app.put("/api/update-status/:id", async (req, res) => {
 
 });
 
+
 /* =========================================
    FILTER LEADS
 ========================================= */
@@ -5016,37 +5017,37 @@ app.post(
       const limit = 10;
       const skip = (page - 1) * limit;
 
-      const userRole =
-        role?.toLowerCase()?.trim();
-
-      const userEmail =
-        email?.toLowerCase()?.trim();
+      let query = {};
 
       // =========================================
-      // BASE QUERY
+      // HIDE RECEPTION CREATED LEADS
       // =========================================
 
-      let query = {
-        created_by: {
-          $ne: "Reception"
-        }
+      query.created_by = {
+        $ne: "Reception"
       };
 
       // =========================================
       // ROLE FILTER
       // =========================================
 
+      const userRole = role?.toLowerCase();
+
       if (userRole === "executive") {
 
         query.assigned_to =
-          userEmail;
+          email
+            ?.toLowerCase()
+            .trim();
 
       }
 
       if (userRole === "manager") {
 
         query.assigned_manager =
-          userEmail;
+          email
+            ?.toLowerCase()
+            .trim();
 
       }
 
@@ -5055,14 +5056,34 @@ app.post(
       // =========================================
 
       if (
-        Array.isArray(filters.status) &&
+        filters.status &&
         filters.status.length > 0
       ) {
 
         query.status = {
-          $in: filters.status
-            .map((s) => s.value)
-            .filter(Boolean)
+          $in: filters.status.map(
+            (s) => s.value
+          )
+        };
+
+      }
+
+      // =========================================
+      // ASSIGNED TO FILTER
+      // =========================================
+
+      if (
+        filters.assigned &&
+        filters.assigned.length > 0
+      ) {
+
+        query.assigned_to = {
+          $in: filters.assigned.map(
+            (u) =>
+              u.value
+                .toLowerCase()
+                .trim()
+          )
         };
 
       }
@@ -5123,133 +5144,66 @@ app.post(
       }
 
       // =========================================
-      // BUILD AND CONDITIONS
+      // SEARCH
       // =========================================
 
-      const andConditions = [];
-
-      // =========================================
-      // EXECUTIVE / ASSIGNED FILTER
-      // =========================================
-
-      if (filters.assigned) {
-
-        if (
-          filters.assigned === "UNASSIGNED"
-        ) {
-
-          andConditions.push({
-
-            $or: [
-              {
-                assigned_to: {
-                  $exists: false
-                }
-              },
-              {
-                assigned_to: ""
-              },
-              {
-                assigned_to: null
-              }
-            ]
-
-          });
-
-        } else {
-
-          andConditions.push({
-
-            assigned_to:
-              filters.assigned
-                .toLowerCase()
-                .trim()
-
-          });
-
-        }
-
-      }
-
-      // =========================================
-      // SEARCH FILTER
-      // =========================================
-
-      if (
-        search &&
-        search.trim()
-      ) {
+      if (search && search.trim()) {
 
         const searchValue =
           search.trim();
 
-        andConditions.push({
+        query.$or = [
 
-          $or: [
-
-            {
-              name: {
-                $regex: searchValue,
-                $options: "i"
-              }
-            },
-
-            {
-              phone: {
-                $regex: searchValue,
-                $options: "i"
-              }
-            },
-
-            {
-              source: {
-                $regex: searchValue,
-                $options: "i"
-              }
-            },
-
-            {
-              project: {
-                $regex: searchValue,
-                $options: "i"
-              }
-            },
-
-            {
-              status: {
-                $regex: searchValue,
-                $options: "i"
-              }
-            },
-
-            {
-              assigned_to: {
-                $regex: searchValue,
-                $options: "i"
-              }
-            },
-
-            {
-              assigned_manager: {
-                $regex: searchValue,
-                $options: "i"
-              }
+          {
+            name: {
+              $regex: searchValue,
+              $options: "i"
             }
+          },
 
-          ]
+          {
+            phone: {
+              $regex: searchValue,
+              $options: "i"
+            }
+          },
 
-        });
+          {
+            source: {
+              $regex: searchValue,
+              $options: "i"
+            }
+          },
 
-      }
+          {
+            project: {
+              $regex: searchValue,
+              $options: "i"
+            }
+          },
 
-      // =========================================
-      // ADD AND CONDITIONS
-      // =========================================
+          {
+            status: {
+              $regex: searchValue,
+              $options: "i"
+            }
+          },
 
-      if (andConditions.length > 0) {
+          {
+            assigned_to: {
+              $regex: searchValue,
+              $options: "i"
+            }
+          },
 
-        query.$and =
-          andConditions;
+          {
+            assigned_manager: {
+              $regex: searchValue,
+              $options: "i"
+            }
+          }
+
+        ];
 
       }
 
@@ -5262,69 +5216,75 @@ app.post(
           query
         );
 
+        // =========================================
+// CRM CREATED LEADS COUNT
+// CREATED FROM -> CREATED TO
+// =========================================
+
+let createdDateQuery = {
+  created_by: {
+    $ne: "Reception"
+  }
+};
+
+// =========================================
+// CREATED FROM DATE
+// =========================================
+
+if (filters.createdFrom) {
+
+  createdDateQuery.createdAt = {
+    $gte: new Date(
+      filters.createdFrom
+    )
+  };
+
+}
+
+// =========================================
+// CREATED TO DATE
+// =========================================
+
+if (filters.createdTo) {
+
+  const endDate =
+    new Date(
+      filters.createdTo
+    );
+
+  endDate.setHours(
+    23,
+    59,
+    59,
+    999
+  );
+
+  if (!createdDateQuery.createdAt) {
+
+    createdDateQuery.createdAt = {};
+
+  }
+
+  createdDateQuery.createdAt.$lte =
+    endDate;
+
+}
+
+// =========================================
+// FINAL CRM CREATED LEADS COUNT
+// =========================================
+
+const createdLeadsCount =
+  await Lead.countDocuments(
+    createdDateQuery
+  );
+
+      
       // =========================================
-      // CRM CREATED LEADS COUNT
+      // 🔥 ALL DATABASE LEADS
       // =========================================
-
-      let createdDateQuery = {
-
-        created_by: {
-          $ne: "Reception"
-        }
-
-      };
-
-      if (filters.createdFrom) {
-
-        createdDateQuery.createdAt = {
-
-          $gte:
-            new Date(
-              filters.createdFrom
-            )
-
-        };
-
-      }
-
-      if (filters.createdTo) {
-
-        const endDate =
-          new Date(
-            filters.createdTo
-          );
-
-        endDate.setHours(
-          23,
-          59,
-          59,
-          999
-        );
-
-        if (
-          !createdDateQuery.createdAt
-        ) {
-
-          createdDateQuery.createdAt =
-            {};
-
-        }
-
-        createdDateQuery
-          .createdAt
-          .$lte =
-            endDate;
-
-      }
-
-      const createdLeadsCount =
-        await Lead.countDocuments(
-          createdDateQuery
-        );
-
-      // =========================================
-      // ALL DATABASE LEADS
-      // =========================================
+      // This gives complete MongoDB lead count
+      // Example: 10425
 
       const totalAllLeads =
         await Lead.countDocuments({});
@@ -5335,11 +5295,8 @@ app.post(
 
       const hotLeads =
         await Lead.countDocuments({
-
           ...query,
-
           status: "Interested"
-
         });
 
       // =========================================
@@ -5348,11 +5305,8 @@ app.post(
 
       const newLeads =
         await Lead.countDocuments({
-
           ...query,
-
           status: "New"
-
         });
 
       // =========================================
@@ -5361,11 +5315,8 @@ app.post(
 
       const bookedLeads =
         await Lead.countDocuments({
-
           ...query,
-
           status: "Booked"
-
         });
 
       // =========================================
@@ -5374,19 +5325,15 @@ app.post(
 
       const inactiveLeads =
         await Lead.countDocuments({
-
           ...query,
-
           status: "Not Interested"
-
         });
 
       // =========================================
       // TODAY FOLLOWUPS
       // =========================================
 
-      const today =
-        new Date();
+      const today = new Date();
 
       today.setHours(
         0,
@@ -5404,387 +5351,122 @@ app.post(
 
       const todayFollowups =
         await Lead.countDocuments({
-
           ...query,
 
           next_call_date: {
-
             $gte: today,
-
             $lt: tomorrow
-
           }
 
         });
+
+        // =========================================
+// FILTERED ASSIGNED LEADS COUNT
+// CREATED FROM / CREATED TO
+// =========================================
+
+let assignedDateQuery = {
+  created_by: {
+    $ne: "Reception"
+  }
+};
+
+// =========================================
+// ROLE FILTER FOR ASSIGNED COUNT
+// =========================================
+
+if (userRole === "executive") {
+
+  assignedDateQuery.assigned_to =
+    email
+      ?.toLowerCase()
+      .trim();
+
+}
+
+if (userRole === "manager") {
+
+  assignedDateQuery.assigned_manager =
+    email
+      ?.toLowerCase()
+      .trim();
+
+}
+
+// =========================================
+// ASSIGNED DATE FILTER
+// =========================================
+
+if (
+  filters.createdFrom ||
+  filters.createdTo
+) {
+
+  assignedDateQuery.assignedDate = {};
+
+  // FROM DATE
+  if (filters.createdFrom) {
+
+    assignedDateQuery.assignedDate.$gte =
+      new Date(
+        filters.createdFrom
+      );
+
+  }
+
+  // TO DATE
+  if (filters.createdTo) {
+
+    const assignedToDate =
+      new Date(
+        filters.createdTo
+      );
+
+    assignedToDate.setHours(
+      23,
+      59,
+      59,
+      999
+    );
+
+    assignedDateQuery.assignedDate.$lte =
+      assignedToDate;
+
+  }
+
+}
+
 
       // =========================================
       // BACKLOG
       // =========================================
 
-      const backlog =
-        await Lead.countDocuments({
-
-          ...query,
-
-          status: {
-
-            $nin: [
-
-              "Interested",
-
-              "Booked",
-
-              "Site Visit Planned",
-
-              "Site Visit Done"
-
-            ]
-
-          }
-
-        });
-
-      // =========================================
-      // EXECUTIVE-WISE LEAD COUNTS
-      // =========================================
-      // IMPORTANT:
-      // Current selected executive is ignored
-      // so dropdown always shows full counts
-      // according to other active filters.
-      // =========================================
-
-      const executiveCountQuery = {
-
-        created_by: {
-          $ne: "Reception"
-        }
-
-      };
-
-      // =========================================
-      // ROLE FILTER FOR EXECUTIVE COUNTS
-      // =========================================
-
-      if (userRole === "executive") {
-
-        executiveCountQuery.assigned_to =
-          userEmail;
-
-      }
-
-      if (userRole === "manager") {
-
-        executiveCountQuery.assigned_manager =
-          userEmail;
-
-      }
-
-      // =========================================
-      // STATUS FOR EXECUTIVE COUNTS
-      // =========================================
-
-      if (
-        Array.isArray(filters.status) &&
-        filters.status.length > 0
-      ) {
-
-        executiveCountQuery.status = {
-
-          $in: filters.status
-            .map((s) => s.value)
-            .filter(Boolean)
-
-        };
-
-      }
-
-      // =========================================
-      // PROJECT FOR EXECUTIVE COUNTS
-      // =========================================
-
-      if (filters.project) {
-
-        executiveCountQuery.project =
-          new RegExp(
-            filters.project,
-            "i"
-          );
-
-      }
-
-      // =========================================
-      // DATE FOR EXECUTIVE COUNTS
-      // =========================================
-
-      if (
-        filters.createdFrom ||
-        filters.createdTo
-      ) {
-
-        executiveCountQuery.createdAt =
-          {};
-
-        if (filters.createdFrom) {
-
-          executiveCountQuery
-            .createdAt
-            .$gte =
-              new Date(
-                filters.createdFrom
-              );
-
-        }
-
-        if (filters.createdTo) {
-
-          const countToDate =
-            new Date(
-              filters.createdTo
-            );
-
-          countToDate.setHours(
-            23,
-            59,
-            59,
-            999
-          );
-
-          executiveCountQuery
-            .createdAt
-            .$lte =
-              countToDate;
-
-        }
-
-      }
-
-      // =========================================
-      // SEARCH FOR EXECUTIVE COUNTS
-      // =========================================
-
-      if (
-        search &&
-        search.trim()
-      ) {
-
-        const searchValue =
-          search.trim();
-
-        executiveCountQuery.$and = [
-
-          {
-            $or: [
-
-              {
-                name: {
-                  $regex:
-                    searchValue,
-                  $options: "i"
-                }
-              },
-
-              {
-                phone: {
-                  $regex:
-                    searchValue,
-                  $options: "i"
-                }
-              },
-
-              {
-                source: {
-                  $regex:
-                    searchValue,
-                  $options: "i"
-                }
-              },
-
-              {
-                project: {
-                  $regex:
-                    searchValue,
-                  $options: "i"
-                }
-              },
-
-              {
-                status: {
-                  $regex:
-                    searchValue,
-                  $options: "i"
-                }
-              },
-
-              {
-                assigned_to: {
-                  $regex:
-                    searchValue,
-                  $options: "i"
-                }
-              },
-
-              {
-                assigned_manager: {
-                  $regex:
-                    searchValue,
-                  $options: "i"
-                }
-              }
-
-            ]
-
-          }
-
-        ];
-
-      }
-
-      // =========================================
-      // REMOVE SELECTED EXECUTIVE FILTER
-      // =========================================
-
-      if (
-        filters.assigned &&
-        filters.assigned !==
-          "UNASSIGNED"
-      ) {
-
-        // Selected executive should NOT
-        // affect executive dropdown counts.
-
-        delete executiveCountQuery.assigned_to;
-
-      }
-
-      // =========================================
-      // REMOVE UNASSIGNED CONDITION
-      // =========================================
-
-      if (
-        filters.assigned ===
-          "UNASSIGNED"
-      ) {
-
-        // No assigned_to filter should remain.
-
-        delete executiveCountQuery.assigned_to;
-
-      }
-
-      // =========================================
-      // EXECUTIVE AGGREGATION
-      // =========================================
-
-      const executiveCountData =
-        await Lead.aggregate([
-
-          {
-            $match:
-              executiveCountQuery
-          },
-
-          {
-            $group: {
-
-              _id:
-                "$assigned_to",
-
-              count: {
-                $sum: 1
-              }
-
-            }
-
-          }
-
-        ]);
-
-      // =========================================
-      // FINAL EXECUTIVE COUNTS OBJECT
-      // =========================================
-
-      const executiveCounts = {};
-
-      executiveCountData.forEach(
-        (item) => {
-
-          if (
-            item._id &&
-            typeof item._id ===
-              "string"
-          ) {
-
-            executiveCounts[
-              item._id
-                .toLowerCase()
-                .trim()
-            ] =
-              item.count;
-
-          }
-
-        }
-      );
-
-      // =========================================
-      // UNASSIGNED COUNT
-      // =========================================
-
-      const unassignedQuery = {
-
-        ...executiveCountQuery,
-
-        $and: [
-
-          ...(executiveCountQuery.$and || []),
-
-          {
-
-            $or: [
-
-              {
-                assigned_to: {
-                  $exists: false
-                }
-              },
-
-              {
-                assigned_to: ""
-              },
-
-              {
-                assigned_to: null
-              }
-
-            ]
-
-          }
-
-        ]
-
-      };
-
-      const unassignedCount =
-        await Lead.countDocuments(
-          unassignedQuery
-        );
-
-      executiveCounts.UNASSIGNED =
-        unassignedCount;
+     const backlog = await Lead.countDocuments({
+  ...query,
+  status: {
+    $nin: [
+      "Interested",
+      "Booked",
+      "Site Visit Planned",
+      "Site Visit Done"
+    ]
+  }
+});
 
       // =========================================
       // FETCH PAGINATED LEADS
       // =========================================
 
       const leads =
-        await Lead.find(
-          query
-        )
-        .sort({
-          _id: -1
-        })
-        .skip(skip)
-        .limit(limit);
+        await Lead.find(query)
+
+          .sort({
+            _id: -1
+          })
+
+          .skip(skip)
+
+          .limit(limit);
 
       // =========================================
       // RESPONSE
@@ -5794,20 +5476,24 @@ app.post(
 
         data: leads,
 
+
+        // Filtered count
         total,
-
         createdLeadsCount,
+    
+         // ⭐ Filtered Leads Card Count
+           filteredLeadsCount: total,
 
-        filteredLeadsCount:
-          total,
-
+        // Pagination
         totalPages:
           Math.ceil(
             total / limit
           ),
 
+        // 🔥 ALL DATABASE LEADS
         totalAllLeads,
 
+        // Stats
         totalLeads:
           totalAllLeads,
 
@@ -5821,14 +5507,13 @@ app.post(
 
         todayFollowups,
 
-        backlog,
-
-        // IMPORTANT
-        executiveCounts
+        backlog
 
       });
 
-    } catch (err) {
+    }
+
+    catch (err) {
 
       console.error(
         "FILTER LEADS ERROR =",
@@ -5846,6 +5531,7 @@ app.post(
 
   }
 );
+
 
 
 
