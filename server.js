@@ -4731,26 +4731,34 @@ app.get("/api/executive-leads", async (req, res) => {
 
 });
 
-
 /* =========================================
    MY LEADS
 ========================================= */
 
 app.get("/api/my-leads", async (req, res) => {
+
   try {
 
     const email = req.query.email
       ?.toLowerCase()
       .trim();
 
-   const user = await User.findOne(
-  {
-    email
-  },
-  {
-    name: 1
-  }
-).lean();
+    if (!email) {
+
+      return res.status(400).json({
+        message: "Email is required"
+      });
+
+    }
+
+    const user = await User.findOne(
+      {
+        email
+      },
+      {
+        name: 1
+      }
+    ).lean();
 
     const userName =
       user?.name || "";
@@ -4759,9 +4767,10 @@ app.get("/api/my-leads", async (req, res) => {
 
       $or: [
 
-         {
-            executive_email: email
-          },
+        {
+          executive_email: email
+        },
+
         {
           assigned_to: email
         },
@@ -4776,23 +4785,29 @@ app.get("/api/my-leads", async (req, res) => {
 
       ]
 
-   })
-.sort({
-  createdAt: -1
-})
-.lean();
+    })
+    .sort({
+      createdAt: -1
+    })
+    .lean();
 
     res.json(leads);
 
-  } catch (err) {
+  }
 
-    console.log(err);
+  catch (err) {
+
+    console.error(
+      "MY LEADS ERROR:",
+      err
+    );
 
     res.status(500).json({
       message: "Server Error"
     });
 
   }
+
 });
 /* =========================================
    GET ALL USERS
