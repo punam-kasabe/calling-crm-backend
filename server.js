@@ -520,6 +520,24 @@ leadSchema.index({ status: 1 });
 leadSchema.index({ next_call_date: 1 });
 leadSchema.index({ createdAt: -1 });
 
+/* =========================================
+   MY LEADS PERFORMANCE INDEXES
+========================================= */
+
+leadSchema.index({
+  executive_email: 1,
+  createdAt: -1
+});
+
+leadSchema.index({
+  assigned_to_email: 1,
+  createdAt: -1
+});
+
+leadSchema.index({
+  closingExecutive: 1,
+  createdAt: -1
+});
 
 /* =========================================
    VISIT SCHEMA
@@ -4725,9 +4743,14 @@ app.get("/api/my-leads", async (req, res) => {
       ?.toLowerCase()
       .trim();
 
-    const user = await User.findOne({
-      email
-    });
+   const user = await User.findOne(
+  {
+    email
+  },
+  {
+    name: 1
+  }
+).lean();
 
     const userName =
       user?.name || "";
@@ -4753,9 +4776,11 @@ app.get("/api/my-leads", async (req, res) => {
 
       ]
 
-    }).sort({
-      createdAt: -1
-    });
+   })
+.sort({
+  createdAt: -1
+})
+.lean();
 
     res.json(leads);
 
