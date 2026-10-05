@@ -8199,6 +8199,57 @@ app.get("/api/dashboard-full", async (req, res) => {
         .slice(0, 5);
 
     /* =====================================
+   EXECUTIVE BOOKING PERFORMANCE
+===================================== */
+
+const bookingPerformance =
+  await Booking.aggregate([
+
+    {
+      $group: {
+
+        _id: "$executive",
+
+        count: {
+          $sum: 1
+        }
+
+      }
+    },
+
+    {
+      $match: {
+
+        _id: {
+          $nin: [
+            "",
+            null
+          ]
+        }
+
+      }
+    },
+
+    {
+      $sort: {
+        count: -1
+      }
+    }
+
+  ]);
+
+const bookingPerformanceData =
+  bookingPerformance.map((b) => ({
+
+    name:
+      b._id || "Unknown",
+
+    count:
+      b.count
+
+  }));
+
+    /* =====================================
        TODAY FOLLOWUPS
     ===================================== */
 
@@ -8402,6 +8453,8 @@ app.get("/api/dashboard-full", async (req, res) => {
       executives,
       assignments: assignmentData,
       leaderboard,
+      bookingPerformance:
+      bookingPerformanceData,
       followups,
       missedFollowups,
       projects,
