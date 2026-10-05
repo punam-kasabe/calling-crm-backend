@@ -8197,13 +8197,125 @@ app.get("/api/dashboard-full", async (req, res) => {
         )
 
         .slice(0, 5);
-
-    /* =====================================
+/* =====================================
    EXECUTIVE BOOKING PERFORMANCE
+   BOOKED LEADS BY EXECUTIVE
 ===================================== */
 
 const bookingPerformance =
-  await Booking.aggregate([
+  await Lead.aggregate([
+
+    /* ===============================
+       ONLY BOOKED LEADS
+    =============================== */
+
+    {
+      $match: {
+
+        ...match,
+
+        status: {
+          $regex: /^booked$/i
+        }
+
+      }
+    },
+
+    /* ===============================
+       FIND EXECUTIVE
+    =============================== */
+
+    {
+      $project: {
+
+        executive: {
+
+          $cond: [
+
+            {
+              $and: [
+                {
+                  $ne: [
+                    "$assigned_to",
+                    null
+                  ]
+                },
+                {
+                  $ne: [
+                    "$assigned_to",
+                    ""
+                  ]
+                }
+              ]
+            },
+
+            "$assigned_to",
+
+            {
+              $cond: [
+
+                {
+                  $and: [
+                    {
+                      $ne: [
+                        "$assigned_to_email",
+                        null
+                      ]
+                    },
+                    {
+                      $ne: [
+                        "$assigned_to_email",
+                        ""
+                      ]
+                    }
+                  ]
+                },
+
+                "$assigned_to_email",
+
+                {
+                  $cond: [
+
+                    {
+                      $and: [
+                        {
+                          $ne: [
+                            "$executive_email",
+                            null
+                          ]
+                        },
+                        {
+                          $ne: [
+                            "$executive_email",
+                            ""
+                          ]
+                        }
+                      ]
+                    },
+
+                    "$executive_email",
+
+                    "Unassigned"
+
+                  ]
+
+                }
+
+              ]
+
+            }
+
+          ]
+
+        }
+
+      }
+
+    },
+
+    /* ===============================
+       GROUP BY EXECUTIVE
+    =============================== */
 
     {
       $group: {
@@ -8215,41 +8327,39 @@ const bookingPerformance =
         }
 
       }
+
     },
 
-    {
-      $match: {
-
-        _id: {
-          $nin: [
-            "",
-            null
-          ]
-        }
-
-      }
-    },
+    /* ===============================
+       SORT HIGHEST BOOKINGS FIRST
+    =============================== */
 
     {
       $sort: {
         count: -1
       }
+
     }
 
   ]);
+
+
+/* ===============================
+   FINAL BOOKING DATA
+=============================== */
 
 const bookingPerformanceData =
   bookingPerformance.map((b) => ({
 
     name:
-      b._id || "Unknown",
+      b._id || "Unassigned",
 
     count:
       b.count
 
   }));
-
-    /* =====================================
+  
+  /* =====================================
        TODAY FOLLOWUPS
     ===================================== */
 
