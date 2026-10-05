@@ -4979,6 +4979,21 @@ app.put("/api/update-status/:id", async (req, res) => {
 
     lead.last_activity_date =
       new Date();
+  
+
+        
+    /* ===============================
+   STATUS HISTORY
+=============================== */
+
+lead.status_history =
+  lead.status_history || [];
+
+lead.status_history.push({
+  status: status,
+  updated_by: executive_email || "",
+  updated_at: new Date()
+});
 
     /* ===============================
        SAVE
