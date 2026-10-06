@@ -2515,6 +2515,8 @@ app.get("/api/new-leads", async (req, res) => {
 
 /* =========================================
    EXPORT LEADS
+   STREAMING EXCEL EXPORT
+   MEMORY SAFE
 ========================================= */
 
 app.post("/api/export-leads", async (req, res) => {
@@ -2525,12 +2527,13 @@ app.post("/api/export-leads", async (req, res) => {
       email,
       role,
       filters = {},
-      search = "",
+      search = ""
     } = req.body;
 
     let query = {};
 
-    const userRole = role?.toLowerCase();
+    const userRole =
+      role?.toLowerCase();
 
     /* =========================================
        ROLE FILTER
@@ -2560,18 +2563,14 @@ app.post("/api/export-leads", async (req, res) => {
       filters.status.length > 0
     ) {
 
-      const statuses = filters.status
-        .map((s) => {
-
-          if (typeof s === "object") {
-            return s.value;
-          }
-
-          return s;
-
-        })
-        .filter(Boolean);
-
+      const statuses =
+        filters.status
+          .map((s) =>
+            typeof s === "object"
+              ? s.value
+              : s
+          )
+          .filter(Boolean);
 
       if (statuses.length > 0) {
 
@@ -2585,26 +2584,25 @@ app.post("/api/export-leads", async (req, res) => {
 
 
     /* =========================================
-       ASSIGNED TO - MULTIPLE
+       ASSIGNED TO
     ========================================= */
 
     if (
       Array.isArray(filters.assigned) &&
       filters.assigned.length > 0
     ) {
-      const assignedEmails = filters.assigned
-        .map((item) => {
 
-          if (typeof item === "object") {
-            return item.value;
-          }
-          return item;
-        })
-        .filter(Boolean)
-        .map((email) =>
-          email.toLowerCase().trim()
-        );
-
+      const assignedEmails =
+        filters.assigned
+          .map((item) =>
+            typeof item === "object"
+              ? item.value
+              : item
+          )
+          .filter(Boolean)
+          .map((value) =>
+            value.toLowerCase().trim()
+          );
 
       if (assignedEmails.length > 0) {
 
@@ -2616,19 +2614,51 @@ app.post("/api/export-leads", async (req, res) => {
 
     }
 
-
-    /* =========================================
-       ASSIGNED TO - SINGLE VALUE SUPPORT
-       जर future मध्ये string आला तरी काम करेल
-    ========================================= */
-
     else if (
       typeof filters.assigned === "string" &&
       filters.assigned.trim()
     ) {
 
-      query.assigned_to =
-        filters.assigned.toLowerCase().trim();
+      const assignedValue =
+        filters.assigned
+          .toLowerCase()
+          .trim();
+
+
+      /* =========================================
+         UNASSIGNED
+      ========================================= */
+
+      if (
+        assignedValue === "unassigned"
+      ) {
+
+        query.$or = [
+
+          {
+            assigned_to: {
+              $exists: false
+            }
+          },
+
+          {
+            assigned_to: ""
+          },
+
+          {
+            assigned_to: null
+          }
+
+        ];
+
+      }
+
+      else {
+
+        query.assigned_to =
+          assignedValue;
+
+      }
 
     }
 
@@ -2637,12 +2667,15 @@ app.post("/api/export-leads", async (req, res) => {
        CLOSING EXECUTIVE
     ========================================= */
 
-    if (filters.closingExecutive) {
+    if (
+      filters.closingExecutive
+    ) {
 
-      query.assigned_manager = new RegExp(
-        filters.closingExecutive,
-        "i"
-      );
+      query.assigned_manager =
+        new RegExp(
+          filters.closingExecutive,
+          "i"
+        );
 
     }
 
@@ -2651,12 +2684,15 @@ app.post("/api/export-leads", async (req, res) => {
        PROJECT
     ========================================= */
 
-    if (filters.project) {
+    if (
+      filters.project
+    ) {
 
-      query.project = new RegExp(
-        filters.project,
-        "i"
-      );
+      query.project =
+        new RegExp(
+          filters.project,
+          "i"
+        );
 
     }
 
@@ -2672,25 +2708,25 @@ app.post("/api/export-leads", async (req, res) => {
 
       query.createdAt = {};
 
+      if (
+        filters.createdFrom
+      ) {
 
-      if (filters.createdFrom) {
-
-        const start = new Date(
-          `${filters.createdFrom}T00:00:00.000`
-        );
-
-        query.createdAt.$gte = start;
+        query.createdAt.$gte =
+          new Date(
+            `${filters.createdFrom}T00:00:00.000`
+          );
 
       }
 
+      if (
+        filters.createdTo
+      ) {
 
-      if (filters.createdTo) {
-
-        const end = new Date(
-          `${filters.createdTo}T23:59:59.999`
-        );
-
-        query.createdAt.$lte = end;
+        query.createdAt.$lte =
+          new Date(
+            `${filters.createdTo}T23:59:59.999`
+          );
 
       }
 
@@ -2701,11 +2737,15 @@ app.post("/api/export-leads", async (req, res) => {
        SEARCH
     ========================================= */
 
-    if (search && search.trim()) {
+    if (
+      search &&
+      search.trim()
+    ) {
 
-      const searchRegex = search.trim();
+      const searchRegex =
+        search.trim();
 
-      query.$or = [
+      const searchConditions = [
 
         {
           name: {
@@ -2737,6 +2777,39 @@ app.post("/api/export-leads", async (req, res) => {
 
       ];
 
+
+      /* =========================================
+         EXISTING $OR + SEARCH
+      ========================================= */
+
+      if (query.$or) {
+
+        const existingOr =
+          query.$or;
+
+        delete query.$or;
+
+        query.$and = [
+
+          {
+            $or: existingOr
+          },
+
+          {
+            $or: searchConditions
+          }
+
+        ];
+
+      }
+
+      else {
+
+        query.$or =
+          searchConditions;
+
+      }
+
     }
 
 
@@ -2750,12 +2823,20 @@ app.post("/api/export-leads", async (req, res) => {
 
     console.log(
       "EXPORT FILTERS =",
-      JSON.stringify(filters, null, 2)
+      JSON.stringify(
+        filters,
+        null,
+        2
+      )
     );
 
     console.log(
       "EXPORT QUERY =",
-      JSON.stringify(query, null, 2)
+      JSON.stringify(
+        query,
+        null,
+        2
+      )
     );
 
     console.log(
@@ -2764,49 +2845,244 @@ app.post("/api/export-leads", async (req, res) => {
 
 
     /* =========================================
-       FETCH ALL FILTERED LEADS
-       NO LIMIT / NO SKIP
+       CREATE STREAMING EXCEL WORKBOOK
     ========================================= */
 
-    const leads = await Lead
-      .find(query)
-      .sort({
-        createdAt: -1
-      })
-      .lean();
+    const workbook =
+      new ExcelJS.stream.xlsx.WorkbookWriter({
+        stream: res,
+        useStyles: false,
+        useSharedStrings: false
+      });
 
 
-    console.log(
-      "EXPORT LEADS COUNT =",
-      leads.length
-    );
+    const worksheet =
+      workbook.addWorksheet(
+        "Pipeline"
+      );
 
 
     /* =========================================
-       RESPONSE
+       EXCEL HEADERS
     ========================================= */
 
-    res.json(leads);
+    worksheet.columns = [
+
+      {
+        header: "Name",
+        key: "name",
+        width: 25
+      },
+
+      {
+        header: "Mobile",
+        key: "phone",
+        width: 16
+      },
+
+      {
+        header: "Status",
+        key: "status",
+        width: 20
+      },
+
+      {
+        header: "Project",
+        key: "project",
+        width: 25
+      },
+
+      {
+        header: "Created Date",
+        key: "createdDate",
+        width: 18
+      },
+
+      {
+        header: "Assigned",
+        key: "assigned",
+        width: 30
+      },
+
+      {
+        header: "Closing Officer",
+        key: "closingOfficer",
+        width: 25
+      },
+
+      {
+        header: "Next Call",
+        key: "nextCall",
+        width: 18
+      }
+
+    ];
 
 
-  } catch (err) {
+    /* =========================================
+       MONGODB CURSOR
+    ========================================= */
+
+    const cursor =
+      Lead.find(query)
+        .sort({
+          createdAt: -1
+        })
+        .select(
+          "name phone status project createdAt assigned_to assigned_manager next_call_date"
+        )
+        .lean()
+        .cursor();
+
+
+    /* =========================================
+       STREAM LEADS DIRECTLY TO EXCEL
+    ========================================= */
+
+    let count = 0;
+
+    for await (
+      const lead of cursor
+    ) {
+
+      count++;
+
+
+      worksheet.addRow({
+
+        name:
+          lead.name || "",
+
+        phone:
+          lead.phone || "",
+
+        status:
+          lead.status || "",
+
+        project:
+          lead.project || "",
+
+        createdDate:
+          lead.createdAt
+            ? new Date(
+                lead.createdAt
+              ).toLocaleDateString(
+                "en-GB"
+              )
+            : "-",
+
+        assigned:
+          lead.assigned_to || "-",
+
+        closingOfficer:
+          lead.assigned_manager || "-",
+
+        nextCall:
+          lead.next_call_date
+            ? new Date(
+                lead.next_call_date
+              ).toLocaleDateString(
+                "en-GB"
+              )
+            : "-"
+
+      }).commit();
+
+
+      /* =========================================
+         LOG EVERY 5000 LEADS
+      ========================================= */
+
+      if (
+        count % 5000 === 0
+      ) {
+
+        console.log(
+          "EXPORT PROGRESS =",
+          count
+        );
+
+      }
+
+    }
+
+
+    /* =========================================
+       NO DATA
+    ========================================= */
+
+    if (count === 0) {
+
+      await cursor.close();
+
+      return res.status(404).json({
+
+        message:
+          "No Leads Found For Export"
+
+      });
+
+    }
+
+
+    /* =========================================
+       FINISH EXCEL
+    ========================================= */
+
+    await worksheet.commit();
+
+    await workbook.commit();
+
+
+    console.log(
+      "================================="
+    );
+
+    console.log(
+      "EXPORT LEADS COUNT =",
+      count
+    );
+
+    console.log(
+      "EXPORT COMPLETED ✅"
+    );
+
+    console.log(
+      "================================="
+    );
+
+
+  }
+
+  catch (err) {
 
     console.error(
       "EXPORT LEADS ERROR =",
       err
     );
 
-    res.status(500).json({
 
-      message: "Export Failed",
+    if (
+      !res.headersSent
+    ) {
 
-      error: err.message
+      res.status(500).json({
 
-    });
+        message:
+          "Export Failed",
+
+        error:
+          err.message
+
+      });
+
+    }
 
   }
 
 });
+
+
 /* =========================================
    GET USERS
 ========================================= */
