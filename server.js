@@ -2892,7 +2892,11 @@ app.post("/api/export-leads", async (req, res) => {
         key: "project",
         width: 25
       },
-
+       {
+  header: "Description",
+  key: "description",
+  width: 40
+},
       {
         header: "Created Date",
         key: "createdDate",
@@ -2930,7 +2934,7 @@ app.post("/api/export-leads", async (req, res) => {
           createdAt: -1
         })
         .select(
-          "name phone status project createdAt assigned_to assigned_manager next_call_date"
+  "name phone status project description createdAt assigned_to assigned_manager next_call_date"
         )
         .lean()
         .cursor();
@@ -2962,6 +2966,9 @@ app.post("/api/export-leads", async (req, res) => {
 
         project:
           lead.project || "",
+          
+        description:
+         lead.description || "",
 
         createdDate:
           lead.createdAt
