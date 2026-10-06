@@ -2843,7 +2843,16 @@ app.post("/api/export-leads", async (req, res) => {
     console.log(
       "================================="
     );
+    
+res.setHeader(
+  "Content-Type",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+);
 
+res.setHeader(
+  "Content-Disposition",
+  'attachment; filename="Pipeline_Leads.xlsx"'
+);
 
     /* =========================================
        CREATE STREAMING EXCEL WORKBOOK
