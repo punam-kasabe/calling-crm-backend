@@ -2223,14 +2223,12 @@ const auth = (req, res, next) => {
   }
 
   catch (err) {
+  console.error("JWT VERIFY ERROR:", err.name, err.message);
 
-    console.log(err);
-
-    res.status(401).json({
-      message: "Invalid token ❌"
-    });
-
-  }
+  return res.status(401).json({
+    message: "Invalid token ❌"
+  });
+}
 
 };
 
