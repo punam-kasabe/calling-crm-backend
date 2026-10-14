@@ -2842,6 +2842,18 @@ app.post("/api/export-leads", async (req, res) => {
       "================================="
     );
     
+/* =========================
+   CHECK LEADS BEFORE STREAM
+========================= */
+
+const countForExport = await Lead.countDocuments(query);
+
+if (countForExport === 0) {
+  return res.status(404).json({
+    message: "No Leads Found For Export"
+  });
+}
+
 res.setHeader(
   "Content-Type",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -2851,7 +2863,6 @@ res.setHeader(
   "Content-Disposition",
   'attachment; filename="Pipeline_Leads.xlsx"'
 );
-
     /* =========================================
        CREATE STREAMING EXCEL WORKBOOK
     ========================================= */
@@ -3609,7 +3620,6 @@ app.get("/api/search-lead/:search", async (req, res) => {
   res.json(data);
 
 });
-
 
 
 /* =========================================
