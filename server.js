@@ -9277,49 +9277,63 @@ app.post("/api/meta-webhook", async (req, res) => {
 
 
         // ======================================
-// AFFORDABLE LIFE FIXED ASSIGNMENT
+// PAGE-WISE LEAD ASSIGNMENT
 // ======================================
 
-// फक्त Affordable Life Facebook Page च्या leads स्वीकारा
 const affordablePageId = String(
   process.env.META_PAGE_ID || ""
 ).trim();
 
+let assignment;
+
 if (
-  !affordablePageId ||
-  String(pageId || "").trim() !== affordablePageId
+  affordablePageId &&
+  String(pageId || "").trim() === affordablePageId
 ) {
+  // Affordable Life Page: fixed assignment
+  const affordableExecutive = await User.findOne({
+    email: "affordable@zaminwale.in"
+  });
+
+  if (!affordableExecutive) {
+    console.error(
+      "CRM USER NOT FOUND: affordable@zaminwale.in"
+    );
+    continue;
+  }
+
+  assignment = {
+    assigned_to_email: affordableExecutive.email,
+    assigned_to:
+      affordableExecutive.name ||
+      affordableExecutive.userName ||
+      affordableExecutive.username ||
+      affordableExecutive.email
+  };
+
   console.log(
-    "META LEAD SKIPPED: Not Affordable Life Page",
+    "AFFORDABLE LIFE ASSIGNED:",
+    assignment.assigned_to_email
+  );
+
+} else {
+  // All other Pages: preserve existing automatic assignment
+  assignment = await assignMetaLead();
+
+  console.log(
+    "OTHER PAGE ROUND ROBIN ASSIGNED:",
+    assignment?.assigned_to_email
+  );
+}
+
+if (!assignment?.assigned_to_email) {
+  console.error(
+    "META LEAD ASSIGNMENT FAILED:",
     pageId
   );
   continue;
 }
 
-// नेहमी affordable@zaminwale.in ला assign करा
-const affordableExecutive = await User.findOne({
-  email: "affordable@zaminwale.in"
-});
-
-if (!affordableExecutive) {
-  console.error(
-    "CRM USER NOT FOUND: affordable@zaminwale.in"
-  );
-  continue;
-}
-
-const assignment = {
-  assigned_to_email: affordableExecutive.email,
-  assigned_to:
-    affordableExecutive.name ||
-    affordableExecutive.username ||
-    affordableExecutive.email
-};
-
-console.log(
-  "AFFORDABLE LIFE LEAD ASSIGNED TO:",
-  assignment.assigned_to_email
-);
 
         // ======================================
         // CREATE LEAD
