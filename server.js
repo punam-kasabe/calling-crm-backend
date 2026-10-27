@@ -9277,17 +9277,49 @@ app.post("/api/meta-webhook", async (req, res) => {
 
 
         // ======================================
-        // ROUND ROBIN ASSIGNMENT
-        // ======================================
+// AFFORDABLE LIFE FIXED ASSIGNMENT
+// ======================================
 
-        const assignment =
-          await assignMetaLead();
+// फक्त Affordable Life Facebook Page च्या leads स्वीकारा
+const affordablePageId = String(
+  process.env.META_PAGE_ID || ""
+).trim();
 
-        console.log(
-          "META ASSIGNED TO:",
-          assignment
-        );
+if (
+  !affordablePageId ||
+  String(pageId || "").trim() !== affordablePageId
+) {
+  console.log(
+    "META LEAD SKIPPED: Not Affordable Life Page",
+    pageId
+  );
+  continue;
+}
 
+// नेहमी affordable@zaminwale.in ला assign करा
+const affordableExecutive = await User.findOne({
+  email: "affordable@zaminwale.in"
+});
+
+if (!affordableExecutive) {
+  console.error(
+    "CRM USER NOT FOUND: affordable@zaminwale.in"
+  );
+  continue;
+}
+
+const assignment = {
+  assigned_to_email: affordableExecutive.email,
+  assigned_to:
+    affordableExecutive.name ||
+    affordableExecutive.username ||
+    affordableExecutive.email
+};
+
+console.log(
+  "AFFORDABLE LIFE LEAD ASSIGNED TO:",
+  assignment.assigned_to_email
+);
 
         // ======================================
         // CREATE LEAD
