@@ -9543,7 +9543,7 @@ app.post("/api/daily-report", async (req, res) => {
 
     }
 
-    
+  
     const report = await DailyReport.create({
 
       executive_email,
