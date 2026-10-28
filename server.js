@@ -9133,24 +9133,7 @@ app.post("/api/meta-webhook", async (req, res) => {
           leadgenId
         );
 
-        // ======================================
-        // DUPLICATE CHECK
-        // ======================================
-
-        const existingLead = await Lead.findOne({
-          meta_lead_id: String(leadgenId)
-        }).lean();
-
-        if (existingLead) {
-          console.log(
-            "META DUPLICATE LEAD SKIPPED:",
-            leadgenId
-          );
-
-          continue;
-        }
-
-
+       
         // ======================================
         // GET LEAD DETAILS FROM META
         // ======================================
@@ -9259,25 +9242,7 @@ app.post("/api/meta-webhook", async (req, res) => {
         }
 
 
-        // ======================================
-        // PHONE DUPLICATE CHECK
-        // ======================================
-
-        const existingPhoneLead =
-          await Lead.findOne({
-            phone
-          }).lean();
-
-        if (existingPhoneLead) {
-          console.log(
-            "META PHONE DUPLICATE SKIPPED:",
-            phone
-          );
-
-          continue;
-        }
-
-
+    
         // ======================================
 // PAGE-WISE LEAD ASSIGNMENT
 // ======================================
