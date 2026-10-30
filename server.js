@@ -9053,14 +9053,12 @@ app.get("/", (req, res) => {
 });
 
 
-
 // ==========================================
-// META LEAD ADS WEBHOOK
+// META WEBHOOK VERIFICATION
 // ==========================================
 
 const META_VERIFY_TOKEN = process.env.META_VERIFY_TOKEN;
 
-// META WEBHOOK VERIFICATION
 app.get("/api/meta-webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -9070,14 +9068,21 @@ app.get("/api/meta-webhook", (req, res) => {
     mode,
     tokenReceived: !!token,
     challengeReceived: !!challenge,
+    verifyTokenConfigured: !!META_VERIFY_TOKEN,
   });
 
   if (
     mode === "subscribe" &&
-    token === META_VERIFY_TOKEN
+    META_VERIFY_TOKEN &&
+    token === META_VERIFY_TOKEN &&
+    challenge
   ) {
     console.log("META WEBHOOK VERIFIED ✅");
-    return res.status(200).send(challenge);
+
+    return res
+      .status(200)
+      .type("text/plain")
+      .send(String(challenge));
   }
 
   console.log("META WEBHOOK VERIFICATION FAILED ❌");
@@ -9085,6 +9090,25 @@ app.get("/api/meta-webhook", (req, res) => {
   return res.sendStatus(403);
 });
 
+// ==========================================
+// GET META PAGE ACCESS TOKEN
+// ==========================================
+function getMetaPageAccessToken(pageId) {
+  const id = String(pageId || "").trim();
+
+  if (id) {
+    const pageSpecificToken =
+      process.env[`META_PAGE_ACCESS_TOKEN_${id}`];
+
+    if (pageSpecificToken) {
+      return pageSpecificToken.trim();
+    }
+  }
+
+  return String(
+    process.env.META_PAGE_ACCESS_TOKEN || ""
+  ).trim();
+}
 
 // ==========================================
 // META LEAD ADS WEBHOOK
@@ -9133,7 +9157,7 @@ app.post("/api/meta-webhook", async (req, res) => {
           leadgenId
         );
 
-       
+      
         // ======================================
         // GET LEAD DETAILS FROM META
         // ======================================
@@ -9146,10 +9170,10 @@ app.post("/api/meta-webhook", async (req, res) => {
         const metaResponse = await axios.get(
           graphUrl,
           {
-            params: {
-              access_token:
-                process.env.META_PAGE_ACCESS_TOKEN
-            },
+           params: {
+  access_token:
+    getMetaPageAccessToken(pageId)
+},
 
             timeout: 15000
           }
