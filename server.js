@@ -9071,7 +9071,6 @@ app.get("/api/meta-webhook", (req, res) => {
     verifyTokenConfigured: !!META_VERIFY_TOKEN,
   });
 
-  
 
   if (
     mode === "subscribe" &&
