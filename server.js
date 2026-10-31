@@ -9336,7 +9336,10 @@ if (!assignment?.assigned_to_email) {
 
             city: city || "",
 
-            project: project || "",
+        project:
+  String(formId).trim() === "1405550298418833"
+    ? "Affordable Life"
+    : (project || ""),
 
             source: "Facebook",
 
