@@ -1030,10 +1030,7 @@ const META_EXECUTIVES = [
     name: "Shaila",
     email: "shaila@zaminwale.com"
   },
-  {
-    name: "Vidya",
-    email: "vidyazamin@gmail.com"
-  },
+ 
   {
     name: "Manisha",
     email: "manisha@zaminwale.com"
@@ -1598,10 +1595,7 @@ app.post("/api/collectchat-webhook", async (req, res) => {
         email: "rakhi@zaminwale.com"
       },
 
-      {
-        name: "Vidya",
-        email: "vidya@zaminwale.com"
-      }
+    
 
     ];
 
