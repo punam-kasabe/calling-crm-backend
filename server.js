@@ -9263,21 +9263,17 @@ app.post("/api/meta-webhook", async (req, res) => {
 
 
     
-        // ======================================
+      // ======================================
 // PAGE-WISE LEAD ASSIGNMENT
 // ======================================
 
-const affordablePageId = String(
-  process.env.META_PAGE_ID || ""
-).trim();
+const affordablePageId = "1344614122070935";
 
 let assignment;
 
-if (
-  affordablePageId &&
-  String(pageId || "").trim() === affordablePageId
-) {
-  // Affordable Life Page: fixed assignment
+if (String(pageId || "").trim() === affordablePageId) {
+
+  // Affordable Life Page: Fixed Assignment
   const affordableExecutive = await User.findOne({
     email: "affordable@zaminwale.in"
   });
@@ -9299,12 +9295,13 @@ if (
   };
 
   console.log(
-    "AFFORDABLE LIFE ASSIGNED:",
+    "AFFORDABLE LIFE FIXED ASSIGNED:",
     assignment.assigned_to_email
   );
 
 } else {
-  // All other Pages: preserve existing automatic assignment
+
+  // All other Pages: Round Robin
   assignment = await assignMetaLead();
 
   console.log(
@@ -9320,7 +9317,6 @@ if (!assignment?.assigned_to_email) {
   );
   continue;
 }
-
 
         // ======================================
         // CREATE LEAD
