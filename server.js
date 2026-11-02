@@ -4454,6 +4454,11 @@ app.put(
   attendedManager
 } = req.body;
 
+// Normalize status value
+const finalStatus = Array.isArray(status)
+  ? status[0]
+  : status;
+
       /* =========================
          UPDATE VISIT
       ========================= */
@@ -4471,7 +4476,7 @@ app.put(
   department,
   source,
   assigned_to,
-  status,
+  status: finalStatus,
   visitStatus,
   bookingStatus,
   remark,
@@ -4501,7 +4506,7 @@ app.put(
           source,
           assigned_to,
           assigned_to_email: assigned_to,
-          status,
+          status: finalStatus,
           visit_status: visitStatus,
           visitDate, 
           remark,
