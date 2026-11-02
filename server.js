@@ -9178,7 +9178,7 @@ if (!pageAccessToken) {
 console.log("META PAGE TOKEN SELECTED FOR PAGE:", pageId);
 
 // Graph API URL
-const graphUrl = `https://graph.facebook.com/vXX.X/${leadgenId}`;
+const graphUrl = `https://graph.facebook.com/v26.0/${leadgenId}`;
 
 const metaResponse = await axios.get(graphUrl, {
   params: {
