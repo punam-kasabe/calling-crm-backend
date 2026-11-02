@@ -9164,43 +9164,35 @@ app.post("/api/meta-webhook", async (req, res) => {
           leadgenId
         );
 
-      
-        // ======================================
-        // GET LEAD DETAILS FROM META
-        // ======================================
+    // ======================================
+// GET LEAD DETAILS FROM META
+// ======================================
 
-        const pageAccessToken = getMetaPageAccessToken(pageId);
+const pageAccessToken = getMetaPageAccessToken(pageId);
 
-         if (!pageAccessToken) {
-           console.error("META LEAD SKIPPED: Page token unavailable ❌");
-            continue;
-        }
+if (!pageAccessToken) {
+  console.error("META LEAD SKIPPED: Page token unavailable ❌");
+  continue;
+}
 
-     console.log("META PAGE TOKEN SELECTED FOR PAGE:", pageId);
-        const metaResponse = await axios.get(
-          graphUrl,
-          {
-          params: {
-       access_token: pageAccessToken
-        },
+console.log("META PAGE TOKEN SELECTED FOR PAGE:", pageId);
 
-            timeout: 15000
-          }
-        );
+// Graph API URL
+const graphUrl = `https://graph.facebook.com/vXX.X/${leadgenId}`;
 
-        const metaLead =
-          metaResponse.data || {};
+const metaResponse = await axios.get(graphUrl, {
+  params: {
+    access_token: pageAccessToken
+  },
+  timeout: 15000
+});
 
-        console.log(
-          "META LEAD DETAILS =",
-          JSON.stringify(
-            metaLead,
-            null,
-            2
-          )
-        );
+const metaLead = metaResponse.data || {};
 
-
+console.log(
+  "META LEAD DETAILS =",
+  JSON.stringify(metaLead, null, 2)
+);
 
 
         // ======================================
