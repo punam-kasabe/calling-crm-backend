@@ -9091,8 +9091,6 @@ app.get("/api/meta-webhook", (req, res) => {
   return res.sendStatus(403);
 });
 
-
-
 // ==========================================
 // GET PAGE-SPECIFIC META ACCESS TOKEN
 // ==========================================
@@ -9114,7 +9112,75 @@ function getMetaPageAccessToken(pageId) {
   return String(token).trim();
 }
 
+// ==========================================
+// GET FACEBOOK PAGE NAME
+// ==========================================
+async function getMetaPageName(pageId, accessToken) {
+  try {
+    const response = await axios.get(
+      `https://graph.facebook.com/v26.0/${pageId}`,
+      {
+        params: {
+          fields: "name",
+          access_token: accessToken
+        },
+        timeout: 15000
+      }
+    );
 
+    return response.data?.name || "";
+  } catch (error) {
+    console.error(
+      "META PAGE NAME ERROR:",
+      error?.response?.data || error.message
+    );
+    return "";
+  }
+}
+
+// ==========================================
+// GET CAMPAIGN DETAILS USING AD ID
+// ==========================================
+async function getMetaCampaignDetails(adId, accessToken) {
+  try {
+    if (!adId) {
+      return {
+        campaign_id: "",
+        campaign_name: ""
+      };
+    }
+
+    const response = await axios.get(
+      `https://graph.facebook.com/v26.0/${adId}`,
+      {
+        params: {
+          fields: "campaign{id,name}",
+          access_token: accessToken
+        },
+        timeout: 15000
+      }
+    );
+
+    return {
+      campaign_id: String(
+        response.data?.campaign?.id || ""
+      ),
+      campaign_name:
+        response.data?.campaign?.name || ""
+    };
+
+  } catch (error) {
+    console.error(
+      "META CAMPAIGN DETAILS ERROR:",
+      error?.response?.data || error.message
+    );
+
+    return {
+      campaign_id: "",
+      campaign_name: ""
+    };
+  }
+}
 // ==========================================
 // META LEAD ADS WEBHOOK
 // ==========================================
@@ -9188,12 +9254,26 @@ const metaResponse = await axios.get(graphUrl, {
 });
 
 const metaLead = metaResponse.data || {};
+// ======================================
+// FETCH FACEBOOK PAGE & CAMPAIGN DETAILS
+// ======================================
 
+const metaPageName = await getMetaPageName(
+  pageId,
+  pageAccessToken
+);
+
+const campaignDetails = await getMetaCampaignDetails(
+  adId,
+  pageAccessToken
+);
+
+console.log("META PAGE NAME:", metaPageName);
+console.log("META CAMPAIGN:", campaignDetails);
 console.log(
   "META LEAD DETAILS =",
   JSON.stringify(metaLead, null, 2)
 );
-
 
         // ======================================
         // EXTRACT FIELD DATA
@@ -9370,6 +9450,14 @@ if (!assignment?.assigned_to_email) {
 
             meta_page_id:
               String(pageId || ""),
+
+              meta_page_name: metaPageName,
+
+meta_campaign_id:
+  campaignDetails.campaign_id,
+
+meta_campaign_name:
+  campaignDetails.campaign_name,
 
             meta_form_id:
               String(formId || ""),
