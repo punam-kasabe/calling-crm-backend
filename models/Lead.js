@@ -54,6 +54,56 @@ const leadSchema = new mongoose.Schema({
     default: ""
   },
 
+     // ======================================
+  // FACEBOOK META TRACKING
+  // ======================================
+
+  meta_lead_id: {
+    type: String,
+    default: "",
+    index: true
+  },
+
+  meta_page_id: {
+    type: String,
+    default: ""
+  },
+
+  meta_page_name: {
+    type: String,
+    default: ""
+  },
+
+  meta_campaign_id: {
+    type: String,
+    default: ""
+  },
+
+  meta_campaign_name: {
+    type: String,
+    default: ""
+  },
+
+  meta_form_id: {
+    type: String,
+    default: ""
+  },
+
+  meta_ad_id: {
+    type: String,
+    default: ""
+  },
+
+  meta_created_time: {
+    type: Date,
+    default: null
+  },
+
+  meta_field_data: {
+    type: Array,
+    default: []
+  },
+  
   next_call_date: {
   type: Date,
   index: true // 🔥 fast date filtering
