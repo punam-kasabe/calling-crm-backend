@@ -1036,37 +1036,7 @@ const META_EXECUTIVES = [
     email: "manisha@zaminwale.com"
   }
 ];
-
-async function assignMetaLead() {
-  const counter = await MetaAssignmentCounter.findOneAndUpdate(
-    { key: "meta_lead_assignment" },
-    {
-      $setOnInsert: {
-        key: "meta_lead_assignment"
-      },
-      $inc: {
-        value: 1
-      }
-    },
-    {
-      new: true,
-      upsert: true
-    }
-  );
-
-
-  const index =
-    (counter.value - 1 + META_EXECUTIVES.length) %
-    META_EXECUTIVES.length;
-
-  const executive = META_EXECUTIVES[index];
-
-  return {
-    assigned_to: executive.name,
-    assigned_to_email: executive.email
-  };
-}
-
+       
 // ==========================================
 // META FIELD DATA PARSER
 // ==========================================
@@ -4863,6 +4833,8 @@ app.put(
   }
 
 );
+
+
 /* =========================================
    ADD LEAD
 ========================================= */
@@ -9421,9 +9393,9 @@ if (!assignment?.assigned_to_email) {
             city: city || "",
 
            project:
-  String(pageId || "").trim() === "1344614122070935"
-    ? "Affordable Life"
-    : (project || ""),
+           String(pageId || "").trim() === "1344614122070935"
+           ? "Affordable Life"
+           : (project || ""),
             source: "Facebook",
 
             subSource: "Meta",
