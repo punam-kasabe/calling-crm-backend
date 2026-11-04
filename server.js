@@ -9071,7 +9071,8 @@ function getMetaPageAccessToken(pageId) {
 
   const pageTokens = {
     "1344614122070935": process.env.META_PAGE_ACCESS_TOKEN_1344614122070935,
-    "106962818689846": process.env.META_PAGE_ACCESS_TOKEN_106962818689846
+    "106962818689846": process.env.META_PAGE_ACCESS_TOKEN_106962818689846,
+    "104674325032897": process.env.META_PAGE_ACCESS_TOKEN_104674325032897
   };
 
   const token = pageTokens[id];
@@ -9323,11 +9324,12 @@ console.log(
 
 
     
-      // ======================================
+     // ======================================
 // PAGE-WISE LEAD ASSIGNMENT
 // ======================================
 
 const affordablePageId = "1344614122070935";
+const shailaPageId = "104674325032897";
 
 let assignment;
 
@@ -9359,9 +9361,37 @@ if (String(pageId || "").trim() === affordablePageId) {
     assignment.assigned_to_email
   );
 
+} else if (String(pageId || "").trim() === shailaPageId) {
+
+  // Zaminwale.com Page: Fixed Assignment to Shaila
+  const shaila = await User.findOne({
+    email: "shaila@zaminwale.com"
+  });
+
+  if (!shaila) {
+    console.error(
+      "CRM USER NOT FOUND: shaila@zaminwale.com"
+    );
+    continue;
+  }
+
+  assignment = {
+    assigned_to_email: shaila.email,
+    assigned_to:
+      shaila.name ||
+      shaila.userName ||
+      shaila.username ||
+      shaila.email
+  };
+
+  console.log(
+    "ZAMINWALE.COM FIXED ASSIGNED:",
+    assignment.assigned_to_email
+  );
+
 } else {
 
-  // All other Pages: Round Robin
+  // All other Pages: Existing Round Robin
   assignment = await assignMetaLead();
 
   console.log(
@@ -9377,7 +9407,6 @@ if (!assignment?.assigned_to_email) {
   );
   continue;
 }
-
         // ======================================
         // CREATE LEAD
         // ======================================
