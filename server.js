@@ -9110,13 +9110,12 @@ async function getMetaPageName(pageId, accessToken) {
     return "";
   }
 }
-
 // ==========================================
 // GET CAMPAIGN DETAILS USING AD ID
 // ==========================================
 async function getMetaCampaignDetails(adId, accessToken) {
   try {
-    if (!adId) {
+    if (!adId || !accessToken) {
       return {
         campaign_id: "",
         campaign_name: ""
@@ -9127,19 +9126,23 @@ async function getMetaCampaignDetails(adId, accessToken) {
       `https://graph.facebook.com/v26.0/${adId}`,
       {
         params: {
-          fields: "campaign{id,name}",
+          fields: "campaign",
           access_token: accessToken
         },
         timeout: 15000
       }
     );
 
+    const campaign = response.data?.campaign || {};
+
+    console.log(
+      "META CAMPAIGN RAW DATA:",
+      JSON.stringify(campaign, null, 2)
+    );
+
     return {
-      campaign_id: String(
-        response.data?.campaign?.id || ""
-      ),
-      campaign_name:
-        response.data?.campaign?.name || ""
+      campaign_id: String(campaign.id || ""),
+      campaign_name: String(campaign.name || "")
     };
 
   } catch (error) {
@@ -9154,7 +9157,6 @@ async function getMetaCampaignDetails(adId, accessToken) {
     };
   }
 }
-
 // ==========================================
 // META LEAD ADS WEBHOOK
 // ==========================================
@@ -9388,10 +9390,6 @@ if (String(pageId || "").trim() === affordablePageId) {
     "ZAMINWALE.COM FIXED ASSIGNED:",
     assignment.assigned_to_email
   );
-
-
-
-
 
 } else {
   // All other Pages: Round Robin - EXECUTIVES ONLY
