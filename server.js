@@ -9392,9 +9392,8 @@ if (String(pageId || "").trim() === affordablePageId) {
 } else {
   // All other Pages: Round Robin
   const executives = await User.find({
-    role: "executive",
-    email: { $exists: true, $ne: "" }
-  }).select("name userName username email");
+  email: { $exists: true, $ne: "" }
+}).select("name userName username email role");
 
   if (!executives.length) {
     console.error("META ROUND ROBIN: NO EXECUTIVES FOUND ❌");
