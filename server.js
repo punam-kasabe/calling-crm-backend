@@ -9390,18 +9390,23 @@ if (String(pageId || "").trim() === affordablePageId) {
     "ZAMINWALE.COM FIXED ASSIGNED:",
     assignment.assigned_to_email
   );
-
 } else {
-  // All other Pages: Round Robin - EXECUTIVES ONLY
+  // ==========================================
+  // ALL OTHER FACEBOOK PAGES
+  // ROUND ROBIN - ONLY 4 EXECUTIVES
+  // ==========================================
 
+  const executiveEmails = [
+    "jyoti@zaminwale.com",
+    "rakhi@zaminwale.com",
+    "manisha@zaminwale.com",
+    "vrushali@zaminwale.com"
+  ];
+
+  // Find only the 4 allowed executives
   const executives = await User.find({
     email: {
-      $in: [
-        "jyoti@zaminwale.com",
-        "rakhi@zaminwale.com",
-        "manisha@zaminwale.com",
-        "vrushali@zaminwale.com"
-      ]
+      $in: executiveEmails
     }
   }).select("name userName username email");
 
@@ -9412,9 +9417,32 @@ if (String(pageId || "").trim() === affordablePageId) {
     continue;
   }
 
-  const executiveEmails = executives.map(
-    (u) => u.email
-  );
+  // ==========================================
+  // KEEP FIXED ORDER
+  // Jyoti → Rakhi → Manisha → Vrushali
+  // ==========================================
+
+  const orderedExecutives = executiveEmails
+    .map((email) =>
+      executives.find(
+        (user) =>
+          String(user.email || "").toLowerCase() ===
+          email.toLowerCase()
+      )
+    )
+    .filter(Boolean);
+
+  if (!orderedExecutives.length) {
+    console.error(
+      "META ROUND ROBIN: NO VALID EXECUTIVES FOUND ❌"
+    );
+    continue;
+  }
+
+  // ==========================================
+  // FIND LAST ASSIGNED LEAD
+  // ONLY AMONG THESE 4 EXECUTIVES
+  // ==========================================
 
   const lastLead = await Lead.findOne({
     source: "Facebook",
@@ -9431,29 +9459,39 @@ if (String(pageId || "").trim() === affordablePageId) {
     }
 
   }).sort({
-    assignedDate: -1
+    assignedDate: -1,
+    created_date: -1
   });
 
   let nextIndex = 0;
 
+  // ==========================================
+  // CALCULATE NEXT EXECUTIVE
+  // ==========================================
+
   if (lastLead?.assigned_to_email) {
 
-    const lastIndex =
-      executiveEmails.indexOf(
+    const lastEmail =
+      String(
         lastLead.assigned_to_email
+      ).toLowerCase();
+
+    const lastIndex =
+      executiveEmails.findIndex(
+        (email) =>
+          email.toLowerCase() === lastEmail
       );
 
     if (lastIndex !== -1) {
 
       nextIndex =
         (lastIndex + 1) %
-        executives.length;
-
+        executiveEmails.length;
     }
   }
 
   const nextExecutive =
-    executives[nextIndex];
+    orderedExecutives[nextIndex];
 
   assignment = {
     assigned_to_email:
@@ -9467,12 +9505,30 @@ if (String(pageId || "").trim() === affordablePageId) {
   };
 
   console.log(
-    "OTHER PAGE ROUND ROBIN ASSIGNED:",
+    "=========================================="
+  );
+
+  console.log(
+    "META ROUND ROBIN ASSIGNED:",
     assignment.assigned_to_email
+  );
+
+  console.log(
+    "LAST META EXECUTIVE:",
+    lastLead?.assigned_to_email || "NONE"
+  );
+
+  console.log(
+    "NEXT META EXECUTIVE:",
+    assignment.assigned_to_email
+  );
+
+  console.log(
+    "=========================================="
   );
 }
 
-        // ======================================
+// ======================================
         // CREATE LEAD
         // ======================================
 
