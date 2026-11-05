@@ -9390,22 +9390,57 @@ if (String(pageId || "").trim() === affordablePageId) {
   );
 
 } else {
+  // All other Pages: Round Robin
+  const executives = await User.find({
+    role: "executive",
+    email: { $exists: true, $ne: "" }
+  }).select("name userName username email");
 
-  // All other Pages: Existing Round Robin
-  assignment = await assignMetaLead();
+  if (!executives.length) {
+    console.error("META ROUND ROBIN: NO EXECUTIVES FOUND ❌");
+    continue;
+  }
+
+  const executiveEmails = executives.map((u) => u.email);
+
+  const lastLead = await Lead.findOne({
+    source: "Facebook",
+    assigned_to_email: { $in: executiveEmails },
+    meta_page_id: {
+      $nin: [
+        "1344614122070935",
+        "104674325032897"
+      ]
+    }
+  }).sort({ assignedDate: -1 });
+
+  let nextIndex = 0;
+
+  if (lastLead?.assigned_to_email) {
+    const lastIndex = executiveEmails.indexOf(
+      lastLead.assigned_to_email
+    );
+
+    if (lastIndex !== -1) {
+      nextIndex = (lastIndex + 1) % executives.length;
+    }
+  }
+
+  const nextExecutive = executives[nextIndex];
+
+  assignment = {
+    assigned_to_email: nextExecutive.email,
+    assigned_to:
+      nextExecutive.name ||
+      nextExecutive.userName ||
+      nextExecutive.username ||
+      nextExecutive.email
+  };
 
   console.log(
     "OTHER PAGE ROUND ROBIN ASSIGNED:",
-    assignment?.assigned_to_email
+    assignment.assigned_to_email
   );
-}
-
-if (!assignment?.assigned_to_email) {
-  console.error(
-    "META LEAD ASSIGNMENT FAILED:",
-    pageId
-  );
-  continue;
 }
         // ======================================
         // CREATE LEAD
