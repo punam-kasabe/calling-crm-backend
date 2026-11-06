@@ -84,6 +84,21 @@ const leadSchema = new mongoose.Schema({
     default: ""
   },
 
+     ad_id: {
+    type: String,
+    default: ""
+  },
+
+  ad_name: {
+    type: String,
+    default: ""
+  },
+
+  meta_campaign_lookup_status: {
+    type: String,
+    default: ""
+  },
+  
   meta_form_id: {
     type: String,
     default: ""

@@ -457,6 +457,35 @@ meta_form_id: {
   default: ""
 },
 
+// ==========================================
+// META AD / CAMPAIGN DETAILS
+// ==========================================
+
+ad_id: {
+  type: String,
+  default: ""
+},
+
+ad_name: {
+  type: String,
+  default: ""
+},
+
+meta_campaign_id: {
+  type: String,
+  default: ""
+},
+
+meta_campaign_name: {
+  type: String,
+  default: ""
+},
+
+meta_campaign_lookup_status: {
+  type: String,
+  default: ""
+},
+
 meta_ad_id: {
   type: String,
   default: ""
@@ -9110,71 +9139,152 @@ async function getMetaPageName(pageId, accessToken) {
     return "";
   }
 }
+
+
 // ==========================================
-// GET ACTUAL META CAMPAIGN NAME USING AD ID
+// META AD + CAMPAIGN DETAILS
 // ==========================================
-async function getMetaCampaignDetails(adId, pageAccessToken) {
+
+async function getMetaCampaignDetails(adId, pageId) {
   try {
-    if (!adId) {
+    const cleanAdId = String(adId || "").trim();
+    const cleanPageId = String(pageId || "").trim();
+
+    // ==========================================
+    // AD ID CHECK
+    // ==========================================
+
+    if (!cleanAdId) {
       console.log(
-        "META CAMPAIGN: adId missing ❌"
+        "META CAMPAIGN LOOKUP SKIPPED: ad_id missing ❌"
       );
 
       return {
+        success: false,
+        ad_id: "",
+        ad_name: "",
         campaign_id: "",
-        campaign_name: ""
+        campaign_name: "",
+        lookup_status: "missing_ad_id"
       };
     }
 
     // ==========================================
-    // USE ADS TOKEN FOR CAMPAIGN LOOKUP
+    // SELECT ADS TOKEN BY PAGE
     // ==========================================
 
-    const adsAccessToken =
-      process.env.META_ADS_ACCESS_TOKEN ||
-      pageAccessToken;
+    let adsAccessToken = "";
 
-    if (!adsAccessToken) {
-      console.log(
-        "META CAMPAIGN: Access token missing ❌"
+    if (
+      cleanPageId === "1344614122070935"
+    ) {
+      // Affordable Life
+      adsAccessToken =
+        process.env.META_ADS_ACCESS_TOKEN_AFFORDABLE;
+
+    } else if (
+      cleanPageId === "104674325032897"
+    ) {
+      // Zaminwale.com
+      adsAccessToken =
+        process.env.META_ADS_ACCESS_TOKEN_ZAMINWALE;
+
+    } else if (
+      cleanPageId === "106962818689846"
+    ) {
+      // Zaminwale Pvt Ltd
+      adsAccessToken =
+        process.env.META_ADS_ACCESS_TOKEN_ZAMINWALE;
+
+    } else {
+      console.error(
+        "META ADS TOKEN: UNKNOWN PAGE ID ❌",
+        cleanPageId
       );
 
       return {
+        success: false,
+        ad_id: cleanAdId,
+        ad_name: "",
         campaign_id: "",
-        campaign_name: ""
+        campaign_name: "",
+        lookup_status: "unknown_page_id"
       };
     }
 
+    // ==========================================
+    // TOKEN CHECK
+    // ==========================================
+
+    if (
+      !adsAccessToken ||
+      !String(adsAccessToken).trim()
+    ) {
+      console.error(
+        "META ADS ACCESS TOKEN MISSING ❌ Page:",
+        cleanPageId
+      );
+
+      return {
+        success: false,
+        ad_id: cleanAdId,
+        ad_name: "",
+        campaign_id: "",
+        campaign_name: "",
+        lookup_status: "missing_ads_access_token"
+      };
+    }
+
+    // ==========================================
+    // LOG TOKEN SOURCE
+    // ==========================================
+
     console.log(
-      "META AD ID FOR CAMPAIGN LOOKUP:",
-      adId
+      "META AD LOOKUP START:",
+      cleanAdId
     );
 
     console.log(
-      "META CAMPAIGN TOKEN SOURCE:",
-      process.env.META_ADS_ACCESS_TOKEN
-        ? "META_ADS_ACCESS_TOKEN"
-        : "PAGE ACCESS TOKEN"
+      "META PAGE ID:",
+      cleanPageId
+    );
+
+    console.log(
+      "META ADS TOKEN SOURCE:",
+      cleanPageId === "1344614122070935"
+        ? "META_ADS_ACCESS_TOKEN_AFFORDABLE"
+        : "META_ADS_ACCESS_TOKEN_ZAMINWALE"
     );
 
     // ==========================================
-    // GET CAMPAIGN FROM AD
+    // GET AD + CAMPAIGN DETAILS
     // ==========================================
 
     const response = await axios.get(
-      `https://graph.facebook.com/v26.0/${adId}`,
+      `https://graph.facebook.com/v26.0/${cleanAdId}`,
       {
         params: {
-          fields: "campaign{id,name}",
-          access_token: adsAccessToken
+          fields:
+            "id,name,campaign{id,name}",
+
+          access_token:
+            String(adsAccessToken).trim()
         },
 
         timeout: 15000
       }
     );
 
+    const ad =
+      response.data || {};
+
+    const adName =
+      String(
+        ad.name || ""
+      ).trim();
+
     const campaign =
-      response.data?.campaign || {};
+      ad.campaign || {};
 
     const campaignId =
       String(
@@ -9186,6 +9296,15 @@ async function getMetaCampaignDetails(adId, pageAccessToken) {
         campaign.name || ""
       ).trim();
 
+    // ==========================================
+    // LOG RESULT
+    // ==========================================
+
+    console.log(
+      "META AD NAME:",
+      adName || "EMPTY"
+    );
+
     console.log(
       "META CAMPAIGN ID:",
       campaignId || "EMPTY"
@@ -9196,26 +9315,45 @@ async function getMetaCampaignDetails(adId, pageAccessToken) {
       campaignName || "EMPTY"
     );
 
+    // ==========================================
+    // RETURN SUCCESS
+    // ==========================================
+
     return {
+      success: true,
+      ad_id: cleanAdId,
+      ad_name: adName,
       campaign_id: campaignId,
-      campaign_name: campaignName
+      campaign_name: campaignName,
+      lookup_status: "success"
     };
 
   } catch (error) {
 
     console.error(
-      "META CAMPAIGN DETAILS ERROR ❌:",
+      "META CAMPAIGN LOOKUP ERROR ❌:",
       error?.response?.data ||
-      error.message ||
+      error?.message ||
       error
     );
 
+    // ==========================================
+    // IMPORTANT:
+    // CAMPAIGN ERROR MUST NOT BLOCK LEAD
+    // ==========================================
+
     return {
+      success: false,
+      ad_id:
+        String(adId || "").trim(),
+      ad_name: "",
       campaign_id: "",
-      campaign_name: ""
+      campaign_name: "",
+      lookup_status: "failed"
     };
   }
 }
+
 
 // ==========================================
 // META LEAD ADS WEBHOOK
@@ -9301,9 +9439,8 @@ const metaPageName = await getMetaPageName(
 
 const campaignDetails = await getMetaCampaignDetails(
   adId,
-  pageAccessToken
+  pageId
 );
-
 console.log("META PAGE NAME:", metaPageName);
 console.log("META CAMPAIGN:", campaignDetails);
 console.log(
@@ -9633,7 +9770,20 @@ if (String(pageId || "").trim() === affordablePageId) {
             meta_page_id:
               String(pageId || ""),
 
-              meta_page_name: metaPageName,
+
+
+             meta_page_name:
+  metaPageName,
+
+// ==========================================
+// META AD / CAMPAIGN DETAILS
+// ==========================================
+
+ad_id:
+  campaignDetails.ad_id,
+
+ad_name:
+  campaignDetails.ad_name,
 
 meta_campaign_id:
   campaignDetails.campaign_id,
@@ -9641,11 +9791,15 @@ meta_campaign_id:
 meta_campaign_name:
   campaignDetails.campaign_name,
 
-            meta_form_id:
-              String(formId || ""),
+meta_campaign_lookup_status:
+  campaignDetails.lookup_status,
 
-            meta_ad_id:
-              String(adId || ""),
+meta_form_id:
+  String(formId || ""),
+
+meta_ad_id:
+  String(adId || ""),
+
 
             meta_created_time:
               metaLead.created_time
