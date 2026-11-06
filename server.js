@@ -9111,44 +9111,73 @@ async function getMetaPageName(pageId, accessToken) {
   }
 }
 // ==========================================
-// GET CAMPAIGN DETAILS USING AD ID
+// GET ACTUAL META CAMPAIGN NAME USING AD ID
 // ==========================================
 async function getMetaCampaignDetails(adId, accessToken) {
   try {
     if (!adId || !accessToken) {
+      console.log(
+        "META CAMPAIGN: adId or accessToken missing ❌"
+      );
+
       return {
         campaign_id: "",
         campaign_name: ""
       };
     }
 
+    console.log(
+      "META AD ID FOR CAMPAIGN LOOKUP:",
+      adId
+    );
+
+    // ==========================================
+    // FIRST: GET CAMPAIGN ID + CAMPAIGN NAME
+    // ==========================================
+
     const response = await axios.get(
       `https://graph.facebook.com/v26.0/${adId}`,
       {
         params: {
-          fields: "campaign",
+          fields: "campaign{id,name}",
           access_token: accessToken
         },
+
         timeout: 15000
       }
     );
 
-    const campaign = response.data?.campaign || {};
+    const campaign =
+      response.data?.campaign || {};
+
+    const campaignId =
+      String(campaign.id || "").trim();
+
+    const campaignName =
+      String(campaign.name || "").trim();
 
     console.log(
-      "META CAMPAIGN RAW DATA:",
-      JSON.stringify(campaign, null, 2)
+      "META CAMPAIGN ID:",
+      campaignId || "EMPTY"
+    );
+
+    console.log(
+      "META CAMPAIGN NAME:",
+      campaignName || "EMPTY"
     );
 
     return {
-      campaign_id: String(campaign.id || ""),
-      campaign_name: String(campaign.name || "")
+      campaign_id: campaignId,
+      campaign_name: campaignName
     };
 
   } catch (error) {
+
     console.error(
-      "META CAMPAIGN DETAILS ERROR:",
-      error?.response?.data || error.message
+      "META CAMPAIGN DETAILS ERROR ❌:",
+      error?.response?.data ||
+      error.message ||
+      error
     );
 
     return {
@@ -9157,6 +9186,7 @@ async function getMetaCampaignDetails(adId, accessToken) {
     };
   }
 }
+
 // ==========================================
 // META LEAD ADS WEBHOOK
 // ==========================================
