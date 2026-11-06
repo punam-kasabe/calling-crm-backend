@@ -9113,11 +9113,30 @@ async function getMetaPageName(pageId, accessToken) {
 // ==========================================
 // GET ACTUAL META CAMPAIGN NAME USING AD ID
 // ==========================================
-async function getMetaCampaignDetails(adId, accessToken) {
+async function getMetaCampaignDetails(adId, pageAccessToken) {
   try {
-    if (!adId || !accessToken) {
+    if (!adId) {
       console.log(
-        "META CAMPAIGN: adId or accessToken missing ❌"
+        "META CAMPAIGN: adId missing ❌"
+      );
+
+      return {
+        campaign_id: "",
+        campaign_name: ""
+      };
+    }
+
+    // ==========================================
+    // USE ADS TOKEN FOR CAMPAIGN LOOKUP
+    // ==========================================
+
+    const adsAccessToken =
+      process.env.META_ADS_ACCESS_TOKEN ||
+      pageAccessToken;
+
+    if (!adsAccessToken) {
+      console.log(
+        "META CAMPAIGN: Access token missing ❌"
       );
 
       return {
@@ -9131,8 +9150,15 @@ async function getMetaCampaignDetails(adId, accessToken) {
       adId
     );
 
+    console.log(
+      "META CAMPAIGN TOKEN SOURCE:",
+      process.env.META_ADS_ACCESS_TOKEN
+        ? "META_ADS_ACCESS_TOKEN"
+        : "PAGE ACCESS TOKEN"
+    );
+
     // ==========================================
-    // FIRST: GET CAMPAIGN ID + CAMPAIGN NAME
+    // GET CAMPAIGN FROM AD
     // ==========================================
 
     const response = await axios.get(
@@ -9140,7 +9166,7 @@ async function getMetaCampaignDetails(adId, accessToken) {
       {
         params: {
           fields: "campaign{id,name}",
-          access_token: accessToken
+          access_token: adsAccessToken
         },
 
         timeout: 15000
@@ -9151,10 +9177,14 @@ async function getMetaCampaignDetails(adId, accessToken) {
       response.data?.campaign || {};
 
     const campaignId =
-      String(campaign.id || "").trim();
+      String(
+        campaign.id || ""
+      ).trim();
 
     const campaignName =
-      String(campaign.name || "").trim();
+      String(
+        campaign.name || ""
+      ).trim();
 
     console.log(
       "META CAMPAIGN ID:",
