@@ -9265,8 +9265,7 @@ async function getMetaCampaignDetails(adId, pageId) {
       {
         params: {
           fields:
-            "id,name,campaign{id,name}",
-
+             "id,name,adset{id,name},campaign{id,name}",
           access_token:
             String(adsAccessToken).trim()
         },
@@ -9277,12 +9276,28 @@ async function getMetaCampaignDetails(adId, pageId) {
 
     const ad =
       response.data || {};
+const adset =
+  ad.adset || {};
 
-    const adName =
-      String(
-        ad.name || ""
-      ).trim();
+const adsetId =
+  String(
+    adset.id || ""
+  ).trim();
 
+const adsetName =
+  String(
+    adset.name || ""
+  ).trim();
+
+console.log(
+  "META ADSET ID:",
+  adsetId || "EMPTY"
+);
+
+console.log(
+  "META ADSET NAME:",
+  adsetName || "EMPTY"
+);
     const campaign =
       ad.campaign || {};
 
@@ -9356,6 +9371,87 @@ async function getMetaCampaignDetails(adId, pageId) {
 
 
 // ==========================================
+// GET PROJECT DYNAMICALLY FROM META FIELD DATA
+// ==========================================
+function getMetaProject(fieldData) {
+  try {
+    const fields = Array.isArray(fieldData)
+      ? fieldData
+      : [];
+
+    // First try known project field names
+    const exactProject = getMetaField(fields, [
+      "project",
+      "project_name",
+      "interested_project",
+      "choose_your_project",
+      "select_project",
+      "which_project",
+      "which_project_are_you_interested_in",
+      "which_project_are_you_interested_in?",
+     
+    ]);
+
+    if (exactProject) {
+      return String(exactProject).trim();
+    }
+
+    // Dynamic project field detection
+    for (const field of fields) {
+      const fieldName = String(
+        field?.name || ""
+      )
+        .trim()
+        .toLowerCase();
+
+      const values = Array.isArray(field?.values)
+        ? field.values
+        : [];
+
+      const value = String(
+        values?.[0] || ""
+      ).trim();
+
+      if (!fieldName || !value) {
+        continue;
+      }
+
+      if (
+        fieldName.includes("project") ||
+        fieldName.includes("which_project") ||
+        fieldName.includes("interested_project") ||
+        fieldName.includes("select_project")
+      ) {
+        console.log(
+          "META PROJECT FIELD FOUND:",
+          {
+            fieldName,
+            value
+          }
+        );
+
+        return value;
+      }
+    }
+
+    console.log(
+      "META PROJECT FIELD NOT FOUND ❌"
+    );
+
+    return "";
+
+  } catch (error) {
+
+    console.error(
+      "META PROJECT EXTRACTION ERROR ❌:",
+      error?.message || error
+    );
+
+    return "";
+  }
+}
+
+// ==========================================
 // META LEAD ADS WEBHOOK
 // ==========================================
 
@@ -9387,8 +9483,8 @@ app.post("/api/meta-webhook", async (req, res) => {
 
         const leadgenId = value?.leadgen_id;
        const pageId = String(
-  entry?.id || value?.page_id || ""
-).trim();
+         entry?.id || value?.page_id || ""
+       ).trim();
         const formId = value?.form_id || "";
         const adId = value?.ad_id || "";
 
@@ -9492,17 +9588,7 @@ console.log(
           ]
         );
 
-        const project = getMetaField(
-          fieldData,
-          [
-            "project",
-            "project_name",
-            "interested_project",
-            "choose_your_project",
-            "location"
-          ]
-        );
-
+       const project = getMetaProject(fieldData);
 
         // ======================================
         // NORMALIZE PHONE
