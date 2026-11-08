@@ -9276,8 +9276,16 @@ async function getMetaCampaignDetails(adId, pageId) {
 
     const ad =
       response.data || {};
+
+      const adName =
+  String(
+    ad.name || ""
+  ).trim();
+
+
 const adset =
   ad.adset || {};
+
 
 const adsetId =
   String(
