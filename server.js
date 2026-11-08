@@ -1594,9 +1594,6 @@ app.post("/api/collectchat-webhook", async (req, res) => {
         name: "Rakhi",
         email: "rakhi@zaminwale.com"
       },
-
-    
-
     ];
 
 
@@ -4898,9 +4895,33 @@ app.post("/api/add-lead", async (req, res) => {
     }
 
 
-    const cleanPhone = normalizePhone(phone);
-  
-    const lead = await Lead.create({
+  const cleanPhone = normalizePhone(phone);
+
+const mahamumbaiExecutives = [
+  "jyoti@zaminwale.com",
+  "vrushali@zaminwale.com",
+  "rakhi@zaminwale.com",
+  "manisha@zaminwale.com"
+];
+
+const finalAssignedEmail =
+  String(
+    assigned_to_email || assignedTo || ""
+  )
+    .trim()
+    .toLowerCase();
+
+const finalProject =
+  project ||
+  (
+    mahamumbaiExecutives.includes(
+      finalAssignedEmail
+    )
+      ? "Mahamumbai"
+      : ""
+  );
+
+const lead = await Lead.create({
 
       name: name.trim(),
 
@@ -4913,14 +4934,14 @@ app.post("/api/add-lead", async (req, res) => {
 
       subSource: subSource || "",
 
-      project: project || "",
+   project: finalProject,
 
       status: status || "New",
 
       assignedTo:
-  assignedTo || "",
+   assignedTo || "",
 
-assigned_to:
+   assigned_to:
   assigned_to_email
     ?.toLowerCase()
     ?.trim() ||
@@ -9278,7 +9299,7 @@ async function getMetaCampaignDetails(adId, pageId) {
       response.data || {};
 
       const adName =
-  String(
+       String(
     ad.name || ""
   ).trim();
 
