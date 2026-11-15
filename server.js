@@ -1594,6 +1594,9 @@ app.post("/api/collectchat-webhook", async (req, res) => {
         name: "Rakhi",
         email: "rakhi@zaminwale.com"
       },
+
+    
+
     ];
 
 
@@ -1721,11 +1724,11 @@ app.post("/api/collectchat-webhook", async (req, res) => {
 
         project:
           location,
-source:
-  "Chatbot",
+        source:
+        "Chatbot",
 
-subSource:
-  "Chatbot",
+       subSource:
+       "Chatbot",
 
         status:
           "New",
@@ -4895,33 +4898,9 @@ app.post("/api/add-lead", async (req, res) => {
     }
 
 
-  const cleanPhone = normalizePhone(phone);
-
-const mahamumbaiExecutives = [
-  "jyoti@zaminwale.com",
-  "vrushali@zaminwale.com",
-  "rakhi@zaminwale.com",
-  "manisha@zaminwale.com"
-];
-
-const finalAssignedEmail =
-  String(
-    assigned_to_email || assignedTo || ""
-  )
-    .trim()
-    .toLowerCase();
-
-const finalProject =
-  project ||
-  (
-    mahamumbaiExecutives.includes(
-      finalAssignedEmail
-    )
-      ? "Mahamumbai"
-      : ""
-  );
-
-const lead = await Lead.create({
+    const cleanPhone = normalizePhone(phone);
+  
+    const lead = await Lead.create({
 
       name: name.trim(),
 
@@ -5482,6 +5461,20 @@ app.post(
       }
 
       // =========================================
+// CAMPAIGN NAME FILTER
+// =========================================
+
+if (filters.campaignName) {
+
+  query.meta_campaign_name =
+    new RegExp(
+      filters.campaignName,
+      "i"
+    );
+
+}
+
+      // =========================================
       // CREATED DATE FILTER
       // =========================================
 
@@ -5581,7 +5574,12 @@ app.post(
               $options: "i"
             }
           }
-
+          ,  {
+    meta_campaign_name: {
+      $regex: searchValue,
+      $options: "i"
+    }
+  }
         ];
 
       }
