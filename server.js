@@ -10748,103 +10748,174 @@ res.status(500).json([]);
 }
 
 });
+
 // ==========================================
-// BULK UPDATE CAMPAIGN NAME BY PHONE NUMBERS
+// UPDATE PLOT THANE CAMPAIGN NAMES
 // ==========================================
 
-app.post("/api/update-campaign-by-phones", async (req, res) => {
+app.post("/api/update-plot-thane-campaigns", async (req, res) => {
   try {
-    const campaignName = "Plot Thane 9 - 30 Oct";
 
-    const phoneNumbers = [
-      "9733866104",
-      "7076454410",
-      "9150831893",
-      "9359072634",
-      "7387558970",
-      "8668405844",
-      "9913666289",
-      "9064386267",
-      "9011661550",
-      "8441847464",
-      "9963880779",
-      "7676046481",
-      "9748962956",
-      "9741056447",
-      "8866442083",
-      "8500588600",
-      "9823214101",
-      "9309874249",
-      "9632767081",
-      "9093136626",
-      "7001147481",
-      "9541054064",
-      "7256031970",
-      "9545854080",
-      "9392692575",
-      "8817029773",
-      "8698359509",
-      "9175693022",
-      "8491035601",
-      "9326384656",
-      "7483457203",
-      "7000638530",
-      "9834775927",
-      "8421958081",
-      "9833268853",
-      "9067424932",
-      "7375860327",
-      "9142354148",
-      "9326353849",
-      "9761560075",
-      "9372435572",
-      "7330979490",
-      "9819065230",
-      "7988208028",
-      "9730393250",
-      "8016344412",
-      "9601500388",
-      "9447553673",
-      "9691892122",
-      "9955034395",
-      "9612795449",
-      "7501714324",
-      "7365093195",
-      "7686944143",
-      "9101354652"
+    const plotThane9Phones = [
+      "7069973392",
+      "7890807860",
+      "8473073194",
+      "9024669736",
+      "9621710367",
+      "9205398604",
+      "8303544764",
+      "9226282660",
+      "9776599458",
+      "9358382836",
+      "9800414602",
+      "8603596903",
+      "9028210773",
+      "9733092277",
+      "9630718418",
+      "9832112143",
+      "8521396695",
+      "8852915742",
+      "7339452891",
+      "9345206852",
+      "7417911157",
+      "7620280500",
+      "7892873472",
+      "9763257007",
+      "9327284275",
+      "6359764996",
+      "8010830731",
+      "6261103097",
+      "9923123661",
+      "7718437029",
+      "9877723104",
+      "6353747154",
+      "8306940141",
+      "6398823643",
+      "8115457397",
+      "8896386932",
+      "8262910125",
+      "8302529886",
+      "9867903668",
+      "7738192131",
+      "6297515673",
+      "9914692925",
+      "7551083776",
+      "9502389540",
+      "9843578196",
+      "9835035452",
+      "9462197720",
+      "7767803222",
+      "7347430058",
+      "9785894331",
+      "6296938983",
+      "9028596371",
+      "8448430979",
+      "9136141656",
+      "7501368995",
+      "7393927320",
+      "9604640181",
+      "8453738675",
+      "8127020212",
+      "8394988332",
+      "9163694977"
     ];
 
-    // Normalize phones to last 10 digits
-    const normalizedPhones = phoneNumbers.map((phone) => {
-      const digits = String(phone).replace(/\D/g, "");
-      return digits.slice(-10);
-    });
+    const plotThane8Phones = [
+      "7895405485",
+      "9960466525",
+      "6361959835",
+      "9112657564",
+      "9405116299",
+      "9302309131",
+      "9905846134",
+      "7856947397",
+      "8978221761",
+      "7075127500",
+      "9316555905",
+      "8722826349",
+      "9412659319",
+      "8053084867",
+      "8261086772",
+      "8329164319",
+      "9159478453",
+      "9370519196",
+      "8767199836"
+    ];
 
-    const leads = await Lead.find({
-      phone: { $in: normalizedPhones }
-    });
+    let matched = 0;
+    let updated = 0;
+    const notFound = [];
 
-    let updatedCount = 0;
+    // ==========================================
+    // PLOT THANE 9
+    // ==========================================
 
-    for (const lead of leads) {
-      lead.meta_campaign_name = campaignName;
+    for (const phone of plotThane9Phones) {
+
+      const lead = await Lead.findOne({
+        phone: phone
+      });
+
+      if (!lead) {
+        notFound.push({
+          phone,
+          campaignName: "Plot Thane 9 - 30 Oct"
+        });
+        continue;
+      }
+
+      matched++;
+
+      lead.meta_campaign_name = "Plot Thane 9 - 30 Oct";
+
       await lead.save();
-      updatedCount++;
+
+      updated++;
     }
 
-    res.json({
+    // ==========================================
+    // PLOT THANE 8
+    // ==========================================
+
+    for (const phone of plotThane8Phones) {
+
+      const lead = await Lead.findOne({
+        phone: phone
+      });
+
+      if (!lead) {
+        notFound.push({
+          phone,
+          campaignName: "Plot Thane 8 - 30 Oct"
+        });
+        continue;
+      }
+
+      matched++;
+
+      lead.meta_campaign_name = "Plot Thane 8 - 30 Oct";
+
+      await lead.save();
+
+      updated++;
+    }
+
+    return res.json({
       success: true,
-      campaignName,
-      matched: leads.length,
-      updated: updatedCount,
-      requested: normalizedPhones.length,
-      phones: normalizedPhones
+      requested: plotThane9Phones.length + plotThane8Phones.length,
+      matched,
+      updated,
+      notFound
     });
 
   } catch (error) {
-    console.error("BULK CAMPAIGN UPDATE ERROR:", error);
 
-    res.status(500).json({
+    console.error(
+      "PLOT THANE CAMPAIGN UPDATE ERROR:",
+      error
+    );
+
+    return res.status(500).json({
       success: false,
       message: "Failed to update campaign names",
       error: error.message
