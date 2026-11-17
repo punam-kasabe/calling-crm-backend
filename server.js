@@ -10748,170 +10748,212 @@ res.status(500).json([]);
 }
 
 });
-
 // ==========================================
-// UPDATE PLOT THANE CAMPAIGN NAMES
+// BULK UPDATE CAMPAIGN NAME BY PHONE
 // ==========================================
 
-app.post("/api/update-plot-thane-campaigns", async (req, res) => {
+app.post("/api/update-campaign-bulk", async (req, res) => {
   try {
 
-    const plotThane9Phones = [
-      "7069973392",
-      "7890807860",
-      "8473073194",
-      "9024669736",
-      "9621710367",
-      "9205398604",
-      "8303544764",
-      "9226282660",
-      "9776599458",
-      "9358382836",
-      "9800414602",
-      "8603596903",
-      "9028210773",
-      "9733092277",
-      "9630718418",
-      "9832112143",
-      "8521396695",
-      "8852915742",
-      "7339452891",
-      "9345206852",
-      "7417911157",
-      "7620280500",
-      "7892873472",
-      "9763257007",
-      "9327284275",
-      "6359764996",
-      "8010830731",
-      "6261103097",
-      "9923123661",
-      "7718437029",
-      "9877723104",
-      "6353747154",
-      "8306940141",
-      "6398823643",
-      "8115457397",
-      "8896386932",
-      "8262910125",
-      "8302529886",
-      "9867903668",
-      "7738192131",
-      "6297515673",
-      "9914692925",
-      "7551083776",
-      "9502389540",
-      "9843578196",
-      "9835035452",
-      "9462197720",
-      "7767803222",
-      "7347430058",
-      "9785894331",
-      "6296938983",
-      "9028596371",
-      "8448430979",
-      "9136141656",
-      "7501368995",
-      "7393927320",
-      "9604640181",
-      "8453738675",
-      "8127020212",
-      "8394988332",
-      "9163694977"
+    const updates = [
+
+      // ==========================================
+      // PLOT THANE 8 - 30 OCT
+      // ==========================================
+
+      ["9517272590", "Plot Thane 8 - 30 Oct"],
+      ["7820089129", "Plot Thane 8 - 30 Oct"],
+      ["9718725500", "Plot Thane 8 - 30 Oct"],
+      ["6266912991", "Plot Thane 8 - 30 Oct"],
+      ["9992075096", "Plot Thane 8 - 30 Oct"],
+      ["8720801980", "Plot Thane 8 - 30 Oct"],
+      ["9579916223", "Plot Thane 8 - 30 Oct"],
+      ["9729883208", "Plot Thane 8 - 30 Oct"],
+      ["9776101747", "Plot Thane 8 - 30 Oct"],
+      ["9921759580", "Plot Thane 8 - 30 Oct"],
+      ["9662322264", "Plot Thane 8 - 30 Oct"],
+      ["6283181603", "Plot Thane 8 - 30 Oct"],
+      ["6263527442", "Plot Thane 8 - 30 Oct"],
+      ["9571585777", "Plot Thane 8 - 30 Oct"],
+      ["7732069809", "Plot Thane 8 - 30 Oct"],
+      ["6909776608", "Plot Thane 8 - 30 Oct"],
+      ["9172759554", "Plot Thane 8 - 30 Oct"],
+      ["9035349744", "Plot Thane 8 - 30 Oct"],
+      ["9517139358", "Plot Thane 8 - 30 Oct"],
+      ["6232467724", "Plot Thane 8 - 30 Oct"],
+      ["9340407140", "Plot Thane 8 - 30 Oct"],
+      ["9309187685", "Plot Thane 8 - 30 Oct"],
+      ["9687385167", "Plot Thane 8 - 30 Oct"],
+      ["9511555143", "Plot Thane 8 - 30 Oct"],
+      ["8999448918", "Plot Thane 8 - 30 Oct"],
+      ["6289780544", "Plot Thane 8 - 30 Oct"],
+      ["7300895494", "Plot Thane 8 - 30 Oct"],
+      ["8825484772", "Plot Thane 8 - 30 Oct"],
+      ["6388122162", "Plot Thane 8 - 30 Oct"],
+      ["8120831470", "Plot Thane 8 - 30 Oct"],
+      ["9225189627", "Plot Thane 8 - 30 Oct"],
+      ["8928825345", "Plot Thane 8 - 30 Oct"],
+      ["9515744388", "Plot Thane 8 - 30 Oct"],
+      ["8954152665", "Plot Thane 8 - 30 Oct"],
+      ["9538650212", "Plot Thane 8 - 30 Oct"],
+      ["8830283788", "Plot Thane 8 - 30 Oct"],
+      ["9518343205", "Plot Thane 8 - 30 Oct"],
+      ["8917323074", "Plot Thane 8 - 30 Oct"],
+      ["9641820570", "Plot Thane 8 - 30 Oct"],
+      ["9596513607", "Plot Thane 8 - 30 Oct"],
+      ["7666528410", "Plot Thane 8 - 30 Oct"],
+      ["8825086602", "Plot Thane 8 - 30 Oct"],
+      ["9258479937", "Plot Thane 8 - 30 Oct"],
+      ["8950240968", "Plot Thane 8 - 30 Oct"],
+      ["9128900892", "Plot Thane 8 - 30 Oct"],
+      ["9098810160", "Plot Thane 8 - 30 Oct"],
+      ["7029381033", "Plot Thane 8 - 30 Oct"],
+      ["8554828219", "Plot Thane 8 - 30 Oct"],
+      ["9699741314", "Plot Thane 8 - 30 Oct"],
+      ["7385130216", "Plot Thane 8 - 30 Oct"],
+      ["7499901710", "Plot Thane 8 - 30 Oct"],
+      ["8356077918", "Plot Thane 8 - 30 Oct"],
+      ["7007120833", "Plot Thane 8 - 30 Oct"],
+      ["7456848628", "Plot Thane 8 - 30 Oct"],
+      ["9811410048", "Plot Thane 8 - 30 Oct"],
+      ["8930715534", "Plot Thane 8 - 30 Oct"],
+      ["9380167753", "Plot Thane 8 - 30 Oct"],
+      ["6303339599", "Plot Thane 8 - 30 Oct"],
+      ["9510004784", "Plot Thane 8 - 30 Oct"],
+      ["9653295182", "Plot Thane 8 - 30 Oct"],
+      ["7822870592", "Plot Thane 8 - 30 Oct"],
+      ["8439930756", "Plot Thane 8 - 30 Oct"],
+      ["9359841800", "Plot Thane 8 - 30 Oct"],
+      ["9031735741", "Plot Thane 8 - 30 Oct"],
+      ["7439385422", "Plot Thane 8 - 30 Oct"],
+      ["8605397648", "Plot Thane 8 - 30 Oct"],
+      ["7901955785", "Plot Thane 8 - 30 Oct"],
+      ["8975521751", "Plot Thane 8 - 30 Oct"],
+      ["6002969943", "Plot Thane 8 - 30 Oct"],
+      ["8384077160", "Plot Thane 8 - 30 Oct"],
+      ["9819111212", "Plot Thane 8 - 30 Oct"],
+      ["7566546010", "Plot Thane 8 - 30 Oct"],
+      ["7718003612", "Plot Thane 8 - 30 Oct"],
+      ["8286921914", "Plot Thane 8 - 30 Oct"],
+      ["9672460218", "Plot Thane 8 - 30 Oct"],
+      ["8864001210", "Plot Thane 8 - 30 Oct"],
+      ["9913625240", "Plot Thane 8 - 30 Oct"],
+
+
+      // ==========================================
+      // PLOT THANE 12 - 1 NOV - DELHI
+      // ==========================================
+
+      ["7975749497", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["8999681791", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["9209502520", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["6378344072", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["9704048395", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["8010859315", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["8468865376", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["7972797680", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["9356400193", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["7447813970", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["6303242752", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["9014155871", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["9591806195", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["7208411242", "Plot Thane 12 - 1 Nov - Delhi"],
+      ["8050836467", "Plot Thane 12 - 1 Nov - Delhi"]
     ];
 
-    const plotThane8Phones = [
-      "7895405485",
-      "9960466525",
-      "6361959835",
-      "9112657564",
-      "9405116299",
-      "9302309131",
-      "9905846134",
-      "7856947397",
-      "8978221761",
-      "7075127500",
-      "9316555905",
-      "8722826349",
-      "9412659319",
-      "8053084867",
-      "8261086772",
-      "8329164319",
-      "9159478453",
-      "9370519196",
-      "8767199836"
-    ];
 
     let matched = 0;
     let updated = 0;
+
     const notFound = [];
 
+
     // ==========================================
-    // PLOT THANE 9
+    // UPDATE EACH LEAD
     // ==========================================
 
-    for (const phone of plotThane9Phones) {
+    for (const [rawPhone, campaignName] of updates) {
 
-      const lead = await Lead.findOne({
-        phone: phone
+      const phone = String(rawPhone)
+        .replace(/\D/g, "")
+        .slice(-10);
+
+
+      // Check all common phone formats
+      const possiblePhones = [
+        phone,
+        "91" + phone,
+        "+91" + phone
+      ];
+
+
+      let lead = await Lead.findOne({
+        phone: {
+          $in: possiblePhones
+        }
       });
 
+
+      // Fallback: last 10 digits
       if (!lead) {
+
+        lead = await Lead.findOne({
+          phone: {
+            $regex: phone + "$"
+          }
+        });
+
+      }
+
+
+      // ==========================================
+      // NOT FOUND
+      // ==========================================
+
+      if (!lead) {
+
         notFound.push({
           phone,
-          campaignName: "Plot Thane 9 - 30 Oct"
+          campaignName
         });
+
         continue;
+
       }
+
+
+      // ==========================================
+      // UPDATE CAMPAIGN
+      // ==========================================
 
       matched++;
 
-      lead.meta_campaign_name = "Plot Thane 9 - 30 Oct";
+      lead.meta_campaign_name = campaignName;
 
       await lead.save();
 
       updated++;
+
+      console.log(
+        `CAMPAIGN UPDATED | ${lead.phone} | ${campaignName}`
+      );
+
     }
 
-    // ==========================================
-    // PLOT THANE 8
-    // ==========================================
-
-    for (const phone of plotThane8Phones) {
-
-      const lead = await Lead.findOne({
-        phone: phone
-      });
-
-      if (!lead) {
-        notFound.push({
-          phone,
-          campaignName: "Plot Thane 8 - 30 Oct"
-        });
-        continue;
-      }
-
-      matched++;
-
-      lead.meta_campaign_name = "Plot Thane 8 - 30 Oct";
-
-      await lead.save();
-
-      updated++;
-    }
 
     return res.json({
       success: true,
-      requested: plotThane9Phones.length + plotThane8Phones.length,
+      requested: updates.length,
       matched,
       updated,
       notFound
     });
 
+
   } catch (error) {
 
     console.error(
-      "PLOT THANE CAMPAIGN UPDATE ERROR:",
+      "BULK CAMPAIGN UPDATE ERROR:",
       error
     );
 
@@ -10920,6 +10962,7 @@ app.post("/api/update-plot-thane-campaigns", async (req, res) => {
       message: "Failed to update campaign names",
       error: error.message
     });
+
   }
 });
 
