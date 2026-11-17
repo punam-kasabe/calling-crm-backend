@@ -10748,7 +10748,109 @@ res.status(500).json([]);
 }
 
 });
+// ==========================================
+// BULK UPDATE CAMPAIGN NAME BY PHONE NUMBERS
+// ==========================================
 
+app.post("/api/update-campaign-by-phones", async (req, res) => {
+  try {
+    const campaignName = "Plot Thane 9 - 30 Oct";
+
+    const phoneNumbers = [
+      "9733866104",
+      "7076454410",
+      "9150831893",
+      "9359072634",
+      "7387558970",
+      "8668405844",
+      "9913666289",
+      "9064386267",
+      "9011661550",
+      "8441847464",
+      "9963880779",
+      "7676046481",
+      "9748962956",
+      "9741056447",
+      "8866442083",
+      "8500588600",
+      "9823214101",
+      "9309874249",
+      "9632767081",
+      "9093136626",
+      "7001147481",
+      "9541054064",
+      "7256031970",
+      "9545854080",
+      "9392692575",
+      "8817029773",
+      "8698359509",
+      "9175693022",
+      "8491035601",
+      "9326384656",
+      "7483457203",
+      "7000638530",
+      "9834775927",
+      "8421958081",
+      "9833268853",
+      "9067424932",
+      "7375860327",
+      "9142354148",
+      "9326353849",
+      "9761560075",
+      "9372435572",
+      "7330979490",
+      "9819065230",
+      "7988208028",
+      "9730393250",
+      "8016344412",
+      "9601500388",
+      "9447553673",
+      "9691892122",
+      "9955034395",
+      "9612795449",
+      "7501714324",
+      "7365093195",
+      "7686944143",
+      "9101354652"
+    ];
+
+    // Normalize phones to last 10 digits
+    const normalizedPhones = phoneNumbers.map((phone) => {
+      const digits = String(phone).replace(/\D/g, "");
+      return digits.slice(-10);
+    });
+
+    const leads = await Lead.find({
+      phone: { $in: normalizedPhones }
+    });
+
+    let updatedCount = 0;
+
+    for (const lead of leads) {
+      lead.meta_campaign_name = campaignName;
+      await lead.save();
+      updatedCount++;
+    }
+
+    res.json({
+      success: true,
+      campaignName,
+      matched: leads.length,
+      updated: updatedCount,
+      requested: normalizedPhones.length,
+      phones: normalizedPhones
+    });
+
+  } catch (error) {
+    console.error("BULK CAMPAIGN UPDATE ERROR:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update campaign names",
+      error: error.message
+    });
+  }
+});
 
 server.listen(PORT, () => {
 
@@ -10757,3 +10859,4 @@ server.listen(PORT, () => {
   );
 
 });
+
