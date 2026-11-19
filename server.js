@@ -9617,6 +9617,30 @@ console.log(
 
        const project = getMetaProject(fieldData);
 
+       // ======================================
+// FINAL PROJECT
+// ======================================
+
+let finalProject = String(project || "").trim();
+
+// If project is blank, assign Mahamumbai
+// for selected executives
+const assignedEmailForProject =
+  String(assignment?.assigned_to_email || "")
+    .trim()
+    .toLowerCase();
+
+if (
+  !finalProject &&
+  [
+    "jyoti@zaminwale.com",
+    "vrushali@zaminwale.com",
+    "rakhi@zaminwale.com",
+    "manisha@zaminwale.com"
+  ].includes(assignedEmailForProject)
+) {
+  finalProject = "Mahamumbai";
+}
         // ======================================
         // NORMALIZE PHONE
         // ======================================
