@@ -10749,221 +10749,60 @@ res.status(500).json([]);
 
 });
 
-// ==========================================
-// BULK UPDATE CAMPAIGN NAME BY PHONE
-// ==========================================
+// =====================================================
+// CAMPAIGNS
+// =====================================================
 
-app.post("/api/update-campaign-bulk", async (req, res) => {
+// GET ALL CAMPAIGNS
+app.get("/api/campaigns", async (req, res) => {
   try {
+    const campaigns = await Campaign.find().sort({ createdAt: -1 });
 
-    const updates = [
+    res.json(campaigns);
+  } catch (error) {
+    console.error("Error loading campaigns:", error);
 
-      // ==========================================
-      // PLOT THANE 8 - 30 OCT
-      // ==========================================
+    res.status(500).json({
+      message: "Error loading campaigns"
+    });
+  }
+});
 
-      ["9517272590", "Plot Thane 8 - 30 Oct"],
-      ["7820089129", "Plot Thane 8 - 30 Oct"],
-      ["9718725500", "Plot Thane 8 - 30 Oct"],
-      ["6266912991", "Plot Thane 8 - 30 Oct"],
-      ["9992075096", "Plot Thane 8 - 30 Oct"],
-      ["8720801980", "Plot Thane 8 - 30 Oct"],
-      ["9579916223", "Plot Thane 8 - 30 Oct"],
-      ["9729883208", "Plot Thane 8 - 30 Oct"],
-      ["9776101747", "Plot Thane 8 - 30 Oct"],
-      ["9921759580", "Plot Thane 8 - 30 Oct"],
-      ["9662322264", "Plot Thane 8 - 30 Oct"],
-      ["6283181603", "Plot Thane 8 - 30 Oct"],
-      ["6263527442", "Plot Thane 8 - 30 Oct"],
-      ["9571585777", "Plot Thane 8 - 30 Oct"],
-      ["7732069809", "Plot Thane 8 - 30 Oct"],
-      ["6909776608", "Plot Thane 8 - 30 Oct"],
-      ["9172759554", "Plot Thane 8 - 30 Oct"],
-      ["9035349744", "Plot Thane 8 - 30 Oct"],
-      ["9517139358", "Plot Thane 8 - 30 Oct"],
-      ["6232467724", "Plot Thane 8 - 30 Oct"],
-      ["9340407140", "Plot Thane 8 - 30 Oct"],
-      ["9309187685", "Plot Thane 8 - 30 Oct"],
-      ["9687385167", "Plot Thane 8 - 30 Oct"],
-      ["9511555143", "Plot Thane 8 - 30 Oct"],
-      ["8999448918", "Plot Thane 8 - 30 Oct"],
-      ["6289780544", "Plot Thane 8 - 30 Oct"],
-      ["7300895494", "Plot Thane 8 - 30 Oct"],
-      ["8825484772", "Plot Thane 8 - 30 Oct"],
-      ["6388122162", "Plot Thane 8 - 30 Oct"],
-      ["8120831470", "Plot Thane 8 - 30 Oct"],
-      ["9225189627", "Plot Thane 8 - 30 Oct"],
-      ["8928825345", "Plot Thane 8 - 30 Oct"],
-      ["9515744388", "Plot Thane 8 - 30 Oct"],
-      ["8954152665", "Plot Thane 8 - 30 Oct"],
-      ["9538650212", "Plot Thane 8 - 30 Oct"],
-      ["8830283788", "Plot Thane 8 - 30 Oct"],
-      ["9518343205", "Plot Thane 8 - 30 Oct"],
-      ["8917323074", "Plot Thane 8 - 30 Oct"],
-      ["9641820570", "Plot Thane 8 - 30 Oct"],
-      ["9596513607", "Plot Thane 8 - 30 Oct"],
-      ["7666528410", "Plot Thane 8 - 30 Oct"],
-      ["8825086602", "Plot Thane 8 - 30 Oct"],
-      ["9258479937", "Plot Thane 8 - 30 Oct"],
-      ["8950240968", "Plot Thane 8 - 30 Oct"],
-      ["9128900892", "Plot Thane 8 - 30 Oct"],
-      ["9098810160", "Plot Thane 8 - 30 Oct"],
-      ["7029381033", "Plot Thane 8 - 30 Oct"],
-      ["8554828219", "Plot Thane 8 - 30 Oct"],
-      ["9699741314", "Plot Thane 8 - 30 Oct"],
-      ["7385130216", "Plot Thane 8 - 30 Oct"],
-      ["7499901710", "Plot Thane 8 - 30 Oct"],
-      ["8356077918", "Plot Thane 8 - 30 Oct"],
-      ["7007120833", "Plot Thane 8 - 30 Oct"],
-      ["7456848628", "Plot Thane 8 - 30 Oct"],
-      ["9811410048", "Plot Thane 8 - 30 Oct"],
-      ["8930715534", "Plot Thane 8 - 30 Oct"],
-      ["9380167753", "Plot Thane 8 - 30 Oct"],
-      ["6303339599", "Plot Thane 8 - 30 Oct"],
-      ["9510004784", "Plot Thane 8 - 30 Oct"],
-      ["9653295182", "Plot Thane 8 - 30 Oct"],
-      ["7822870592", "Plot Thane 8 - 30 Oct"],
-      ["8439930756", "Plot Thane 8 - 30 Oct"],
-      ["9359841800", "Plot Thane 8 - 30 Oct"],
-      ["9031735741", "Plot Thane 8 - 30 Oct"],
-      ["7439385422", "Plot Thane 8 - 30 Oct"],
-      ["8605397648", "Plot Thane 8 - 30 Oct"],
-      ["7901955785", "Plot Thane 8 - 30 Oct"],
-      ["8975521751", "Plot Thane 8 - 30 Oct"],
-      ["6002969943", "Plot Thane 8 - 30 Oct"],
-      ["8384077160", "Plot Thane 8 - 30 Oct"],
-      ["9819111212", "Plot Thane 8 - 30 Oct"],
-      ["7566546010", "Plot Thane 8 - 30 Oct"],
-      ["7718003612", "Plot Thane 8 - 30 Oct"],
-      ["8286921914", "Plot Thane 8 - 30 Oct"],
-      ["9672460218", "Plot Thane 8 - 30 Oct"],
-      ["8864001210", "Plot Thane 8 - 30 Oct"],
-      ["9913625240", "Plot Thane 8 - 30 Oct"],
+// CREATE CAMPAIGN
+app.post("/api/campaigns", async (req, res) => {
+  try {
+    const {
+      campaignName,
+      project,
+      source,
+      meta_campaign_id,
+      autoCampaign,
+      status
+    } = req.body;
 
-
-      // ==========================================
-      // PLOT THANE 12 - 1 NOV - DELHI
-      // ==========================================
-
-      ["7975749497", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["8999681791", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["9209502520", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["6378344072", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["9704048395", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["8010859315", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["8468865376", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["7972797680", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["9356400193", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["7447813970", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["6303242752", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["9014155871", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["9591806195", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["7208411242", "Plot Thane 12 - 1 Nov - Delhi"],
-      ["8050836467", "Plot Thane 12 - 1 Nov - Delhi"]
-    ];
-
-
-    let matched = 0;
-    let updated = 0;
-
-    const notFound = [];
-
-
-    // ==========================================
-    // UPDATE EACH LEAD
-    // ==========================================
-
-    for (const [rawPhone, campaignName] of updates) {
-
-      const phone = String(rawPhone)
-        .replace(/\D/g, "")
-        .slice(-10);
-
-
-      // Check all common phone formats
-      const possiblePhones = [
-        phone,
-        "91" + phone,
-        "+91" + phone
-      ];
-
-
-      let lead = await Lead.findOne({
-        phone: {
-          $in: possiblePhones
-        }
+    if (!campaignName || !campaignName.trim()) {
+      return res.status(400).json({
+        message: "Campaign name is required"
       });
-
-
-      // Fallback: last 10 digits
-      if (!lead) {
-
-        lead = await Lead.findOne({
-          phone: {
-            $regex: phone + "$"
-          }
-        });
-
-      }
-
-
-      // ==========================================
-      // NOT FOUND
-      // ==========================================
-
-      if (!lead) {
-
-        notFound.push({
-          phone,
-          campaignName
-        });
-
-        continue;
-
-      }
-
-
-      // ==========================================
-      // UPDATE CAMPAIGN
-      // ==========================================
-
-      matched++;
-
-      lead.meta_campaign_name = campaignName;
-
-      await lead.save();
-
-      updated++;
-
-      console.log(
-        `CAMPAIGN UPDATED | ${lead.phone} | ${campaignName}`
-      );
-
     }
 
-
-    return res.json({
-      success: true,
-      requested: updates.length,
-      matched,
-      updated,
-      notFound
+    const campaign = await Campaign.create({
+      campaignName: campaignName.trim(),
+      project: project || "",
+      source: source || "Facebook",
+      meta_campaign_id: meta_campaign_id || "",
+      autoCampaign: autoCampaign === true,
+      status: status || "Active"
     });
 
+    res.status(201).json(campaign);
 
   } catch (error) {
+    console.error("Create campaign error:", error);
 
-    console.error(
-      "BULK CAMPAIGN UPDATE ERROR:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to update campaign names",
-      error: error.message
+    res.status(500).json({
+      message: "Error creating campaign"
     });
-
   }
 });
 
