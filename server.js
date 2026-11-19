@@ -9617,30 +9617,6 @@ console.log(
 
        const project = getMetaProject(fieldData);
 
-       // ======================================
-// FINAL PROJECT
-// ======================================
-
-let finalProject = String(project || "").trim();
-
-// If project is blank, assign Mahamumbai
-// for selected executives
-const assignedEmailForProject =
-  String(assignment?.assigned_to_email || "")
-    .trim()
-    .toLowerCase();
-
-if (
-  !finalProject &&
-  [
-    "jyoti@zaminwale.com",
-    "vrushali@zaminwale.com",
-    "rakhi@zaminwale.com",
-    "manisha@zaminwale.com"
-  ].includes(assignedEmailForProject)
-) {
-  finalProject = "Mahamumbai";
-}
         // ======================================
         // NORMALIZE PHONE
         // ======================================
@@ -9862,7 +9838,7 @@ if (String(pageId || "").trim() === affordablePageId) {
   );
 }
 
-           // ======================================
+// ======================================
         // CREATE LEAD
         // ======================================
 
@@ -10772,60 +10748,71 @@ res.status(500).json([]);
 }
 
 });
+// ==========================================
+// BULK UPDATE CAMPAIGN NAME BY PHONE NUMBERS
+// ==========================================
 
-// =====================================================
-// CAMPAIGNS
-// =====================================================
-
-// GET ALL CAMPAIGNS
-app.get("/api/campaigns", async (req, res) => {
+app.post("/api/update-campaign-by-phone-list", async (req, res) => {
   try {
-    const campaigns = await Campaign.find().sort({ createdAt: -1 });
+    const updates = req.body.updates || [];
 
-    res.json(campaigns);
-  } catch (error) {
-    console.error("Error loading campaigns:", error);
-
-    res.status(500).json({
-      message: "Error loading campaigns"
-    });
-  }
-});
-
-// CREATE CAMPAIGN
-app.post("/api/campaigns", async (req, res) => {
-  try {
-    const {
-      campaignName,
-      project,
-      source,
-      meta_campaign_id,
-      autoCampaign,
-      status
-    } = req.body;
-
-    if (!campaignName || !campaignName.trim()) {
+    if (!Array.isArray(updates) || updates.length === 0) {
       return res.status(400).json({
-        message: "Campaign name is required"
+        success: false,
+        message: "updates array is required"
       });
     }
 
-    const campaign = await Campaign.create({
-      campaignName: campaignName.trim(),
-      project: project || "",
-      source: source || "Facebook",
-      meta_campaign_id: meta_campaign_id || "",
-      autoCampaign: autoCampaign === true,
-      status: status || "Active"
+    let updatedCount = 0;
+    let matchedCount = 0;
+    let notFound = [];
+
+    for (const item of updates) {
+      const rawPhone = String(item.phone || "");
+      const phone = rawPhone.replace(/\D/g, "").slice(-10);
+
+      const campaignName = String(item.campaignName || "").trim();
+
+      if (!phone || !campaignName) {
+        continue;
+      }
+
+      const lead = await Lead.findOne({
+        phone: phone
+      });
+
+      if (!lead) {
+        notFound.push({
+          phone,
+          campaignName
+        });
+        continue;
+      }
+
+      matchedCount++;
+
+      lead.meta_campaign_name = campaignName;
+
+      await lead.save();
+
+      updatedCount++;
+    }
+
+    return res.json({
+      success: true,
+      requested: updates.length,
+      matched: matchedCount,
+      updated: updatedCount,
+      notFound
     });
 
-    res.status(201).json(campaign);
-
   } catch (error) {
-    console.error("Create campaign error:", error);
+    console.error("BULK CAMPAIGN UPDATE ERROR:", error);
 
-    res.status(500).json({
-      message: "Error creating campaign"
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update campaign names",
+      error: error.message
     });
   }
 });
