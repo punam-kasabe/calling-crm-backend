@@ -4897,10 +4897,33 @@ app.post("/api/add-lead", async (req, res) => {
 
     }
 
+const cleanPhone = normalizePhone(phone);
 
-    const cleanPhone = normalizePhone(phone);
-  
-    const lead = await Lead.create({
+
+/* =========================================
+   AUTO PROJECT
+========================================= */
+
+const finalProject =
+  project && String(project).trim()
+    ? String(project).trim()
+    : [
+        "jyoti@zaminwale.com",
+        "vrushali@zaminwale.com",
+        "rakhi@zaminwale.com",
+        "manisha@zaminwale.com"
+      ].includes(
+        String(
+          assigned_to_email || assignedTo || ""
+        )
+          .toLowerCase()
+          .trim()
+      )
+      ? "Mahamumbai"
+      : "";
+
+
+const lead = await Lead.create({
 
       name: name.trim(),
 
@@ -5929,6 +5952,2713 @@ app.get("/api/all-leads", async (req, res) => {
   }
 });
 
+/* =========================================
+   CAMPAIGN REPORT OPTIONS
+========================================= */
+
+app.get("/api/campaign-reports/options", async (req, res) => {
+
+  try {
+
+    // ======================================
+    // CAMPAIGNS
+    // ======================================
+
+    const campaigns = await Lead.aggregate([
+
+      {
+        $project: {
+
+          campaign_id: {
+            $cond: [
+              {
+                $and: [
+                  {
+                    $ne: [
+                      "$meta_campaign_id",
+                      null
+                    ]
+                  },
+                  {
+                    $ne: [
+                      "$meta_campaign_id",
+                      ""
+                    ]
+                  }
+                ]
+              },
+
+              "$meta_campaign_id",
+
+              "$campaign_id"
+            ]
+          },
+
+
+          campaign_name: {
+            $cond: [
+              {
+                $and: [
+                  {
+                    $ne: [
+                      "$meta_campaign_name",
+                      null
+                    ]
+                  },
+                  {
+                    $ne: [
+                      "$meta_campaign_name",
+                      ""
+                    ]
+                  }
+                ]
+              },
+
+              "$meta_campaign_name",
+
+              "$campaign_name"
+            ]
+          }
+
+        }
+      },
+
+
+      // फक्त actual campaign असलेले records
+      {
+        $match: {
+
+          campaign_name: {
+            $exists: true,
+            $ne: ""
+          }
+
+        }
+
+      },
+
+
+      // duplicate campaigns remove
+      {
+        $group: {
+
+          _id: {
+
+            campaign_id:
+              "$campaign_id",
+
+            campaign_name:
+              "$campaign_name"
+
+          }
+
+        }
+
+      },
+
+
+      {
+        $sort: {
+          "_id.campaign_name": 1
+        }
+      }
+
+    ]);
+
+
+    // ======================================
+    // PROJECTS
+    // ======================================
+
+    const projects =
+      await Lead.distinct("project", {
+
+        project: {
+          $exists: true,
+          $ne: ""
+        }
+
+      });
+
+
+    const cleanProjects =
+      projects
+        .map((project) =>
+          String(project || "").trim()
+        )
+        .filter(Boolean)
+        .sort();
+
+
+    // ======================================
+    // EXECUTIVES
+    // ======================================
+
+    const executives =
+      await User.find(
+        {
+          email: {
+            $exists: true,
+            $ne: ""
+          }
+        },
+        {
+          name: 1,
+          email: 1,
+          username: 1,
+          userName: 1
+        }
+      )
+        .sort({
+          name: 1
+        })
+        .lean();
+
+
+    // ======================================
+    // FINAL RESPONSE
+    // ======================================
+
+    res.json({
+
+      campaigns:
+        campaigns.map((item) => ({
+
+          campaign_id:
+            item._id?.campaign_id || "",
+
+          campaign_name:
+            item._id?.campaign_name || ""
+
+        })),
+
+      projects:
+        cleanProjects,
+
+      executives:
+        executives
+
+    });
+
+  } catch (error) {
+
+    console.error(
+      "CAMPAIGN REPORT OPTIONS ERROR:",
+      error
+    );
+
+    res.status(500).json({
+
+      message:
+        "Error loading campaign report options",
+
+      error:
+        error.message
+
+    });
+
+  }
+
+});
+
+
+
+/* =========================================
+   CAMPAIGN REPORT
+========================================= */
+
+app.get("/api/campaign-reports", async (req, res) => {
+
+  try {
+
+    const {
+
+      fromDate,
+      toDate,
+      campaign,
+      project,
+      executive,
+      status
+
+    } = req.query;
+
+
+
+    // ======================================
+    // BASE MATCH
+    // ======================================
+
+    const match = {
+
+      created_by: {
+        $ne: "Reception"
+      }
+
+    };
+
+
+
+    // ======================================
+    // DATE FILTER
+    // ======================================
+
+    if (fromDate || toDate) {
+
+      match.createdAt = {};
+
+
+      if (fromDate) {
+
+        const from =
+          new Date(
+            `${fromDate}T00:00:00+05:30`
+          );
+
+        match.createdAt.$gte = from;
+
+      }
+
+
+      if (toDate) {
+
+        const to =
+          new Date(
+            `${toDate}T23:59:59.999+05:30`
+          );
+
+        match.createdAt.$lte = to;
+
+      }
+
+    }
+
+
+
+    // ======================================
+    // CAMPAIGN FILTER
+    // ======================================
+
+    if (campaign) {
+
+      match.$or = [
+
+        {
+          meta_campaign_id:
+            campaign
+        },
+
+        {
+          campaign_id:
+            campaign
+        },
+
+        {
+          meta_campaign_name: {
+            $regex:
+              campaign,
+            $options: "i"
+          }
+        },
+
+        {
+          campaign_name: {
+            $regex:
+              campaign,
+            $options: "i"
+          }
+        }
+
+      ];
+
+    }
+
+
+
+    // ======================================
+    // PROJECT FILTER
+    // ======================================
+
+    if (project) {
+
+      match.project = {
+
+        $regex:
+          project,
+
+        $options:
+          "i"
+
+      };
+
+    }
+
+
+
+    // ======================================
+    // EXECUTIVE FILTER
+    // ======================================
+
+    if (executive) {
+
+      match.assigned_to =
+        String(executive)
+          .trim()
+          .toLowerCase();
+
+    }
+
+
+
+    // ======================================
+    // STATUS FILTER
+    // ======================================
+
+    if (status) {
+
+      match.status =
+        status;
+
+    }
+
+
+
+    // ======================================
+    // SUMMARY
+    // ======================================
+
+    const summaryData =
+      await Lead.aggregate([
+
+        {
+          $match:
+            match
+        },
+
+
+        {
+          $group: {
+
+            _id:
+              null,
+
+
+            totalLeads: {
+              $sum:
+                1
+            },
+
+
+            connected: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Connected"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            interested: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $in: [
+
+                      "$status",
+
+                      [
+                        "Interested",
+                        "Very Interested"
+                      ]
+
+                    ]
+
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            siteVisit: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $in: [
+
+                      "$status",
+
+                      [
+                        "Site Visit Done",
+                        "Office Visit"
+                      ]
+
+                    ]
+
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            negotiation: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Negotiation"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            booked: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Booked"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            }
+
+          }
+
+        }
+
+      ]);
+
+
+
+    const summary =
+      summaryData[0] || {
+
+        totalLeads:
+          0,
+
+        connected:
+          0,
+
+        interested:
+          0,
+
+        siteVisit:
+          0,
+
+        negotiation:
+          0,
+
+        booked:
+          0
+
+      };
+
+
+
+    // ======================================
+    // CAMPAIGN PERFORMANCE
+    // ======================================
+
+    const campaignResult =
+      await Lead.aggregate([
+
+        {
+          $match:
+            match
+        },
+
+
+        // ==================================
+        // NORMALIZE CAMPAIGN FIELDS
+        // ==================================
+
+        {
+          $project: {
+
+            campaign_id: {
+
+              $cond: [
+
+                {
+                  $and: [
+
+                    {
+                      $ne: [
+                        "$meta_campaign_id",
+                        null
+                      ]
+                    },
+
+                    {
+                      $ne: [
+                        "$meta_campaign_id",
+                        ""
+                      ]
+                    }
+
+                  ]
+
+                },
+
+                "$meta_campaign_id",
+
+                "$campaign_id"
+
+              ]
+
+            },
+
+
+            campaign_name: {
+
+              $cond: [
+
+                {
+                  $and: [
+
+                    {
+                      $ne: [
+                        "$meta_campaign_name",
+                        null
+                      ]
+                    },
+
+                    {
+                      $ne: [
+                        "$meta_campaign_name",
+                        ""
+                      ]
+                    }
+
+                  ]
+
+                },
+
+                "$meta_campaign_name",
+
+                "$campaign_name"
+
+              ]
+
+            },
+
+
+            project: {
+              $ifNull: [
+                "$project",
+                ""
+              ]
+            },
+
+
+            status:
+              1
+
+          }
+
+        },
+
+
+        // ==================================
+        // GROUP BY CAMPAIGN + PROJECT
+        // ==================================
+
+        {
+          $group: {
+
+            _id: {
+
+              campaign_id:
+                "$campaign_id",
+
+              campaign_name:
+                "$campaign_name",
+
+              project:
+                "$project"
+
+            },
+
+
+            leads: {
+              $sum:
+                1
+            },
+
+
+            connected: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Connected"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            interested: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $in: [
+
+                      "$status",
+
+                      [
+                        "Interested",
+                        "Very Interested"
+                      ]
+
+                    ]
+
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            followUp: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Follow Up"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            siteVisit: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $in: [
+
+                      "$status",
+
+                      [
+                        "Site Visit Done",
+                        "Office Visit"
+                      ]
+
+                    ]
+
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            negotiation: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Negotiation"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            booked: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Booked"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            }
+
+          }
+
+        },
+
+
+        // ==================================
+        // FINAL CAMPAIGN DATA
+        // ==================================
+
+        {
+          $project: {
+
+            _id:
+              0,
+
+
+            campaign_id:
+              "$_id.campaign_id",
+
+
+            campaign_name: {
+
+              $cond: [
+
+                {
+                  $ne: [
+                    "$_id.campaign_name",
+                    ""
+                  ]
+                },
+
+                "$_id.campaign_name",
+
+                "No Campaign"
+
+              ]
+
+            },
+
+
+            project:
+              "$_id.project",
+
+
+            leads:
+              1,
+
+
+            connected:
+              1,
+
+
+            interested:
+              1,
+
+
+            followUp:
+              1,
+
+
+            siteVisit:
+              1,
+
+
+            negotiation:
+              1,
+
+
+            booked:
+              1,
+
+
+            conversion: {
+
+              $cond: [
+
+                {
+                  $gt: [
+                    "$leads",
+                    0
+                  ]
+                },
+
+
+                {
+
+                  $multiply: [
+
+                    {
+
+                      $divide: [
+
+                        "$booked",
+
+                        "$leads"
+
+                      ]
+
+                    },
+
+                    100
+
+                  ]
+
+                },
+
+
+                0
+
+              ]
+
+            }
+
+          }
+
+        },
+
+
+        {
+          $sort: {
+            leads:
+              -1
+          }
+        }
+
+      ]);
+
+
+
+    // ======================================
+    // EXECUTIVE PERFORMANCE
+    // ======================================
+
+    const executiveResult =
+      await Lead.aggregate([
+
+        {
+          $match:
+            match
+        },
+
+
+        {
+          $group: {
+
+            _id:
+              "$assigned_to",
+
+
+            leads: {
+              $sum:
+                1
+            },
+
+
+            connected: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Connected"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            interested: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $in: [
+
+                      "$status",
+
+                      [
+                        "Interested",
+                        "Very Interested"
+                      ]
+
+                    ]
+
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            followUp: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Follow Up"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            siteVisit: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $in: [
+
+                      "$status",
+
+                      [
+                        "Site Visit Done",
+                        "Office Visit"
+                      ]
+
+                    ]
+
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            negotiation: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Negotiation"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            booked: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Booked"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            }
+
+          }
+
+        },
+
+
+        // blank executive remove
+        {
+          $match: {
+
+            _id: {
+              $exists:
+                true,
+
+              $ne:
+                null,
+
+              $ne:
+                ""
+
+            }
+
+          }
+
+        },
+
+
+        {
+          $project: {
+
+            _id:
+              0,
+
+
+            email:
+              "$_id",
+
+
+            name:
+              "$_id",
+
+
+            leads:
+              1,
+
+
+            connected:
+              1,
+
+
+            interested:
+              1,
+
+
+            followUp:
+              1,
+
+
+            siteVisit:
+              1,
+
+
+            negotiation:
+              1,
+
+
+            booked:
+              1,
+
+
+            conversion: {
+
+              $cond: [
+
+                {
+                  $gt: [
+                    "$leads",
+                    0
+                  ]
+                },
+
+
+                {
+
+                  $multiply: [
+
+                    {
+
+                      $divide: [
+
+                        "$booked",
+
+                        "$leads"
+
+                      ]
+
+                    },
+
+                    100
+
+                  ]
+
+                },
+
+
+                0
+
+              ]
+
+            }
+
+          }
+
+        },
+
+
+        {
+          $sort: {
+            leads:
+              -1
+          }
+        }
+
+      ]);
+
+
+
+    // ======================================
+    // DAILY PERFORMANCE
+    // ======================================
+
+    const dailyResult =
+      await Lead.aggregate([
+
+        {
+          $match:
+            match
+        },
+
+
+        {
+          $group: {
+
+            _id: {
+
+              $dateToString: {
+
+                format:
+                  "%Y-%m-%d",
+
+                date:
+                  "$createdAt",
+
+                timezone:
+                  "Asia/Kolkata"
+
+              }
+
+            },
+
+
+            leads: {
+              $sum:
+                1
+            },
+
+
+            connected: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Connected"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            interested: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $in: [
+
+                      "$status",
+
+                      [
+                        "Interested",
+                        "Very Interested"
+                      ]
+
+                    ]
+
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            siteVisit: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $in: [
+
+                      "$status",
+
+                      [
+                        "Site Visit Done",
+                        "Office Visit"
+                      ]
+
+                    ]
+
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            negotiation: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Negotiation"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            },
+
+
+            booked: {
+
+              $sum: {
+
+                $cond: [
+
+                  {
+                    $eq: [
+                      "$status",
+                      "Booked"
+                    ]
+                  },
+
+                  1,
+
+                  0
+
+                ]
+
+              }
+
+            }
+
+          }
+
+        },
+
+
+        {
+          $project: {
+
+            _id:
+              0,
+
+
+            date:
+              "$_id",
+
+
+            leads:
+              1,
+
+
+            connected:
+              1,
+
+
+            interested:
+              1,
+
+
+            siteVisit:
+              1,
+
+
+            negotiation:
+              1,
+
+
+            booked:
+              1
+
+          }
+
+        },
+
+
+        {
+          $sort: {
+            date:
+              -1
+          }
+        }
+
+      ]);
+
+
+
+    // ======================================
+    // FINAL RESPONSE
+    // ======================================
+
+    res.json({
+
+      success:
+        true,
+
+
+      summary: {
+
+        totalLeads:
+          summary.totalLeads || 0,
+
+        connected:
+          summary.connected || 0,
+
+        interested:
+          summary.interested || 0,
+
+        siteVisit:
+          summary.siteVisit || 0,
+
+        negotiation:
+          summary.negotiation || 0,
+
+        booked:
+          summary.booked || 0
+
+      },
+
+
+      campaigns:
+        campaignResult,
+
+
+      executives:
+        executiveResult,
+
+
+      daily:
+        dailyResult
+
+    });
+
+  } catch (error) {
+
+    console.error(
+      "CAMPAIGN REPORT ERROR:",
+      error
+    );
+
+    res.status(500).json({
+
+      message:
+        "Error loading campaign report",
+
+      error:
+        error.message
+
+    });
+
+  }
+
+});
+
+/* =========================================
+   CAMPAIGN REPORT
+========================================= */
+
+app.get("/api/campaign-reports", async (req, res) => {
+
+  try {
+
+    const {
+      fromDate,
+      toDate,
+      campaign,
+      project,
+      executive,
+      status
+    } = req.query;
+
+
+    /* ======================================
+       BASE MATCH
+    ====================================== */
+
+    let match = {
+      created_by: {
+        $ne: "Reception"
+      }
+    };
+
+
+    /* ======================================
+       DATE FILTER
+    ====================================== */
+
+    if (fromDate || toDate) {
+
+      match.createdAt = {};
+
+      if (fromDate) {
+
+        const from = new Date(fromDate);
+        from.setHours(0, 0, 0, 0);
+
+        match.createdAt.$gte = from;
+
+      }
+
+      if (toDate) {
+
+        const to = new Date(toDate);
+        to.setHours(23, 59, 59, 999);
+
+        match.createdAt.$lte = to;
+
+      }
+
+    }
+
+
+    /* ======================================
+       CAMPAIGN FILTER
+    ====================================== */
+
+    if (campaign) {
+
+      match.$or = [
+        {
+          campaign_id: campaign
+        },
+        {
+          meta_campaign_id: campaign
+        },
+        {
+          campaign_name: {
+            $regex: campaign,
+            $options: "i"
+          }
+        },
+        {
+          meta_campaign_name: {
+            $regex: campaign,
+            $options: "i"
+          }
+        }
+      ];
+
+    }
+
+
+    /* ======================================
+       PROJECT FILTER
+    ====================================== */
+
+    if (project) {
+
+      match.project = {
+        $regex: project,
+        $options: "i"
+      };
+
+    }
+
+
+    /* ======================================
+       EXECUTIVE FILTER
+    ====================================== */
+
+    if (executive) {
+
+      match.assigned_to = executive
+        .toLowerCase()
+        .trim();
+
+    }
+
+
+    /* ======================================
+       STATUS FILTER
+    ====================================== */
+
+    if (status) {
+
+      match.status = status;
+
+    }
+
+
+    /* ======================================
+       SUMMARY
+    ====================================== */
+
+    const summaryData = await Lead.aggregate([
+
+      {
+        $match: match
+      },
+
+      {
+        $group: {
+
+          _id: null,
+
+          totalLeads: {
+            $sum: 1
+          },
+
+          connected: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+                    [
+                      "Connected",
+                      "Interested",
+                      "Very Interested",
+                      "Follow Up",
+                      "Site Visit Done",
+                      "Office Visit",
+                      "Negotiation",
+                      "Booked"
+                    ]
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          interested: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+                    [
+                      "Interested",
+                      "Very Interested"
+                    ]
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          siteVisit: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+                    [
+                      "Site Visit Done",
+                      "Office Visit"
+                    ]
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          negotiation: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    "$status",
+                    "Negotiation"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          booked: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    "$status",
+                    "Booked"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+
+        }
+
+      }
+
+    ]);
+
+
+    /* ======================================
+       CAMPAIGN PERFORMANCE
+    ====================================== */
+
+    const campaignData = await Lead.aggregate([
+
+      {
+        $match: match
+      },
+
+      {
+        $project: {
+
+          campaign_id: {
+            $cond: [
+              {
+                $ne: [
+                  "$meta_campaign_id",
+                  ""
+                ]
+              },
+              "$meta_campaign_id",
+              "$campaign_id"
+            ]
+          },
+
+          campaign_name: {
+            $cond: [
+              {
+                $ne: [
+                  "$meta_campaign_name",
+                  ""
+                ]
+              },
+              "$meta_campaign_name",
+              "$campaign_name"
+            ]
+          },
+
+          project: 1,
+          status: 1
+
+        }
+
+      },
+
+      {
+        $group: {
+
+          _id: {
+            campaign_id: "$campaign_id",
+            campaign_name: "$campaign_name",
+            project: "$project"
+          },
+
+          leads: {
+            $sum: 1
+          },
+
+          connected: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+                    [
+                      "Connected",
+                      "Interested",
+                      "Very Interested",
+                      "Follow Up",
+                      "Site Visit Done",
+                      "Office Visit",
+                      "Negotiation",
+                      "Booked"
+                    ]
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          interested: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+                    [
+                      "Interested",
+                      "Very Interested"
+                    ]
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          followUp: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    "$status",
+                    "Follow Up"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          siteVisit: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+                    [
+                      "Site Visit Done",
+                      "Office Visit",
+                      "Site Visit"
+                    ]
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          booked: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    "$status",
+                    "Booked"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+
+        }
+
+      },
+
+      {
+        $project: {
+
+          _id: 0,
+
+          campaign_id: "$_id.campaign_id",
+
+          campaign_name: {
+            $cond: [
+              {
+                $ne: [
+                  "$_id.campaign_name",
+                  ""
+                ]
+              },
+              "$_id.campaign_name",
+              "No Campaign"
+            ]
+          },
+
+          project: "$_id.project",
+
+          leads: 1,
+          connected: 1,
+          interested: 1,
+          followUp: 1,
+          siteVisit: 1,
+          booked: 1,
+
+          conversion: {
+            $cond: [
+              {
+                $gt: [
+                  "$leads",
+                  0
+                ]
+              },
+              {
+                $multiply: [
+                  {
+                    $divide: [
+                      "$booked",
+                      "$leads"
+                    ]
+                  },
+                  100
+                ]
+              },
+              0
+            ]
+          }
+
+        }
+
+      },
+
+      {
+        $sort: {
+          leads: -1
+        }
+      }
+
+    ]);
+
+
+    /* ======================================
+       EXECUTIVE PERFORMANCE
+    ====================================== */
+
+    const executiveData = await Lead.aggregate([
+
+      {
+        $match: match
+      },
+
+      {
+        $group: {
+
+          _id: "$assigned_to",
+
+          leads: {
+            $sum: 1
+          },
+
+          connected: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+                    [
+                      "Connected",
+                      "Interested",
+                      "Very Interested",
+                      "Follow Up",
+                      "Site Visit Done",
+                      "Office Visit",
+                      "Negotiation",
+                      "Booked"
+                    ]
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          interested: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+                    [
+                      "Interested",
+                      "Very Interested"
+                    ]
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          followUp: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    "$status",
+                    "Follow Up"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          siteVisit: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+                    [
+                      "Site Visit Done",
+                      "Office Visit"
+                    ]
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          negotiation: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    "$status",
+                    "Negotiation"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          booked: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    "$status",
+                    "Booked"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+
+        }
+
+      },
+
+      {
+        $project: {
+
+          _id: 0,
+
+          email: "$_id",
+
+          leads: 1,
+          connected: 1,
+          interested: 1,
+          followUp: 1,
+          siteVisit: 1,
+          negotiation: 1,
+          booked: 1,
+
+          conversion: {
+            $cond: [
+              {
+                $gt: [
+                  "$leads",
+                  0
+                ]
+              },
+              {
+                $multiply: [
+                  {
+                    $divide: [
+                      "$booked",
+                      "$leads"
+                    ]
+                  },
+                  100
+                ]
+              },
+              0
+            ]
+          }
+
+        }
+
+      },
+
+      {
+        $sort: {
+          leads: -1
+        }
+      }
+
+    ]);
+
+
+    /* ======================================
+       GET USER NAMES
+    ====================================== */
+
+    const users = await User.find(
+      {},
+      {
+        name: 1,
+        email: 1,
+        username: 1
+      }
+    );
+
+    const executivesWithNames =
+      executiveData.map(item => {
+
+        const user =
+          users.find(
+            u =>
+              String(u.email || "")
+                .toLowerCase() ===
+              String(item.email || "")
+                .toLowerCase()
+          );
+
+        return {
+
+          ...item,
+
+          name:
+            user?.name ||
+            user?.username ||
+            item.email ||
+            "—"
+
+        };
+
+      });
+
+
+    /* ======================================
+       DAILY REPORT
+    ====================================== */
+
+    const dailyData = await Lead.aggregate([
+
+      {
+        $match: match
+      },
+
+      {
+        $group: {
+
+          _id: {
+            year: {
+              $year: "$createdAt"
+            },
+
+            month: {
+              $month: "$createdAt"
+            },
+
+            day: {
+              $dayOfMonth: "$createdAt"
+            }
+
+          },
+
+          leads: {
+            $sum: 1
+          },
+
+          connected: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+                    [
+                      "Connected",
+                      "Interested",
+                      "Very Interested",
+                      "Follow Up",
+                      "Site Visit Done",
+                      "Office Visit",
+                      "Negotiation",
+                      "Booked"
+                    ]
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          interested: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+                    [
+                      "Interested",
+                      "Very Interested"
+                    ]
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          siteVisit: {
+            $sum: {
+              $cond: [
+                {
+                  $in: [
+                    "$status",
+                    [
+                      "Site Visit Done",
+                      "Office Visit"
+                    ]
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          negotiation: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    "$status",
+                    "Negotiation"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          booked: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    "$status",
+                    "Booked"
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+
+        }
+
+      },
+
+      {
+        $sort: {
+          "_id.year": 1,
+          "_id.month": 1,
+          "_id.day": 1
+        }
+      }
+
+    ]);
+
+
+    const daily = dailyData.map(item => {
+
+      const date =
+        `${item._id.year}-${String(
+          item._id.month
+        ).padStart(2, "0")}-${String(
+          item._id.day
+        ).padStart(2, "0")}`;
+
+      return {
+
+        date,
+
+        leads:
+          item.leads || 0,
+
+        connected:
+          item.connected || 0,
+
+        interested:
+          item.interested || 0,
+
+        siteVisit:
+          item.siteVisit || 0,
+
+        negotiation:
+          item.negotiation || 0,
+
+        booked:
+          item.booked || 0
+
+      };
+
+    });
+
+
+    /* ======================================
+       FINAL RESPONSE
+    ====================================== */
+
+    res.json({
+
+      summary:
+        summaryData[0] || {
+          totalLeads: 0,
+          connected: 0,
+          interested: 0,
+          siteVisit: 0,
+          negotiation: 0,
+          booked: 0
+        },
+
+      campaigns:
+        campaignData,
+
+      executives:
+        executivesWithNames,
+
+      daily
+
+    });
+
+  } catch (error) {
+
+    console.error(
+      "CAMPAIGN REPORT ERROR:",
+      error
+    );
+
+    res.status(500).json({
+      message: "Error generating campaign report"
+    });
+
+  }
+
+});
+
+
+/* =========================================
+   CAMPAIGN REPORT EXPORT
+========================================= */
+
+app.get(
+  "/api/campaign-reports/export",
+  async (req, res) => {
+
+    try {
+
+      const {
+        fromDate,
+        toDate,
+        campaign,
+        project,
+        executive,
+        status
+      } = req.query;
+
+      let query = {
+        created_by: {
+          $ne: "Reception"
+        }
+      };
+
+      if (fromDate || toDate) {
+
+        query.createdAt = {};
+
+        if (fromDate) {
+          const from =
+            new Date(fromDate);
+
+          from.setHours(
+            0,
+            0,
+            0,
+            0
+          );
+
+          query.createdAt.$gte =
+            from;
+        }
+
+        if (toDate) {
+          const to =
+            new Date(toDate);
+
+          to.setHours(
+            23,
+            59,
+            59,
+            999
+          );
+
+          query.createdAt.$lte =
+            to;
+        }
+
+      }
+
+      if (project) {
+
+        query.project = {
+          $regex: project,
+          $options: "i"
+        };
+
+      }
+
+      if (executive) {
+
+        query.assigned_to =
+          executive
+            .toLowerCase()
+            .trim();
+
+      }
+
+      if (status) {
+
+        query.status = status;
+
+      }
+
+      if (campaign) {
+
+        query.$or = [
+          {
+            campaign_id:
+              campaign
+          },
+          {
+            meta_campaign_id:
+              campaign
+          },
+          {
+            campaign_name: {
+              $regex:
+                campaign,
+              $options:
+                "i"
+            }
+          },
+          {
+            meta_campaign_name: {
+              $regex:
+                campaign,
+              $options:
+                "i"
+            }
+          }
+        ];
+
+      }
+
+      const leads =
+        await Lead.find(query)
+          .sort({
+            createdAt: -1
+          })
+          .lean();
+
+      const exportData =
+        leads.map(lead => ({
+
+          Name:
+            lead.customer_name ||
+            lead.name ||
+            "",
+
+          Phone:
+            lead.phone || "",
+
+          Email:
+            lead.email || "",
+
+          Source:
+            lead.source || "",
+
+          Project:
+            lead.project || "",
+
+          Campaign:
+            lead.meta_campaign_name ||
+            lead.campaign_name ||
+            "",
+
+          Campaign_ID:
+            lead.meta_campaign_id ||
+            lead.campaign_id ||
+            "",
+
+          Executive:
+            lead.assigned_to || "",
+
+          Status:
+            lead.status || "",
+
+          Created_At:
+            lead.createdAt
+              ? new Date(
+                  lead.createdAt
+                ).toLocaleString(
+                  "en-IN"
+                )
+              : "",
+
+          Ad_Name:
+            lead.ad_name || ""
+
+        }));
+
+
+      // XLSX package already available in CRM
+      const XLSX =
+        require("xlsx");
+
+      const workbook =
+        XLSX.utils.book_new();
+
+      const worksheet =
+        XLSX.utils.json_to_sheet(
+          exportData
+        );
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        "Campaign Report"
+      );
+
+      const buffer =
+        XLSX.write(
+          workbook,
+          {
+            type: "buffer",
+            bookType: "xlsx"
+          }
+        );
+
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=campaign-report.xlsx"
+      );
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+
+    } catch (error) {
+
+      console.error(
+        "CAMPAIGN REPORT EXPORT ERROR:",
+        error
+      );
+
+      res.status(500).json({
+        message:
+          "Error exporting campaign report"
+      });
+
+    }
+
+  }
+);
 
 /* =========================================
    PROJECTS REPORT (DATE WISE)
