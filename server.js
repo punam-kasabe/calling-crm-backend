@@ -2505,7 +2505,6 @@ app.get("/api/new-leads", async (req, res) => {
     });
   }
 });
-
 /* =========================================
    EXPORT LEADS
    STREAMING EXCEL EXPORT
@@ -2691,6 +2690,23 @@ app.post("/api/export-leads", async (req, res) => {
 
 
     /* =========================================
+       CAMPAIGN NAME
+    ========================================= */
+
+    if (
+      filters.campaignName
+    ) {
+
+      query.meta_campaign_name =
+        new RegExp(
+          filters.campaignName,
+          "i"
+        );
+
+    }
+
+
+    /* =========================================
        CREATED DATE
     ========================================= */
 
@@ -2766,6 +2782,13 @@ app.post("/api/export-leads", async (req, res) => {
             $regex: searchRegex,
             $options: "i"
           }
+        },
+
+        {
+          meta_campaign_name: {
+            $regex: searchRegex,
+            $options: "i"
+          }
         }
 
       ];
@@ -2835,37 +2858,53 @@ app.post("/api/export-leads", async (req, res) => {
     console.log(
       "================================="
     );
-    
-/* =========================
-   CHECK LEADS BEFORE STREAM
-========================= */
 
-const countForExport = await Lead.countDocuments(query);
 
-if (countForExport === 0) {
-  return res.status(404).json({
-    message: "No Leads Found For Export"
-  });
-}
+    /* =========================
+       CHECK LEADS BEFORE STREAM
+    ========================= */
 
-res.setHeader(
-  "Content-Type",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-);
+    const countForExport =
+      await Lead.countDocuments(query);
 
-res.setHeader(
-  "Content-Disposition",
-  'attachment; filename="Pipeline_Leads.xlsx"'
-);
+    if (
+      countForExport === 0
+    ) {
+
+      return res.status(404).json({
+
+        message:
+          "No Leads Found For Export"
+
+      });
+
+    }
+
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="Pipeline_Leads.xlsx"'
+    );
+
+
     /* =========================================
        CREATE STREAMING EXCEL WORKBOOK
     ========================================= */
 
     const workbook =
       new ExcelJS.stream.xlsx.WorkbookWriter({
+
         stream: res,
+
         useStyles: false,
+
         useSharedStrings: false
+
       });
 
 
@@ -2904,11 +2943,25 @@ res.setHeader(
         key: "project",
         width: 25
       },
-       {
-  header: "Description",
-  key: "description",
-  width: 40
-},
+
+      {
+        header: "Description",
+        key: "description",
+        width: 40
+      },
+
+      {
+        header: "Facebook Page",
+        key: "facebookPage",
+        width: 30
+      },
+
+      {
+        header: "Campaign Name",
+        key: "campaignName",
+        width: 35
+      },
+
       {
         header: "Created Date",
         key: "createdDate",
@@ -2946,7 +2999,7 @@ res.setHeader(
           createdAt: -1
         })
         .select(
-  "name phone status project description createdAt assigned_to assigned_manager next_call_date"
+          "name phone status project description meta_page_name meta_campaign_name createdAt assigned_to assigned_manager next_call_date"
         )
         .lean()
         .cursor();
@@ -2978,9 +3031,15 @@ res.setHeader(
 
         project:
           lead.project || "",
-          
+
         description:
-         lead.description || "",
+          lead.description || "",
+
+        facebookPage:
+          lead.meta_page_name || "",
+
+        campaignName:
+          lead.meta_campaign_name || "",
 
         createdDate:
           lead.createdAt
@@ -3031,7 +3090,9 @@ res.setHeader(
        NO DATA
     ========================================= */
 
-    if (count === 0) {
+    if (
+      count === 0
+    ) {
 
       await cursor.close();
 
@@ -3101,8 +3162,6 @@ res.setHeader(
   }
 
 });
-
-
 /* =========================================
    GET USERS
 ========================================= */
