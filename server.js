@@ -11193,20 +11193,9 @@ app.get("/api/dashboard-full", async (req, res) => {
                 ]
               }
             },
-            siteVisit: {
-  $sum: {
-    $cond: [
-      {
-        $in: [
-          "$visit_created",
-          [true, "true", 1, "1", "Yes", "yes"]
-        ]
-      },
-      1,
-      0
-    ]
-  }
-},
+
+        
+
 
             todayAssigned: {
   $sum: {
@@ -11250,7 +11239,7 @@ app.get("/api/dashboard-full", async (req, res) => {
 
     pending: 1,
 
-    siteVisit: 1,
+   
 
     todayAssigned: 1
   }
@@ -11258,6 +11247,111 @@ app.get("/api/dashboard-full", async (req, res) => {
 
       ]);
 
+  /* =====================================
+   SITE VISITS BY EXECUTIVE
+===================================== */
+
+const siteVisitData =
+  await Visit.aggregate([
+
+    {
+      $match: {
+
+        $or: [
+
+          {
+            assigned_to: {
+              $ne: null
+            }
+          },
+
+          {
+            calling_by: {
+              $exists: true,
+              $ne: []
+            }
+          }
+
+        ]
+
+      }
+
+    },
+
+    {
+      $group: {
+
+        _id: {
+          $ifNull: [
+            "$assigned_to",
+            {
+              $arrayElemAt: [
+                "$calling_by",
+                0
+              ]
+            }
+          ]
+        },
+
+        count: {
+          $sum: 1
+        }
+
+      }
+
+    }
+
+  ]);
+
+
+const siteVisitMap = {};
+
+siteVisitData.forEach((v) => {
+
+  if (v._id) {
+
+    siteVisitMap[
+      String(v._id)
+        .toLowerCase()
+        .trim()
+    ] = v.count;
+
+  }
+
+});
+
+
+const executivesData =
+  executives.map((e) => {
+
+    const executiveName =
+      String(e.name || "")
+        .toLowerCase()
+        .trim();
+
+    return {
+
+      name: e.name || "",
+
+      total: e.total || 0,
+
+      interested: e.interested || 0,
+
+      booked: e.booked || 0,
+
+      pending: e.pending || 0,
+
+      todayAssigned:
+        e.todayAssigned || 0,
+
+      siteVisits:
+        siteVisitMap[executiveName] || 0
+
+    };
+
+  });
+
+    
     /* =====================================
        LEAD ASSIGNMENT
     ===================================== */
@@ -11668,7 +11762,7 @@ const bookingPerformanceData =
       receptionEntries,
       pending,
       statusData,
-      executives,
+      executives: executivesData,
       assignments: assignmentData,
       leaderboard,
       bookingPerformance:
