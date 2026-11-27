@@ -99,6 +99,26 @@ const leadSchema = new mongoose.Schema({
     default: ""
   },
   
+  // ======================================
+  // CRM CAMPAIGN
+  // ======================================
+
+  campaign_name: {
+    type: String,
+    default: ""
+  },
+
+  campaign_id: {
+    type: String,
+    default: ""
+  },
+
+  auto_campaign: {
+    type: Boolean,
+    default: false
+  },
+
+
   meta_form_id: {
     type: String,
     default: ""
